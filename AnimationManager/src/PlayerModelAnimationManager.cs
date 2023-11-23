@@ -7,23 +7,25 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
+using Vintagestory.GameContent;
 
 namespace AnimationManagerLib
 {
     public class PlayerModelAnimationManager<TAnimationComposer> : API.IAnimationManager
-        where TAnimationComposer : IAnimationComposer<PlayerModelAnimationFrame>, new()
+        where TAnimationComposer : IComposer<PlayerModelAnimationFrame>, new()
     {
         public const float VanillaAnimationWeight = 1f;
         
         private readonly ICoreClientAPI mClientApi;
-        private readonly IAnimationSynchronizer mSynchronizer;
-        private readonly Dictionary<long, IAnimationComposer<PlayerModelAnimationFrame>> mComposers = new();
+        private readonly ISynchronizer mSynchronizer;
+        private readonly Dictionary<long, IComposer<PlayerModelAnimationFrame>> mComposers = new();
         private readonly Dictionary<Guid, long> mEntitiesByRuns = new();
         private readonly Dictionary<AnimationId, IAnimation<PlayerModelAnimationFrame>> mAnimations = new();
+        private readonly Dictionary<AnimationId, string> mAnimationCodes = new();
         private readonly Dictionary<Guid, AnimationRequestWithStatus> mRequests = new();
         private readonly Dictionary<long, Patches.AnimatorBasePatch.OnFrameHandler> mHandlers = new();
 
-        public PlayerModelAnimationManager(ICoreClientAPI api, IAnimationSynchronizer synchronizer)
+        public PlayerModelAnimationManager(ICoreClientAPI api, ISynchronizer synchronizer)
         {
             mClientApi = api;
             mSynchronizer = synchronizer;
@@ -31,7 +33,7 @@ namespace AnimationManagerLib
 
         bool API.IAnimationManager.Register(AnimationId id, JsonObject definition) => throw new NotImplementedException();
         bool API.IAnimationManager.Register(AnimationId id, AnimationMetaData metaData) => throw new NotImplementedException();
-        bool API.IAnimationManager.Register(AnimationId id, string playerAnimationCode) => throw new NotImplementedException();
+        bool API.IAnimationManager.Register(AnimationId id, string playerAnimationCode) => mAnimationCodes.TryAdd(id, playerAnimationCode);
         Guid API.IAnimationManager.Run(long entityId, params AnimationRequest[] requests) => Run(Guid.NewGuid(), entityId, true, requests);
         Guid API.IAnimationManager.Run(long entityId, bool synchronize, params AnimationRequest[] requests) => Run(Guid.NewGuid(), entityId, synchronize, requests);
         void API.IAnimationManager.Stop(Guid runId) => Stop(runId);
@@ -92,9 +94,10 @@ namespace AnimationManagerLib
 
             var composer = TryAddComposer(id, entityId);
 
-            foreach (AnimationId animationId in requests.Select(request => request.AnimationId))
+            foreach (AnimationId animationId in requests.Select(request => request.Animation))
             {
-                composer.Register(animationId, mAnimations[animationId]);
+                
+                composer.Register(animationId, GetAnimation(animationId, entityId));
             }
 
             composer.Run((AnimationRequest)mRequests[id].Next(), () => ComposerCallback(id));
@@ -143,7 +146,7 @@ namespace AnimationManagerLib
 
         }
 
-        private IAnimationComposer<PlayerModelAnimationFrame> TryAddComposer(Guid id, long entityId)
+        private IComposer<PlayerModelAnimationFrame> TryAddComposer(Guid id, long entityId)
         {
             if (mEntitiesByRuns.ContainsKey(id)) return mComposers[mEntitiesByRuns[id]];
 
@@ -151,7 +154,7 @@ namespace AnimationManagerLib
 
             if (mComposers.ContainsKey(entityId)) return mComposers[entityId];
 
-            IAnimationComposer<PlayerModelAnimationFrame> composer = Activator.CreateInstance(typeof(TAnimationComposer)) as IAnimationComposer<PlayerModelAnimationFrame>;
+            IComposer<PlayerModelAnimationFrame> composer = Activator.CreateInstance(typeof(TAnimationComposer)) as IComposer<PlayerModelAnimationFrame>;
             composer.Init(mClientApi, null); // @TODO Fix null
             mComposers.Add(entityId, composer);
             RegisterHandler(entityId);
@@ -164,6 +167,56 @@ namespace AnimationManagerLib
 
             composition.ToAverage.ApplyByAverage(animator, VanillaAnimationWeight, composition.Weight);
             composition.ToAdd.ApplyByAddition(animator);
+        }
+
+        private IAnimation<PlayerModelAnimationFrame> GetAnimation(AnimationId animationId, long entityId)
+        {
+            if (mAnimations.ContainsKey(animationId)) return mAnimations[animationId];
+
+            Debug.Assert(mAnimationCodes.ContainsKey(animationId));
+
+            IAnimation<PlayerModelAnimationFrame> animation = AnimationProvider.Get(mClientApi, entityId, mAnimationCodes[animationId]);
+
+            mAnimations.Add(animationId, animation);
+
+            return animation;
+        }
+    }
+
+    static public class AnimationProvider
+    {
+        static public IAnimation<PlayerModelAnimationFrame> Get(ICoreClientAPI api, long entityId, string name)
+        {
+            List<PlayerModelAnimationFrame> constructedKeyFrames = new();
+            List<ushort> keyFramesToFrames = new();
+
+            foreach (AnimationKeyFrame frame in KeyFrames(api, entityId, name))
+            {
+                constructedKeyFrames.Add(ConstructFrame(frame.Elements));
+                keyFramesToFrames.Add((ushort)frame.Frame);
+            }
+
+            return new PlayerModelAnimation<PlayerModelAnimationFrame>(constructedKeyFrames.ToArray(), keyFramesToFrames.ToArray());
+        }
+        static private PlayerModelAnimationFrame ConstructFrame(Dictionary<string, AnimationKeyFrameElement> elements)
+        {
+            Dictionary<string, PlayerModelAnimationPose> poses = new();
+
+            foreach ((string element, var transform) in elements)
+            {
+                poses.Add(element, new PlayerModelAnimationPose(transform));
+            }
+
+            return new PlayerModelAnimationFrame(poses);
+        }
+        static private AnimationKeyFrame[] KeyFrames(ICoreClientAPI api, long entityId, string name)
+        {
+            Entity entity = api.World.GetEntityById(entityId);
+            entity.Properties.Client.AnimationsByMetaCode.TryGetValue("aaa", out var metaData);
+            Shape shape = entity.Properties.Client.LoadedShapeForEntity;
+            Dictionary<uint, Animation> animations = shape.AnimationsByCrc32;
+            uint crc32 = Utils.ToCrc32(name);
+            return animations[crc32].KeyFrames;
         }
     }
 }

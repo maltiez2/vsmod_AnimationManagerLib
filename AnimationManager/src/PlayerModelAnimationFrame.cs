@@ -120,17 +120,13 @@ namespace AnimationManagerLib
 
     public class PlayerModelAnimationPose : IAnimationResult
     {
-        public float degX = 0;
-        public float degY = 0;
-        public float degZ = 0;
+        public float? degX = null;
+        public float? degY = null;
+        public float? degZ = null;
 
-        public float scaleX = 1f;
-        public float scaleY = 1f;
-        public float scaleZ = 1f;
-
-        public float translateX = 0;
-        public float translateY = 0;
-        public float translateZ = 0;
+        public float? translateX = null;
+        public float? translateY = null;
+        public float? translateZ = null;
 
         public bool RotShortestDistanceX = true;
         public bool RotShortestDistanceY = true;
@@ -141,14 +137,24 @@ namespace AnimationManagerLib
 
         }
 
+        public PlayerModelAnimationPose(AnimationKeyFrameElement pose)
+        {
+            degX = (float?)pose.RotationX;
+            degY = (float?)pose.RotationY;
+            degZ = (float?)pose.RotationZ;
+            translateX = (float?)pose.OffsetX;
+            translateY = (float?)pose.OffsetY;
+            translateZ = (float?)pose.OffsetZ;
+            RotShortestDistanceX = pose.RotShortestDistanceX;
+            RotShortestDistanceY = pose.RotShortestDistanceY;
+            RotShortestDistanceZ = pose.RotShortestDistanceZ;
+        }
+
         public PlayerModelAnimationPose(ElementPose pose)
         {
             degX = pose.degX;
             degY = pose.degY;
             degZ = pose.degZ;
-            scaleX = pose.scaleX;
-            scaleY = pose.scaleY;
-            scaleZ = pose.scaleZ;
             translateX = pose.translateX;
             translateY = pose.translateY;
             translateZ = pose.translateZ;
@@ -159,28 +165,22 @@ namespace AnimationManagerLib
 
         public void ApplyByAddition(ElementPose pose)
         {
-            pose.translateX += translateX;
-            pose.translateY += translateY;
-            pose.translateZ += translateZ;
-            pose.degX += degX;
-            pose.degY += degY;
-            pose.degZ += degZ;
-            pose.scaleX += scaleX;
-            pose.scaleY += scaleY;
-            pose.scaleZ += scaleZ;
+            pose.translateX += translateX ?? 0;
+            pose.translateY += translateY ?? 0;
+            pose.translateZ += translateZ ?? 0;
+            pose.degX += degX ?? 0;
+            pose.degY += degY ?? 0;
+            pose.degZ += degZ ?? 0;
         }
 
         public void ApplyByAverage(ElementPose pose, float poseWeight, float thisWeight)
         {
-            pose.translateX += Average(translateX, pose.translateX, poseWeight, thisWeight);
-            pose.translateY += Average(translateY, pose.translateY, poseWeight, thisWeight);
-            pose.translateZ += Average(translateZ, pose.translateZ, poseWeight, thisWeight);
-            pose.degX += Average(degX, pose.degX, poseWeight, thisWeight);
-            pose.degY += Average(degY, pose.degY, poseWeight, thisWeight);
-            pose.degZ += Average(degZ, pose.degZ, poseWeight, thisWeight);
-            pose.scaleX += Average(scaleX, pose.scaleX, poseWeight, thisWeight);
-            pose.scaleY += Average(scaleY, pose.scaleY, poseWeight, thisWeight);
-            pose.scaleZ += Average(scaleZ, pose.scaleZ, poseWeight, thisWeight);
+            if (translateX != null) pose.translateX += Average((float)translateX, pose.translateX, poseWeight, thisWeight);
+            if (translateY != null) pose.translateY += Average((float)translateY, pose.translateY, poseWeight, thisWeight);
+            if (translateZ != null) pose.translateZ += Average((float)translateZ, pose.translateZ, poseWeight, thisWeight);
+            if (degX != null) pose.degX += Average((float)degX, pose.degX, poseWeight, thisWeight);
+            if (degY != null) pose.degY += Average((float)degY, pose.degY, poseWeight, thisWeight);
+            if (degZ != null) pose.degZ += Average((float)degZ, pose.degZ, poseWeight, thisWeight);
         }
 
         IAnimationResult IAnimationResult.Add(IAnimationResult value)
@@ -189,15 +189,12 @@ namespace AnimationManagerLib
 
             PlayerModelAnimationPose pose = value as PlayerModelAnimationPose;
 
-            translateX += pose.translateX;
-            translateY += pose.translateY;
-            translateZ += pose.translateZ;
-            degX += pose.degX;
-            degY += pose.degY;
-            degZ += pose.degZ;
-            scaleX += pose.scaleX;
-            scaleY += pose.scaleY;
-            scaleZ += pose.scaleZ;
+            translateX = Add(translateX, pose.translateX);
+            translateY = Add(translateY, pose.translateY);
+            translateZ = Add(translateZ, pose.translateZ);
+            degX = Add(degX, pose.degX);
+            degY = Add(degY, pose.degY);
+            degZ = Add(degZ, pose.degZ);
 
             return this;
         }
@@ -214,9 +211,6 @@ namespace AnimationManagerLib
             degX = Average(degX, pose.degX, weight, thisWeight); // @TODO shortest distance
             degY = Average(degY, pose.degY, weight, thisWeight);
             degZ = Average(degZ, pose.degZ, weight, thisWeight);
-            scaleX = Average(scaleX, pose.scaleX, weight, thisWeight);
-            scaleY = Average(scaleY, pose.scaleY, weight, thisWeight);
-            scaleZ = Average(scaleZ, pose.scaleZ, weight, thisWeight);
 
             return this;
         }
@@ -233,7 +227,9 @@ namespace AnimationManagerLib
             throw new NotImplementedException();
         }
 
+        private float? Average(float? thisValue, float? givenValue, float weight, float thisWeight = 1) => thisValue == null || givenValue == null ? thisValue ?? givenValue : Average((float)thisValue, (float)givenValue, weight, thisWeight);
         private float Average(float thisValue, float givenValue, float weight, float thisWeight = 1) => (thisValue * thisWeight + givenValue * weight) / (thisWeight + weight);
+        private float? Add(float? thisValue, float? valueToAdd) => thisValue != null ? thisValue + valueToAdd ?? 0 : valueToAdd;
 
         IAnimationResult IAnimationResult.Identity()
         {

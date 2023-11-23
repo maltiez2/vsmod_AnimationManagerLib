@@ -18,10 +18,11 @@ namespace AnimationManagerLib
             mFrames = keyFramesPostion;
         }
 
-        TAnimationResult IAnimation<TAnimationResult>.Blend(float progress, ushort? startFrame, TAnimationResult endFrame)
+        TAnimationResult IAnimation<TAnimationResult>.Blend(float progress, float? targetFrame, TAnimationResult endFrame)
         {
             mLastProgress = progress;
-            mLastFrame = (TAnimationResult)mKeyFrames[startFrame == null ? 0 : (ushort)startFrame].Average(endFrame, progress, 1 - progress);
+            TAnimationResult targetFrameValue = CalcFrame(progress, targetFrame ?? 0, targetFrame ?? 0);
+            mLastFrame = (TAnimationResult)targetFrameValue.Average(endFrame, progress, 1 - progress);
             return mLastFrame;
         }
 
@@ -32,16 +33,12 @@ namespace AnimationManagerLib
             return mLastFrame;
         }
 
-        TAnimationResult IAnimation<TAnimationResult>.Play(float progress, ushort? startFrame, ushort? endFrame)
+        TAnimationResult IAnimation<TAnimationResult>.Play(float progress, float? startFrame, float? endFrame)
         {
-            int startFrameIndex = startFrame == null ? 0 : (int)startFrame;
-            int endFrameIndex = endFrame == null ? mKeyFrames.Length - 1 : (int)endFrame;
+            float startFrameIndex = startFrame == null ? 0 : (float)startFrame;
+            float endFrameIndex = endFrame == null ? mFrames[mFrames.Length - 1] : (float)endFrame;
 
-            if (startFrameIndex == endFrameIndex) return (TAnimationResult)mKeyFrames[startFrameIndex].Clone();
-
-            (int nextKeyFrame, float frameProgress) = CalcNextFrame(progress, startFrameIndex, endFrameIndex);
-
-            mLastFrame = (TAnimationResult)mKeyFrames[startFrameIndex].Average(mKeyFrames[nextKeyFrame], frameProgress, 1 - frameProgress);
+            mLastFrame = CalcFrame(progress, startFrameIndex, endFrameIndex);
             mLastProgress = progress;
 
             return mLastFrame;
@@ -52,24 +49,30 @@ namespace AnimationManagerLib
             throw new NotImplementedException();
         }
 
-        private (int nextKeyFrame, float frameProgress) CalcNextFrame(float progress, int startKeyFrame, int endKeyFrame)
+        private TAnimationResult CalcFrame(float progress, float startFrame, float endFrame)
         {
-            int startFrame = mFrames[startKeyFrame];
-            int endFrame = mFrames[endKeyFrame];
-            int length = endFrame - startFrame;
-            float frameIndexProgress = progress * length;
+            (int prevKeyFrame, int nextKeyFrame, float keyFrameProgress) = ToKeyFrames(progress, startFrame, endFrame);
+            if (prevKeyFrame == nextKeyFrame) return (TAnimationResult)mKeyFrames[nextKeyFrame].Clone();
+            return (TAnimationResult)mKeyFrames[prevKeyFrame].Average(mKeyFrames[nextKeyFrame], keyFrameProgress, 1 - keyFrameProgress);
+        }
 
-            int nextKeyFrame, prevKeyFrame = startKeyFrame;
+        private (int prevKeyFrame, int nextKeyFrame, float keyFrameProgress) ToKeyFrames(float progress, float startFrame, float endFrame)
+        {
+            float currentFrame = startFrame + (endFrame - startFrame) * progress;
 
-            for (nextKeyFrame = startKeyFrame; nextKeyFrame <= endKeyFrame || mFrames[nextKeyFrame] < frameIndexProgress; nextKeyFrame++)
+            int nextKeyFrame, prevKeyFrame = 0;
+
+            for (nextKeyFrame = 0; nextKeyFrame <= mKeyFrames.Length || mFrames[nextKeyFrame] < currentFrame; nextKeyFrame++)
             {
                 prevKeyFrame = nextKeyFrame;
             }
 
-            float keyFrameLength = mFrames[nextKeyFrame] - mFrames[prevKeyFrame];
-            float frameProgress = (frameIndexProgress - mFrames[prevKeyFrame]) / keyFrameLength;
+            float prevFrame = mFrames[prevKeyFrame];
+            float nextFrame = mFrames[nextKeyFrame];
 
-            return (nextKeyFrame, frameProgress);
+            float keyFrameProgress = (currentFrame - prevFrame) / (nextFrame - prevFrame);      
+
+            return (prevKeyFrame, nextKeyFrame, keyFrameProgress);
         }
     }
 }

@@ -5,27 +5,27 @@ using Vintagestory.API.Common;
 
 namespace AnimationManagerLib
 {
-    public class PlayerModelComposer<TAnimationResult> : IAnimationComposer<TAnimationResult>
+    public class PlayerModelComposer<TAnimationResult> : IComposer<TAnimationResult>
         where TAnimationResult : IAnimationResult
     { 
         private Type mAnimatorType;
         private readonly Dictionary<AnimationId, IAnimation<TAnimationResult>> mAnimations = new();
         private readonly Dictionary<CategoryId, IAnimator<TAnimationResult>> mAnimators = new();
-        private readonly Dictionary<CategoryId, IAnimationComposer<TAnimationResult>.IfRemoveAnimator> mCallbacks = new();
+        private readonly Dictionary<CategoryId, IComposer<TAnimationResult>.IfRemoveAnimator> mCallbacks = new();
         private TAnimationResult mDefaultFrame;
         private ICoreAPI mApi;
 
-        void IAnimationComposer<TAnimationResult>.Init(ICoreAPI api, TAnimationResult defaultFrame)
+        void IComposer<TAnimationResult>.Init(ICoreAPI api, TAnimationResult defaultFrame)
         {
             mApi = api;
             mDefaultFrame = defaultFrame;
         }
-        void IAnimationComposer<TAnimationResult>.SetAnimatorType<TAnimator>() => mAnimatorType = typeof(TAnimator);
-        bool IAnimationComposer<TAnimationResult>.Register(AnimationId id, IAnimation<TAnimationResult> animation) => mAnimations.TryAdd(id, animation);
-        void IAnimationComposer<TAnimationResult>.Run(AnimationRequest request, IAnimationComposer<TAnimationResult>.IfRemoveAnimator finishCallback) => TryAddAnimator(request, finishCallback).Run(request, mAnimations[request]);
-        void IAnimationComposer<TAnimationResult>.Stop(AnimationRequest request) => RemoveAnimator(request);
+        void IComposer<TAnimationResult>.SetAnimatorType<TAnimator>() => mAnimatorType = typeof(TAnimator);
+        bool IComposer<TAnimationResult>.Register(AnimationId id, IAnimation<TAnimationResult> animation) => mAnimations.TryAdd(id, animation);
+        void IComposer<TAnimationResult>.Run(AnimationRequest request, IComposer<TAnimationResult>.IfRemoveAnimator finishCallback) => TryAddAnimator(request, finishCallback).Run(request, mAnimations[request]);
+        void IComposer<TAnimationResult>.Stop(AnimationRequest request) => RemoveAnimator(request);
 
-        Composition<TAnimationResult> IAnimationComposer<TAnimationResult>.Compose(ComposeRequest request, TimeSpan timeElapsed)
+        Composition<TAnimationResult> IComposer<TAnimationResult>.Compose(ComposeRequest request, TimeSpan timeElapsed)
         {
             TAnimationResult sum = mDefaultFrame;
             TAnimationResult averageOnCompose = mDefaultFrame;
@@ -74,7 +74,7 @@ namespace AnimationManagerLib
             throw new NotImplementedException();
         }
 
-        private IAnimator<TAnimationResult> TryAddAnimator(AnimationRequest request, IAnimationComposer<TAnimationResult>.IfRemoveAnimator finishCallback)
+        private IAnimator<TAnimationResult> TryAddAnimator(AnimationRequest request, IComposer<TAnimationResult>.IfRemoveAnimator finishCallback)
         {
             mCallbacks[request] = finishCallback;
             if (mAnimators.ContainsKey(request)) return mAnimators[request];

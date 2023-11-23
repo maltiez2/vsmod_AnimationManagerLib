@@ -3,11 +3,12 @@ using Vintagestory.API.Common;
 
 namespace AnimationManagerLib
 {
-    public class AnimationManagerLib : ModSystem
+    public class AnimationManagerLibSystem : ModSystem, API.IAnimationManagerProvider
     {
         public const string HarmonyID = "animationmanagerlib";
 
         private ICoreAPI mApi;
+        private API.IAnimationManager mManager;
 
         public override void Start(ICoreAPI api)
         {
@@ -17,26 +18,21 @@ namespace AnimationManagerLib
         public override void StartClientSide(ICoreClientAPI api)
         {
             Patches.AnimatorBasePatch.Patch(HarmonyID);
-            api.Event.PlayerEntitySpawn += _ => AddPlayer();
-        }
 
-        private void AddPlayer()
-        {
-            EntityPlayer player = (mApi as ICoreClientAPI)?.World.Player.Entity;
+            mManager = new PlayerModelAnimationManager<PlayerModelComposer<PlayerModelAnimationFrame>>(api, null); // @TODO add synchronizer
 
-            Patches.AnimatorBasePatch.OnFrameCallback += (animator, dt) =>
-            {
-                if (animator == player?.AnimManager.Animator)
-                {
-                    mApi.Logger.Notification("OnFrame for: {0}, dt: {1}", player.GetName(), dt);
-                }
-            };
+            api.RegisterCollectibleBehaviorClass("ItemAnimationBehavior", typeof(Extra.ItemAnimationBehavior));
         }
 
         public override void Dispose()
         {
             if (mApi.Side == EnumAppSide.Client) Patches.AnimatorBasePatch.Unpatch(HarmonyID);
             base.Dispose();
+        }
+
+        API.IAnimationManager API.IAnimationManagerProvider.GetAnimationManager()
+        {
+            return mManager;
         }
     }
 }
