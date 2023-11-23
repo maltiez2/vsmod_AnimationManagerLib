@@ -3,16 +3,15 @@ using Vintagestory.API.Common;
 
 namespace AnimationManagerLib.Patches
 {
-    static class ClientAnimatorPatch
+    static class AnimatorBasePatch
     {
         public delegate void OnFrameHandler(AnimatorBase animator, float dt);
         public static event OnFrameHandler OnFrameCallback;
-        public static ICoreAPI Api { get; set; }
 
         public static void Patch(string harmonyId)
         {
             var OriginalMethod = AccessTools.Method(typeof(AnimatorBase), nameof(AnimatorBase.OnFrame));
-            var PostfixMethod = AccessTools.Method(typeof(ClientAnimatorPatch), nameof(OnFrame));
+            var PostfixMethod = AccessTools.Method(typeof(AnimatorBasePatch), nameof(OnFrame));
             new Harmony(harmonyId).Patch(OriginalMethod, prefix: new HarmonyMethod(PostfixMethod));
         }
 

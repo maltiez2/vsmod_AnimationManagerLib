@@ -1,24 +1,148 @@
 ﻿using System;
 using Vintagestory.API.Common;
 using AnimationManagerLib.API;
+using System.Collections.Generic;
+using Vintagestory.Common;
+using System.Linq;
 
 namespace AnimationManagerLib
 {
-    public class PlayerModelAnimationFrame : ElementPose, IAnimationResult
+    public class PlayerModelAnimationFrame : IAnimationResult
     {
-        public PlayerModelAnimationFrame()
+        private readonly Dictionary<string, PlayerModelAnimationPose> mPoses;
+
+        private PlayerModelAnimationFrame()
         {
-            Clear();
+            mPoses = new();
+        }
+        public PlayerModelAnimationFrame(Dictionary<string, PlayerModelAnimationPose> poses)
+        {
+            mPoses = poses;
         }
 
-        public PlayerModelAnimationFrame(ElementPose pose)
+        public PlayerModelAnimationFrame(Dictionary<string, PlayerModelAnimationPose> poses, bool shallowCopy = true)
         {
-            ForElement = pose.ForElement;
-            AnimModelMatrix = pose.AnimModelMatrix;
-            ChildElementPoses = pose.ChildElementPoses;
-            degOffX = pose.degOffX;
-            degOffY = pose.degOffY;
-            degOffZ = pose.degOffZ;
+            if (shallowCopy)
+            {
+                mPoses = poses.ToDictionary(entry => entry.Key,
+                                            entry => entry.Value);
+            }
+            else
+            {
+                mPoses = poses.ToDictionary(entry => entry.Key,
+                                            entry => (PlayerModelAnimationPose) (entry.Value as ICloneable).Clone());
+            }
+        }
+
+        public void ApplyByAddition(Vintagestory.API.Common.IAnimator animator)
+        {
+            foreach ((string name, var pose) in mPoses)
+            {
+                pose.ApplyByAddition(animator.GetPosebyName(name));
+            }
+        }
+
+        public void ApplyByAverage(Vintagestory.API.Common.IAnimator animator, float poseWeight, float thisWeight)
+        {
+            foreach ((string name, var pose) in mPoses)
+            {
+                pose.ApplyByAverage(animator.GetPosebyName(name), poseWeight, thisWeight);
+            }
+        }
+
+        IAnimationResult IAnimationResult.Add(IAnimationResult value)
+        {
+            if (!(value is PlayerModelAnimationFrame)) throw new ArgumentException("[PlayerModelAnimationFrame] Argument should be an 'ElementPose'");
+
+            PlayerModelAnimationFrame clone = value.Clone() as PlayerModelAnimationFrame;
+
+            foreach ((string key, var pose) in clone.mPoses)
+            {
+                if (mPoses.ContainsKey(key))
+                {
+                    (pose as IAnimationResult).Add(mPoses[key]);
+                }
+            }
+
+            foreach ((string key, var pose) in mPoses)
+            {
+                if (!clone.mPoses.ContainsKey(key))
+                {
+                    clone.mPoses.Add(key, pose);
+                }
+            }
+
+            return clone;
+        }
+
+        IAnimationResult IAnimationResult.Average(IAnimationResult value, float weight, float thisWeight)
+        {
+            if (!(value is PlayerModelAnimationFrame)) throw new ArgumentException("[PlayerModelAnimationFrame] Argument should be an 'ElementPose'");
+
+            PlayerModelAnimationFrame clone = value.Clone() as PlayerModelAnimationFrame;
+
+            foreach ((string key, var pose) in clone.mPoses)
+            {
+                if (mPoses.ContainsKey(key))
+                {
+                    (pose as IAnimationResult).Average(mPoses[key], weight, thisWeight);
+                }
+            }
+
+            foreach ((string key, var pose) in mPoses)
+            {
+                if (!clone.mPoses.ContainsKey(key))
+                {
+                    clone.mPoses.Add(key, pose);
+                }
+            }
+
+            return clone;
+        }
+
+        object ICloneable.Clone()
+        {
+            PlayerModelAnimationFrame clone = new PlayerModelAnimationFrame(mPoses, shallowCopy: true);
+
+            return clone;
+        }
+
+        IAnimationResult IAnimationResult.Subtract(IAnimationResult value)
+        {
+            throw new NotImplementedException();
+        }
+
+        IAnimationResult IAnimationResult.Identity()
+        {
+            return new PlayerModelAnimationFrame();
+        }
+    }
+
+    public class PlayerModelAnimationPose : IAnimationResult
+    {
+        public float degX = 0;
+        public float degY = 0;
+        public float degZ = 0;
+
+        public float scaleX = 1f;
+        public float scaleY = 1f;
+        public float scaleZ = 1f;
+
+        public float translateX = 0;
+        public float translateY = 0;
+        public float translateZ = 0;
+
+        public bool RotShortestDistanceX = true;
+        public bool RotShortestDistanceY = true;
+        public bool RotShortestDistanceZ = true;
+
+        public PlayerModelAnimationPose()
+        {
+
+        }
+
+        public PlayerModelAnimationPose(ElementPose pose)
+        {
             degX = pose.degX;
             degY = pose.degY;
             degZ = pose.degZ;
@@ -33,12 +157,8 @@ namespace AnimationManagerLib
             RotShortestDistanceZ = pose.RotShortestDistanceZ;
         }
 
-        IAnimationResult IAnimationResult.Add(IAnimationResult value)
+        public void ApplyByAddition(ElementPose pose)
         {
-            if (!(value is ElementPose)) throw new ArgumentException(" [PlayerModelAnimationFrame] Argument should be an 'ElementPose'");
-
-            PlayerModelAnimationFrame pose = new PlayerModelAnimationFrame(value as ElementPose);
-
             pose.translateX += translateX;
             pose.translateY += translateY;
             pose.translateZ += translateZ;
@@ -48,32 +168,62 @@ namespace AnimationManagerLib
             pose.scaleX += scaleX;
             pose.scaleY += scaleY;
             pose.scaleZ += scaleZ;
+        }
 
-            return value;
+        public void ApplyByAverage(ElementPose pose, float poseWeight, float thisWeight)
+        {
+            pose.translateX += Average(translateX, pose.translateX, poseWeight, thisWeight);
+            pose.translateY += Average(translateY, pose.translateY, poseWeight, thisWeight);
+            pose.translateZ += Average(translateZ, pose.translateZ, poseWeight, thisWeight);
+            pose.degX += Average(degX, pose.degX, poseWeight, thisWeight);
+            pose.degY += Average(degY, pose.degY, poseWeight, thisWeight);
+            pose.degZ += Average(degZ, pose.degZ, poseWeight, thisWeight);
+            pose.scaleX += Average(scaleX, pose.scaleX, poseWeight, thisWeight);
+            pose.scaleY += Average(scaleY, pose.scaleY, poseWeight, thisWeight);
+            pose.scaleZ += Average(scaleZ, pose.scaleZ, poseWeight, thisWeight);
+        }
+
+        IAnimationResult IAnimationResult.Add(IAnimationResult value)
+        {
+            if (!(value is PlayerModelAnimationPose)) throw new ArgumentException(" [PlayerModelAnimationPose] Argument should be an 'PlayerModelAnimationPose'");
+
+            PlayerModelAnimationPose pose = value as PlayerModelAnimationPose;
+
+            translateX += pose.translateX;
+            translateY += pose.translateY;
+            translateZ += pose.translateZ;
+            degX += pose.degX;
+            degY += pose.degY;
+            degZ += pose.degZ;
+            scaleX += pose.scaleX;
+            scaleY += pose.scaleY;
+            scaleZ += pose.scaleZ;
+
+            return this;
         }
 
         IAnimationResult IAnimationResult.Average(IAnimationResult value, float weight, float thisWeight)
         {
-            if (!(value is ElementPose)) throw new ArgumentException(" [PlayerModelAnimationFrame] Argument should be an 'ElementPose'");
+            if (!(value is PlayerModelAnimationPose)) throw new ArgumentException(" [PlayerModelAnimationPose] Argument should be an 'PlayerModelAnimationPose'");
 
-            PlayerModelAnimationFrame pose = new PlayerModelAnimationFrame(value as ElementPose);
+            PlayerModelAnimationPose pose = value as PlayerModelAnimationPose;
 
-            pose.translateX = Average(translateX, pose.translateX, weight, thisWeight);
-            pose.translateY = Average(translateY, pose.translateY, weight, thisWeight);
-            pose.translateZ = Average(translateZ, pose.translateZ, weight, thisWeight);
-            pose.degX = Average(degX, pose.degX, weight, thisWeight); // @TODO shortest distance
-            pose.degY = Average(degY, pose.degY, weight, thisWeight);
-            pose.degZ = Average(degZ, pose.degZ, weight, thisWeight);
-            pose.scaleX = Average(scaleX, pose.scaleX, weight, thisWeight);
-            pose.scaleY = Average(scaleY, pose.scaleY, weight, thisWeight);
-            pose.scaleZ = Average(scaleZ, pose.scaleZ, weight, thisWeight);
+            translateX = Average(translateX, pose.translateX, weight, thisWeight);
+            translateY = Average(translateY, pose.translateY, weight, thisWeight);
+            translateZ = Average(translateZ, pose.translateZ, weight, thisWeight);
+            degX = Average(degX, pose.degX, weight, thisWeight); // @TODO shortest distance
+            degY = Average(degY, pose.degY, weight, thisWeight);
+            degZ = Average(degZ, pose.degZ, weight, thisWeight);
+            scaleX = Average(scaleX, pose.scaleX, weight, thisWeight);
+            scaleY = Average(scaleY, pose.scaleY, weight, thisWeight);
+            scaleZ = Average(scaleZ, pose.scaleZ, weight, thisWeight);
 
-            return value;
+            return this;
         }
 
         object ICloneable.Clone()
         {
-            PlayerModelAnimationFrame clone = (PlayerModelAnimationFrame)MemberwiseClone();
+            PlayerModelAnimationPose clone = (PlayerModelAnimationPose)MemberwiseClone();
 
             return clone;
         }
@@ -87,8 +237,7 @@ namespace AnimationManagerLib
 
         IAnimationResult IAnimationResult.Identity()
         {
-            return new PlayerModelAnimationFrame();
+            return new PlayerModelAnimationPose();
         }
     }
-
 }

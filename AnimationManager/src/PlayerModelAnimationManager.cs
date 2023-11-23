@@ -5,6 +5,7 @@ using System.Linq;
 using AnimationManagerLib.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 
 namespace AnimationManagerLib
@@ -12,12 +13,15 @@ namespace AnimationManagerLib
     public class PlayerModelAnimationManager<TAnimationComposer> : API.IAnimationManager
         where TAnimationComposer : IAnimationComposer<PlayerModelAnimationFrame>, new()
     {
+        public const float VanillaAnimationWeight = 1f;
+        
         private readonly ICoreClientAPI mClientApi;
         private readonly IAnimationSynchronizer mSynchronizer;
         private readonly Dictionary<long, IAnimationComposer<PlayerModelAnimationFrame>> mComposers = new();
         private readonly Dictionary<Guid, long> mEntitiesByRuns = new();
-        private readonly Dictionary<AnimationIdentifier, IAnimation<PlayerModelAnimationFrame>> mAnimations = new();
+        private readonly Dictionary<AnimationId, IAnimation<PlayerModelAnimationFrame>> mAnimations = new();
         private readonly Dictionary<Guid, AnimationRequestWithStatus> mRequests = new();
+        private readonly Dictionary<long, Patches.AnimatorBasePatch.OnFrameHandler> mHandlers = new();
 
         public PlayerModelAnimationManager(ICoreClientAPI api, IAnimationSynchronizer synchronizer)
         {
@@ -25,22 +29,59 @@ namespace AnimationManagerLib
             mSynchronizer = synchronizer;
         }
 
-        bool API.IAnimationManager.Register(AnimationIdentifier id, JsonObject definition) => throw new NotImplementedException();
-        bool API.IAnimationManager.Register(AnimationIdentifier id, AnimationMetaData metaData) => throw new NotImplementedException();
-        bool API.IAnimationManager.Register(AnimationIdentifier id, string playerAnimationCode) => throw new NotImplementedException();
+        bool API.IAnimationManager.Register(AnimationId id, JsonObject definition) => throw new NotImplementedException();
+        bool API.IAnimationManager.Register(AnimationId id, AnimationMetaData metaData) => throw new NotImplementedException();
+        bool API.IAnimationManager.Register(AnimationId id, string playerAnimationCode) => throw new NotImplementedException();
         Guid API.IAnimationManager.Run(long entityId, params AnimationRequest[] requests) => Run(Guid.NewGuid(), entityId, true, requests);
         Guid API.IAnimationManager.Run(long entityId, bool synchronize, params AnimationRequest[] requests) => Run(Guid.NewGuid(), entityId, synchronize, requests);
         void API.IAnimationManager.Stop(Guid runId) => Stop(runId);
         void IDisposable.Dispose() => throw new NotImplementedException();
 
-        private void OnRenderFrame(float timeElapsed, long entityId)
+        private void OnRenderFrame(float secondsElapsed, long entityId)
         {
             if (!mComposers.ContainsKey(entityId)) return;
             
-            TimeSpan timeSpan = TimeSpan.FromSeconds(timeElapsed);
-            var composer = mComposers[entityId];
-            PlayerModelAnimationFrame animation = composer.Compose(new() { EntityId = entityId }, timeSpan);
-            ApplyAnimation(entityId, animation);
+            TimeSpan timeSpan = TimeSpan.FromSeconds(secondsElapsed);
+            Composition<PlayerModelAnimationFrame> composition = mComposers[entityId].Compose(new (entityId), timeSpan);
+            ApplyAnimation(entityId, composition);
+        }
+
+        private void RegisterHandler(long entityId)
+        {
+            Patches.AnimatorBasePatch.OnFrameHandler handler = (AnimatorBase animator, float dt) => OnFrameHandler(animator, dt, entityId);
+            mHandlers.Add(entityId, handler);
+            Patches.AnimatorBasePatch.OnFrameCallback += handler;
+        }
+
+        private void UnregisterHandler(long entityId)
+        {
+            if (!mHandlers.ContainsKey(entityId)) return;
+            Patches.AnimatorBasePatch.OnFrameCallback -= mHandlers[entityId];
+            mHandlers.Remove(entityId);
+        }
+
+        private void OnFrameHandler(AnimatorBase animator, float dt, long entityId)
+        {
+            Entity entity = mClientApi.World.GetEntityById(entityId);
+
+            if (entity == null)
+            {
+                OnNullEntity(entityId);
+                return;
+            }
+
+            if (animator != entity.AnimManager.Animator) return;
+
+            OnRenderFrame(dt, entityId);
+        }
+
+        private void OnNullEntity(long entityId)
+        {
+            UnregisterHandler(entityId);
+            foreach ((Guid runId, _) in mEntitiesByRuns.Where((key, value) => value == entityId))
+            {
+                Stop(runId);
+            }
         }
         
         private Guid Run(Guid id, long entityId, bool synchronize, params AnimationRequest[] requests)
@@ -51,7 +92,7 @@ namespace AnimationManagerLib
 
             var composer = TryAddComposer(id, entityId);
 
-            foreach (AnimationIdentifier animationId in requests.Select(request => request.AnimationId))
+            foreach (AnimationId animationId in requests.Select(request => request.AnimationId))
             {
                 composer.Register(animationId, mAnimations[animationId]);
             }
@@ -113,12 +154,16 @@ namespace AnimationManagerLib
             IAnimationComposer<PlayerModelAnimationFrame> composer = Activator.CreateInstance(typeof(TAnimationComposer)) as IAnimationComposer<PlayerModelAnimationFrame>;
             composer.Init(mClientApi, null); // @TODO Fix null
             mComposers.Add(entityId, composer);
+            RegisterHandler(entityId);
             return composer;
         }
 
-        private void ApplyAnimation(long entityId, PlayerModelAnimationFrame animation)
+        private void ApplyAnimation(long entityId, Composition<PlayerModelAnimationFrame> composition)
         {
+            IAnimator animator = mClientApi.World.GetEntityById(entityId).AnimManager.Animator;
 
+            composition.ToAverage.ApplyByAverage(animator, VanillaAnimationWeight, composition.Weight);
+            composition.ToAdd.ApplyByAddition(animator);
         }
     }
 }

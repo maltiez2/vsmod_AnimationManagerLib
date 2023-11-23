@@ -1,12 +1,12 @@
 {
     "type": "code",
     "modid": "animationmanagerlib",
-    "name": "Animation Manager",
+    "name": "Animation Manager (Alpha)",
     "authors": [
         "Maltiez"
     ],
-    "description": "Animation manager library for more procedual entity enimation",
-    "version": "1.0.0",
+    "description": "Animation manager library for more procedual entity animation",
+    "version": "0.0.1",
     "dependencies": {
         "game": "1.18.8"
     }

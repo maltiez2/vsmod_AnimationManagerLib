@@ -7,12 +7,22 @@ using Vintagestory.API.MathTools;
 
 namespace AnimationManagerLib.API
 {
+    public interface IAnimationManager : IDisposable
+    {
+        bool Register(AnimationId id, JsonObject definition);
+        bool Register(AnimationId id, AnimationMetaData metaData);
+        bool Register(AnimationId id, string playerAnimationCode);
+        Guid Run(long entityId, params AnimationRequest[] requests);
+        Guid Run(long entityId, bool synchronize, params AnimationRequest[] requests);
+        void Stop(Guid runId);
+    }
+
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
     public struct AnimationRequest
     {
         public AnimationPlayerAction Action { get; set; }
-        public CategoryIdentifier Category { get; set; }
-        public AnimationIdentifier AnimationId { get; set; }
+        public CategoryId Category { get; set; }
+        public AnimationId AnimationId { get; set; }
         public TimeSpan Duration { get; set; }
         public ProgressModifierType Modifier { get; set; }
         public ushort? StartFrame { get; set; }
@@ -27,14 +37,10 @@ namespace AnimationManagerLib.API
         public AnimationRequest[] Requests { get; set; }
     }
 
-    public interface IAnimationManager : IDisposable
+    [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
+    public struct AnimationStopPacket
     {
-        bool Register(AnimationIdentifier id, JsonObject definition);
-        bool Register(AnimationIdentifier id, AnimationMetaData metaData);
-        bool Register(AnimationIdentifier id, string playerAnimationCode);
-        Guid Run(long entityId, params AnimationRequest[] requests);
-        Guid Run(long entityId, bool synchronize, params AnimationRequest[] requests);
-        void Stop(Guid runId);
+        public Guid RunId { get; set; }
     }
 
 
@@ -64,7 +70,8 @@ namespace AnimationManagerLib.API
     {
         Add,
         Subtract,
-        Average,
+        AverageOnCompose,
+        Average
     }
 
     public struct AnimationRunMetadata
@@ -84,31 +91,33 @@ namespace AnimationManagerLib.API
         public static implicit operator AnimationRunMetadata(AnimationRequest request) => new AnimationRunMetadata(request);
     }
 
-    public struct AnimationIdentifier
+    public struct AnimationId
     {
         public uint Hash { get; private set; }
 
-        public AnimationIdentifier(string name) => new AnimationIdentifier() { Hash = Utils.ToCrc32(name) };
-        public AnimationIdentifier(uint hash) => new AnimationIdentifier() { Hash = hash };
+        public AnimationId(string name) => new AnimationId() { Hash = Utils.ToCrc32(name) };
+        public AnimationId(uint hash) => new AnimationId() { Hash = hash };
 
-        public static implicit operator AnimationIdentifier(AnimationRequest request) => request.AnimationId;
+        public static implicit operator AnimationId(AnimationRequest request) => request.AnimationId;
     }
 
-    public struct CategoryIdentifier
+    public struct CategoryId
     {
         public uint Hash { get; private set; }
         public BlendingType Blending { get; private set; }
         public float? Weight { get; private set; }
 
-        public CategoryIdentifier((string name, BlendingType blending, float? Weight) parameters) => new CategoryIdentifier() { Blending = parameters.blending, Hash = Utils.ToCrc32(parameters.name), Weight = parameters.Weight };
-        public CategoryIdentifier((uint hash, BlendingType blending, float? Weight) parameters) => new CategoryIdentifier() { Blending = parameters.blending, Hash = parameters.hash, Weight = parameters.Weight };
+        public CategoryId((string name, BlendingType blending, float? Weight) parameters) => new CategoryId() { Blending = parameters.blending, Hash = Utils.ToCrc32(parameters.name), Weight = parameters.Weight };
+        public CategoryId((uint hash, BlendingType blending, float? Weight) parameters) => new CategoryId() { Blending = parameters.blending, Hash = parameters.hash, Weight = parameters.Weight };
         
-        public static implicit operator CategoryIdentifier(AnimationRequest request) => request.Category;
+        public static implicit operator CategoryId(AnimationRequest request) => request.Category;
     }
 
     public struct ComposeRequest
     {
         public long EntityId { get; set; }
+
+        public ComposeRequest(long entityId) => new ComposeRequest() { EntityId = entityId };
     }
 
     public interface IAnimationResult : ICloneable
@@ -142,6 +151,16 @@ namespace AnimationManagerLib.API
         public TAnimationResult Calculate(TimeSpan timeElapsed, out Status status);
     }
 
+    public struct Composition<TAnimationResult>
+        where TAnimationResult : IAnimationResult
+    {
+        public TAnimationResult ToAdd { get; set; }
+        public TAnimationResult ToAverage { get; set; }
+        public float Weight { get; set; }
+
+        public Composition((TAnimationResult toAdd, TAnimationResult toAverage, float weight) parameters) => new Composition<TAnimationResult>() { ToAdd = parameters.toAdd, ToAverage = parameters.toAverage, Weight = parameters.weight };
+    }
+
     public interface IAnimationComposer<TAnimationResult> : IDisposable
         where TAnimationResult : IAnimationResult
     {
@@ -150,10 +169,10 @@ namespace AnimationManagerLib.API
         void Init(ICoreAPI api, TAnimationResult defaultFrame);
         void SetAnimatorType<TAnimator>()
             where TAnimator : IAnimator<TAnimationResult>, new();
-        bool Register(AnimationIdentifier id, IAnimation<TAnimationResult> animation);
+        bool Register(AnimationId id, IAnimation<TAnimationResult> animation);
         void Run(AnimationRequest request, IfRemoveAnimator finishCallback);
         void Stop(AnimationRequest request);
-        TAnimationResult Compose(ComposeRequest request, TimeSpan timeElapsed);
+        Composition<TAnimationResult> Compose(ComposeRequest request, TimeSpan timeElapsed);
     }
 
     public interface IAnimationSynchronizer : IDisposable

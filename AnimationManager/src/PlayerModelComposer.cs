@@ -9,9 +9,9 @@ namespace AnimationManagerLib
         where TAnimationResult : IAnimationResult
     { 
         private Type mAnimatorType;
-        private readonly Dictionary<AnimationIdentifier, IAnimation<TAnimationResult>> mAnimations = new();
-        private readonly Dictionary<CategoryIdentifier, IAnimator<TAnimationResult>> mAnimators = new();
-        private readonly Dictionary<CategoryIdentifier, IAnimationComposer<TAnimationResult>.IfRemoveAnimator> mCallbacks = new();
+        private readonly Dictionary<AnimationId, IAnimation<TAnimationResult>> mAnimations = new();
+        private readonly Dictionary<CategoryId, IAnimator<TAnimationResult>> mAnimators = new();
+        private readonly Dictionary<CategoryId, IAnimationComposer<TAnimationResult>.IfRemoveAnimator> mCallbacks = new();
         private TAnimationResult mDefaultFrame;
         private ICoreAPI mApi;
 
@@ -21,13 +21,15 @@ namespace AnimationManagerLib
             mDefaultFrame = defaultFrame;
         }
         void IAnimationComposer<TAnimationResult>.SetAnimatorType<TAnimator>() => mAnimatorType = typeof(TAnimator);
-        bool IAnimationComposer<TAnimationResult>.Register(AnimationIdentifier id, IAnimation<TAnimationResult> animation) => mAnimations.TryAdd(id, animation);
+        bool IAnimationComposer<TAnimationResult>.Register(AnimationId id, IAnimation<TAnimationResult> animation) => mAnimations.TryAdd(id, animation);
         void IAnimationComposer<TAnimationResult>.Run(AnimationRequest request, IAnimationComposer<TAnimationResult>.IfRemoveAnimator finishCallback) => TryAddAnimator(request, finishCallback).Run(request, mAnimations[request]);
         void IAnimationComposer<TAnimationResult>.Stop(AnimationRequest request) => RemoveAnimator(request);
 
-        TAnimationResult IAnimationComposer<TAnimationResult>.Compose(ComposeRequest request, TimeSpan timeElapsed)
+        Composition<TAnimationResult> IAnimationComposer<TAnimationResult>.Compose(ComposeRequest request, TimeSpan timeElapsed)
         {
             TAnimationResult sum = mDefaultFrame;
+            TAnimationResult averageOnCompose = mDefaultFrame;
+            float totalWeightOfTheAverageOnCompose = 1;
             TAnimationResult average = mDefaultFrame;
             float totalWeightOfTheAverage = 1;
 
@@ -38,9 +40,15 @@ namespace AnimationManagerLib
                 switch (category.Blending)
                 {
                     case BlendingType.Average:
-                        float weight = category.Weight ?? 1; 
+                        float weight = category.Weight ?? 1;
                         average.Average(animator.Calculate(timeElapsed, out animatorStatus), totalWeightOfTheAverage, weight);
                         totalWeightOfTheAverage += weight;
+                        break;
+
+                    case BlendingType.AverageOnCompose:
+                        float weightOnCompose = category.Weight ?? 1;
+                        averageOnCompose.Average(animator.Calculate(timeElapsed, out animatorStatus), totalWeightOfTheAverageOnCompose, weightOnCompose);
+                        totalWeightOfTheAverageOnCompose += weightOnCompose;
                         break;
                     
                     case BlendingType.Add:
@@ -58,7 +66,7 @@ namespace AnimationManagerLib
                 ProcessStatus(category, animatorStatus);
             }
 
-            return (TAnimationResult)average.Add(sum);
+            return new( ((TAnimationResult)averageOnCompose.Add(sum), average, totalWeightOfTheAverage) );
         }
 
         void IDisposable.Dispose()
@@ -76,7 +84,7 @@ namespace AnimationManagerLib
             return animator;
         }
 
-        private void RemoveAnimator(CategoryIdentifier category)
+        private void RemoveAnimator(CategoryId category)
         {
             if (!mAnimators.ContainsKey(category)) return;
 
@@ -87,7 +95,7 @@ namespace AnimationManagerLib
             //animator.Dispose(); // @TODO implement dispose
         }
 
-        private void ProcessStatus(CategoryIdentifier category, IAnimator<TAnimationResult>.Status status)
+        private void ProcessStatus(CategoryId category, IAnimator<TAnimationResult>.Status status)
         {
             switch (status)
             {

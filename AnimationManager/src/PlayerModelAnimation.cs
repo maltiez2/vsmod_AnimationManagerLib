@@ -7,19 +7,21 @@ namespace AnimationManagerLib
     public class PlayerModelAnimation<TAnimationResult> : IAnimation<TAnimationResult>
         where TAnimationResult  : IAnimationResult
     {
-        private readonly TAnimationResult[] mFrames;
+        private readonly TAnimationResult[] mKeyFrames;
+        private readonly ushort[] mFrames;
         private TAnimationResult mLastFrame;
         private float mLastProgress;
 
-        public PlayerModelAnimation(TAnimationResult[] frames)
+        public PlayerModelAnimation(TAnimationResult[] keyFrames, ushort[] keyFramesPostion)
         {
-            mFrames = frames;
+            mKeyFrames = keyFrames;
+            mFrames = keyFramesPostion;
         }
 
         TAnimationResult IAnimation<TAnimationResult>.Blend(float progress, ushort? startFrame, TAnimationResult endFrame)
         {
             mLastProgress = progress;
-            mLastFrame = (TAnimationResult)mFrames[startFrame == null ? 0 : (ushort)startFrame].Average(endFrame, progress, 1 - progress);
+            mLastFrame = (TAnimationResult)mKeyFrames[startFrame == null ? 0 : (ushort)startFrame].Average(endFrame, progress, 1 - progress);
             return mLastFrame;
         }
 
@@ -33,14 +35,13 @@ namespace AnimationManagerLib
         TAnimationResult IAnimation<TAnimationResult>.Play(float progress, ushort? startFrame, ushort? endFrame)
         {
             int startFrameIndex = startFrame == null ? 0 : (int)startFrame;
-            int endFrameIndex = endFrame == null ? mFrames.Length - 1 : (int)endFrame;
+            int endFrameIndex = endFrame == null ? mKeyFrames.Length - 1 : (int)endFrame;
 
-            if (startFrameIndex == endFrameIndex) return (TAnimationResult)mFrames[startFrameIndex].Clone();
+            if (startFrameIndex == endFrameIndex) return (TAnimationResult)mKeyFrames[startFrameIndex].Clone();
 
-            int nextFrameIndex = endFrameIndex > startFrameIndex ? startFrameIndex + 1 : startFrameIndex - 1;
-            float frameProgress = progress / (endFrameIndex - startFrameIndex);
+            (int nextKeyFrame, float frameProgress) = CalcNextFrame(progress, startFrameIndex, endFrameIndex);
 
-            mLastFrame = (TAnimationResult)mFrames[startFrameIndex].Average(mFrames[nextFrameIndex], frameProgress, 1 - frameProgress);
+            mLastFrame = (TAnimationResult)mKeyFrames[startFrameIndex].Average(mKeyFrames[nextKeyFrame], frameProgress, 1 - frameProgress);
             mLastProgress = progress;
 
             return mLastFrame;
@@ -49,6 +50,26 @@ namespace AnimationManagerLib
         void IDisposable.Dispose()
         {
             throw new NotImplementedException();
+        }
+
+        private (int nextKeyFrame, float frameProgress) CalcNextFrame(float progress, int startKeyFrame, int endKeyFrame)
+        {
+            int startFrame = mFrames[startKeyFrame];
+            int endFrame = mFrames[endKeyFrame];
+            int length = endFrame - startFrame;
+            float frameIndexProgress = progress * length;
+
+            int nextKeyFrame, prevKeyFrame = startKeyFrame;
+
+            for (nextKeyFrame = startKeyFrame; nextKeyFrame <= endKeyFrame || mFrames[nextKeyFrame] < frameIndexProgress; nextKeyFrame++)
+            {
+                prevKeyFrame = nextKeyFrame;
+            }
+
+            float keyFrameLength = mFrames[nextKeyFrame] - mFrames[prevKeyFrame];
+            float frameProgress = (frameIndexProgress - mFrames[prevKeyFrame]) / keyFrameLength;
+
+            return (nextKeyFrame, frameProgress);
         }
     }
 }
