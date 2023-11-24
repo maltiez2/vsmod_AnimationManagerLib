@@ -1,6 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Diagnostics;
 using AnimationManagerLib.API;
+using Vintagestory.API.MathTools;
 
 namespace AnimationManagerLib
 {
@@ -12,10 +13,10 @@ namespace AnimationManagerLib
         private TAnimationResult mLastFrame;
         private float mLastProgress;
 
-        public PlayerModelAnimation(TAnimationResult[] keyFrames, ushort[] keyFramesPostion)
+        public PlayerModelAnimation(TAnimationResult[] keyFrames, ushort[] keyFramesPosition)
         {
             mKeyFrames = keyFrames;
-            mFrames = keyFramesPostion;
+            mFrames = keyFramesPosition;
         }
 
         TAnimationResult IAnimation<TAnimationResult>.Blend(float progress, float? targetFrame, TAnimationResult endFrame)
@@ -52,6 +53,7 @@ namespace AnimationManagerLib
         private TAnimationResult CalcFrame(float progress, float startFrame, float endFrame)
         {
             (int prevKeyFrame, int nextKeyFrame, float keyFrameProgress) = ToKeyFrames(progress, startFrame, endFrame);
+            Debug.Assert(mKeyFrames.Length > prevKeyFrame && mKeyFrames.Length > nextKeyFrame);
             if (prevKeyFrame == nextKeyFrame) return (TAnimationResult)mKeyFrames[nextKeyFrame].Clone();
             return (TAnimationResult)mKeyFrames[prevKeyFrame].Average(mKeyFrames[nextKeyFrame], keyFrameProgress, 1 - keyFrameProgress);
         }
@@ -62,13 +64,13 @@ namespace AnimationManagerLib
 
             int nextKeyFrame, prevKeyFrame = 0;
 
-            for (nextKeyFrame = 0; nextKeyFrame <= mKeyFrames.Length || mFrames[nextKeyFrame] < currentFrame; nextKeyFrame++)
+            for (nextKeyFrame = 0; nextKeyFrame < mKeyFrames.Length && mFrames[nextKeyFrame] < currentFrame; nextKeyFrame++)
             {
                 prevKeyFrame = nextKeyFrame;
             }
 
-            float prevFrame = mFrames[prevKeyFrame];
-            float nextFrame = mFrames[nextKeyFrame];
+            float prevFrame = mFrames[GameMath.Min(prevKeyFrame, mKeyFrames.Length - 1)];
+            float nextFrame = mFrames[GameMath.Min(nextKeyFrame, mKeyFrames.Length - 1)];
 
             float keyFrameProgress = (currentFrame - prevFrame) / (nextFrame - prevFrame);      
 

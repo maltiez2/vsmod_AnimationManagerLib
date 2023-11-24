@@ -1,5 +1,6 @@
 ﻿using AnimationManagerLib.API;
 using System;
+using System.Text;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
@@ -10,6 +11,9 @@ namespace AnimationManagerLib.Extra
         private API.IAnimationManager mAnimationManager;
         private JsonObject mProperties;
         private API.AnimationRequest mHeldTpHitAnimation;
+        private const string mHeldTpHitAnimationAttrName = "mHeldTpHitAnimation_guid";
+        private bool mClientSide;
+        private ICoreAPI mApi;
 
         public ItemAnimationBehavior(CollectibleObject collObj) : base(collObj)
         {
@@ -24,6 +28,11 @@ namespace AnimationManagerLib.Extra
         {
             base.OnLoaded(api);
 
+            mClientSide = api.Side == EnumAppSide.Client;
+            if (!mClientSide) return;
+
+            mApi = api;
+
             string heldTpHitAnimation = mProperties["heldTpHitAnimation"]["animationCode"].AsString();
 
             mAnimationManager = (api.ModLoader.GetModSystem<AnimationManagerLibSystem>() as API.IAnimationManagerProvider).GetAnimationManager();
@@ -32,38 +41,48 @@ namespace AnimationManagerLib.Extra
             mHeldTpHitAnimation = Utils.AnimationRequestFromJson(mProperties["heldTpHitAnimation"]);
         }
 
-        public override void OnHeldAttackStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handHandling, ref EnumHandHandling handling)
+        public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling, ref EnumHandling handling)
         {
-            if (slot.Itemstack.TempAttributes.HasAttribute("mHeldTpHitAnimation_played")) StopAnimation(slot);
-        }
-        public override bool OnHeldAttackStep(float secondsPassed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel, ref EnumHandHandling handling)
-        {
-            if (!slot.Itemstack.TempAttributes.HasAttribute("mHeldTpHitAnimation_played"))  StartAnimation(slot, byEntity);
+            mApi?.Logger.Notification("[ItemAnimationBehavior] OnHeldInteractStart");
+            if (mClientSide && slot.Itemstack.TempAttributes.HasAttribute(mHeldTpHitAnimationAttrName)) StopAnimation(slot);
 
+            handHandling = EnumHandHandling.PreventDefaultAnimation;
+            handling = EnumHandling.PreventSubsequent;
+        }
+
+        public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandling handling)
+        {
+            if (mClientSide && !slot.Itemstack.TempAttributes.HasAttribute(mHeldTpHitAnimationAttrName)) StartAnimation(slot, byEntity);
+            handling = EnumHandling.PreventSubsequent;
             return true;
         }
+
         public override bool OnHeldAttackCancel(float secondsPassed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel, EnumItemUseCancelReason cancelReason, ref EnumHandHandling handling)
         {
-            if (slot.Itemstack.TempAttributes.HasAttribute("mHeldTpHitAnimation_played"))  StopAnimation(slot);
-
-            return false;
+            //if (mClientSide && slot.Itemstack.TempAttributes.HasAttribute(mHeldTpHitAnimationAttrName)) StopAnimation(slot);
+            handling = EnumHandHandling.PreventDefaultAnimation;
+            return true;
         }
-        public override void OnHeldAttackStop(float secondsPassed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel, ref EnumHandHandling handling)
+
+        public override void OnHeldInteractStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandling handling)
         {
-            if (slot.Itemstack.TempAttributes.HasAttribute("mHeldTpHitAnimation_played")) StopAnimation(slot);
+            if (mClientSide && slot.Itemstack.TempAttributes.HasAttribute(mHeldTpHitAnimationAttrName)) StopAnimation(slot);
+            mApi?.Logger.Notification("[ItemAnimationBehavior] OnHeldInteractStop");
+            handling = EnumHandling.PreventSubsequent;
         }
 
         private void StopAnimation(ItemSlot slot)
         {
-            Guid runId = new(slot.Itemstack.TempAttributes.GetBytes("mHeldTpHitAnimation_guid"));
+            Guid runId = new(slot.Itemstack.TempAttributes.GetBytes(mHeldTpHitAnimationAttrName));
+            mApi.Logger.Warning("Stop animation: {0}", runId);
             mAnimationManager.Stop(runId);
-            slot.Itemstack.TempAttributes.RemoveAttribute("mHeldTpHitAnimation_guid");
+            slot.Itemstack.TempAttributes.RemoveAttribute(mHeldTpHitAnimationAttrName);
         }
         private void StartAnimation(ItemSlot slot, EntityAgent byEntity)
         {
-            slot.Itemstack.TempAttributes.SetInt("mHeldTpHitAnimation_played", 1);
             Guid runId = mAnimationManager.Run(byEntity.EntityId, mHeldTpHitAnimation);
-            slot.Itemstack.TempAttributes.SetBytes("mHeldTpHitAnimation_guid", runId.ToByteArray());
+            mApi.Logger.Warning("Start animation: {0}", runId);
+            slot.Itemstack.TempAttributes.SetBytes(mHeldTpHitAnimationAttrName, runId.ToByteArray());
         }
     }
 }

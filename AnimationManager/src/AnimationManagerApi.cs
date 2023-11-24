@@ -78,9 +78,9 @@ namespace AnimationManagerLib.API
     public enum BlendingType : byte
     {
         Add,
-        Subtract,
-        AverageOnCompose,
-        Average
+        AddOnCompose,
+        Average,
+        AverageOnCompose
     }
 
     public struct AnimationRunMetadata
@@ -160,14 +160,19 @@ namespace AnimationManagerLib.API
         public TAnimationResult Calculate(TimeSpan timeElapsed, out Status status);
     }
 
-    public struct Composition<TAnimationResult>
+    public class Composition<TAnimationResult>
         where TAnimationResult : IAnimationResult
     {
         public TAnimationResult ToAdd { get; set; }
         public TAnimationResult ToAverage { get; set; }
         public float Weight { get; set; }
 
-        public Composition((TAnimationResult toAdd, TAnimationResult toAverage, float weight) parameters) => new Composition<TAnimationResult>() { ToAdd = parameters.toAdd, ToAverage = parameters.toAverage, Weight = parameters.weight };
+        public Composition(TAnimationResult toAdd, TAnimationResult toAverage, float weight)
+        {
+            ToAdd = toAdd;
+            Weight = weight;
+            ToAverage = toAverage;
+        }
     }
 
     public interface IComposer<TAnimationResult> : IDisposable
@@ -220,20 +225,20 @@ namespace AnimationManagerLib.API
                 Action = (AnimationPlayerAction)Enum.Parse(typeof(AnimationPlayerAction), definition["action"].AsString("Set")),
                 Category = CategoryIdFromJson(definition["category"]),
                 Animation = new(definition["animation"].AsString()),
-                Duration = TimeSpan.FromMilliseconds(definition["duration"].AsFloat()),
+                Duration = TimeSpan.FromMilliseconds(definition["duration_ms"].AsFloat()),
                 Modifier = (ProgressModifierType)Enum.Parse(typeof(ProgressModifierType), definition["dynamic"].AsString("Linear")),
                 StartFrame = definition.KeyExists("startFrame") ? definition["startFrame"].AsFloat() : null,
-                EndFrame = definition.KeyExists("startFrame") ? definition["startFrame"].AsFloat() : null
+                EndFrame = definition.KeyExists("endFrame") ? definition["endFrame"].AsFloat() : null
             };
         }
 
         public static CategoryId CategoryIdFromJson(JsonObject definition)
         {
             string code = definition["code"].AsString();
-            BlendingType blending = (BlendingType)Enum.Parse(typeof(BlendingType), definition["action"].AsString("Add"));
+            BlendingType blending = (BlendingType)Enum.Parse(typeof(BlendingType), definition["blending"].AsString("Add"));
             float? weight = definition.KeyExists("weight") ? definition["weight"].AsFloat() : null;
 
-            return new((code, blending, weight));
+            return new CategoryId() { Blending = blending, Hash = Utils.ToCrc32(code), Weight = weight };
         }
     }
 }

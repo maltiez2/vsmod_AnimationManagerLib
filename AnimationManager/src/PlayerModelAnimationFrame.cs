@@ -2,52 +2,50 @@
 using Vintagestory.API.Common;
 using AnimationManagerLib.API;
 using System.Collections.Generic;
-using Vintagestory.Common;
 using System.Linq;
 
 namespace AnimationManagerLib
 {
     public class PlayerModelAnimationFrame : IAnimationResult
     {
-        private readonly Dictionary<string, PlayerModelAnimationPose> mPoses;
+        public Dictionary<string, PlayerModelAnimationPose> mPoses { get; }
 
-        private PlayerModelAnimationFrame()
+        private readonly AnimationMetaData mMetaData;
+
+        public PlayerModelAnimationFrame()
         {
             mPoses = new();
         }
-        public PlayerModelAnimationFrame(Dictionary<string, PlayerModelAnimationPose> poses)
+        public PlayerModelAnimationFrame(Dictionary<string, PlayerModelAnimationPose> poses, AnimationMetaData metaData)
         {
             mPoses = poses;
+            mMetaData = metaData;
         }
 
-        public PlayerModelAnimationFrame(Dictionary<string, PlayerModelAnimationPose> poses, bool shallowCopy = true)
+        public PlayerModelAnimationFrame(Dictionary<string, PlayerModelAnimationPose> poses, AnimationMetaData metaData, bool shallowCopy = true)
         {
             if (shallowCopy)
             {
                 mPoses = poses.ToDictionary(entry => entry.Key,
                                             entry => entry.Value);
+                mMetaData = metaData;
             }
             else
             {
                 mPoses = poses.ToDictionary(entry => entry.Key,
                                             entry => (PlayerModelAnimationPose) (entry.Value as ICloneable).Clone());
+                mMetaData = metaData.Clone();
             }
         }
 
-        public void ApplyByAddition(Vintagestory.API.Common.IAnimator animator)
+        public void ApplyByAddition(ElementPose shapePose, string name)
         {
-            foreach ((string name, var pose) in mPoses)
-            {
-                pose.ApplyByAddition(animator.GetPosebyName(name));
-            }
+            if (mPoses.ContainsKey(name)) mPoses[name].ApplyByAddition(shapePose);
         }
 
-        public void ApplyByAverage(Vintagestory.API.Common.IAnimator animator, float poseWeight, float thisWeight)
+        public void ApplyByAverage(ElementPose shapePose, string name, float poseWeight, float thisWeight)
         {
-            foreach ((string name, var pose) in mPoses)
-            {
-                pose.ApplyByAverage(animator.GetPosebyName(name), poseWeight, thisWeight);
-            }
+            if (mPoses.ContainsKey(name)) mPoses[name].ApplyByAverage(shapePose, poseWeight, thisWeight);
         }
 
         IAnimationResult IAnimationResult.Add(IAnimationResult value)
@@ -102,7 +100,7 @@ namespace AnimationManagerLib
 
         object ICloneable.Clone()
         {
-            PlayerModelAnimationFrame clone = new PlayerModelAnimationFrame(mPoses, shallowCopy: true);
+            PlayerModelAnimationFrame clone = new PlayerModelAnimationFrame(mPoses, mMetaData, shallowCopy: true);
 
             return clone;
         }
@@ -120,6 +118,9 @@ namespace AnimationManagerLib
 
     public class PlayerModelAnimationPose : IAnimationResult
     {
+        public EnumAnimationBlendMode BlendMode = EnumAnimationBlendMode.AddAverage;
+        public float ElementWeight = 1f;
+
         public float? degX = null;
         public float? degY = null;
         public float? degZ = null;
@@ -137,27 +138,16 @@ namespace AnimationManagerLib
 
         }
 
-        public PlayerModelAnimationPose(AnimationKeyFrameElement pose)
+        public PlayerModelAnimationPose(AnimationKeyFrameElement pose, EnumAnimationBlendMode blendMode, float weight)
         {
+            BlendMode = blendMode;
+            ElementWeight = weight;
             degX = (float?)pose.RotationX;
             degY = (float?)pose.RotationY;
             degZ = (float?)pose.RotationZ;
             translateX = (float?)pose.OffsetX;
             translateY = (float?)pose.OffsetY;
             translateZ = (float?)pose.OffsetZ;
-            RotShortestDistanceX = pose.RotShortestDistanceX;
-            RotShortestDistanceY = pose.RotShortestDistanceY;
-            RotShortestDistanceZ = pose.RotShortestDistanceZ;
-        }
-
-        public PlayerModelAnimationPose(ElementPose pose)
-        {
-            degX = pose.degX;
-            degY = pose.degY;
-            degZ = pose.degZ;
-            translateX = pose.translateX;
-            translateY = pose.translateY;
-            translateZ = pose.translateZ;
             RotShortestDistanceX = pose.RotShortestDistanceX;
             RotShortestDistanceY = pose.RotShortestDistanceY;
             RotShortestDistanceZ = pose.RotShortestDistanceZ;
@@ -175,16 +165,17 @@ namespace AnimationManagerLib
 
         public void ApplyByAverage(ElementPose pose, float poseWeight, float thisWeight)
         {
-            if (translateX != null) pose.translateX += Average((float)translateX, pose.translateX, poseWeight, thisWeight);
-            if (translateY != null) pose.translateY += Average((float)translateY, pose.translateY, poseWeight, thisWeight);
-            if (translateZ != null) pose.translateZ += Average((float)translateZ, pose.translateZ, poseWeight, thisWeight);
-            if (degX != null) pose.degX += Average((float)degX, pose.degX, poseWeight, thisWeight);
-            if (degY != null) pose.degY += Average((float)degY, pose.degY, poseWeight, thisWeight);
-            if (degZ != null) pose.degZ += Average((float)degZ, pose.degZ, poseWeight, thisWeight);
+            if (translateX != null) pose.translateX += Average((float)translateX, pose.translateX, poseWeight, thisWeight * ElementWeight);
+            if (translateY != null) pose.translateY += Average((float)translateY, pose.translateY, poseWeight, thisWeight * ElementWeight);
+            if (translateZ != null) pose.translateZ += Average((float)translateZ, pose.translateZ, poseWeight, thisWeight * ElementWeight);
+            if (degX != null) pose.degX += Average((float)degX, pose.degX, poseWeight, thisWeight * ElementWeight);
+            if (degY != null) pose.degY += Average((float)degY, pose.degY, poseWeight, thisWeight * ElementWeight);
+            if (degZ != null) pose.degZ += Average((float)degZ, pose.degZ, poseWeight, thisWeight * ElementWeight);
         }
 
         IAnimationResult IAnimationResult.Add(IAnimationResult value)
         {
+            
             if (!(value is PlayerModelAnimationPose)) throw new ArgumentException(" [PlayerModelAnimationPose] Argument should be an 'PlayerModelAnimationPose'");
 
             PlayerModelAnimationPose pose = value as PlayerModelAnimationPose;

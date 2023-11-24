@@ -13,6 +13,7 @@ namespace AnimationManagerLib
         public override void Start(ICoreAPI api)
         {
             mApi = api;
+            api.RegisterCollectibleBehaviorClass("ItemAnimationBehavior", typeof(Extra.ItemAnimationBehavior));
         }
 
         public override void StartClientSide(ICoreClientAPI api)
@@ -20,8 +21,6 @@ namespace AnimationManagerLib
             Patches.AnimatorBasePatch.Patch(HarmonyID);
 
             mManager = new PlayerModelAnimationManager<PlayerModelComposer<PlayerModelAnimationFrame>>(api, null); // @TODO add synchronizer
-
-            api.RegisterCollectibleBehaviorClass("ItemAnimationBehavior", typeof(Extra.ItemAnimationBehavior));
         }
 
         public override void Dispose()

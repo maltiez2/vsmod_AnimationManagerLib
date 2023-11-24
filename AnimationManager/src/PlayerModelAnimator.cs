@@ -36,9 +36,10 @@ namespace AnimationManagerLib
 
             status = mStopped ? IAnimator<TAnimationResult>.Status.Stopped : IAnimator<TAnimationResult>.Status.Running;
 
+            double progress = mCurrentTime.TotalSeconds / mCurrentParameters.Duration.TotalSeconds;
+            if (progress >= 1.0) mStopped = true;
             if (mStopped) return mLastFrame;
             
-            double progress = mCurrentTime.TotalSeconds / mCurrentParameters.Duration.TotalSeconds;
 
             switch (mCurrentParameters.Action)
             {
@@ -70,10 +71,6 @@ namespace AnimationManagerLib
                 default:
                     throw new NotImplementedException();
             }
-
-            if (progress >= 1.0) mStopped = true;
-
-            if (mStopped && status != IAnimator<TAnimationResult>.Status.Finished) status = IAnimator<TAnimationResult>.Status.Stopped;
 
             return mLastFrame;
         }

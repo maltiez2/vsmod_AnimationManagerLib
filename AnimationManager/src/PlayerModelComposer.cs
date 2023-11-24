@@ -29,9 +29,9 @@ namespace AnimationManagerLib
         {
             TAnimationResult sum = mDefaultFrame;
             TAnimationResult averageOnCompose = mDefaultFrame;
-            float totalWeightOfTheAverageOnCompose = 1;
+            float totalWeightOfTheAverageOnCompose = 0;
             TAnimationResult average = mDefaultFrame;
-            float totalWeightOfTheAverage = 1;
+            float totalWeightOfTheAverage = 0;
 
             IAnimator<TAnimationResult>.Status animatorStatus;
 
@@ -41,22 +41,24 @@ namespace AnimationManagerLib
                 {
                     case BlendingType.Average:
                         float weight = category.Weight ?? 1;
-                        average.Average(animator.Calculate(timeElapsed, out animatorStatus), totalWeightOfTheAverage, weight);
+                        average = (TAnimationResult)average.Average(animator.Calculate(timeElapsed, out animatorStatus), totalWeightOfTheAverage, weight);
                         totalWeightOfTheAverage += weight;
                         break;
 
                     case BlendingType.AverageOnCompose:
                         float weightOnCompose = category.Weight ?? 1;
-                        averageOnCompose.Average(animator.Calculate(timeElapsed, out animatorStatus), totalWeightOfTheAverageOnCompose, weightOnCompose);
+                        averageOnCompose = (TAnimationResult)averageOnCompose.Average(animator.Calculate(timeElapsed, out animatorStatus), totalWeightOfTheAverageOnCompose, weightOnCompose);
                         totalWeightOfTheAverageOnCompose += weightOnCompose;
                         break;
                     
                     case BlendingType.Add:
-                        sum.Add(animator.Calculate(timeElapsed, out animatorStatus));
+                        sum = (TAnimationResult)sum.Add(animator.Calculate(timeElapsed, out animatorStatus));
                         break;
                     
-                    case BlendingType.Subtract:
-                        sum.Subtract(animator.Calculate(timeElapsed, out animatorStatus));
+                    case BlendingType.AddOnCompose:
+                        float weightOnComposeToAdd = category.Weight ?? 1;
+                        averageOnCompose = (TAnimationResult)averageOnCompose.Add(animator.Calculate(timeElapsed, out animatorStatus));
+                        totalWeightOfTheAverageOnCompose += weightOnComposeToAdd;
                         break;
 
                     default:
@@ -66,7 +68,9 @@ namespace AnimationManagerLib
                 ProcessStatus(category, animatorStatus);
             }
 
-            return new( ((TAnimationResult)averageOnCompose.Add(sum), average, totalWeightOfTheAverage) );
+            Composition<TAnimationResult> composition = new((TAnimationResult)averageOnCompose.Add(sum), average, totalWeightOfTheAverage);
+
+            return composition;
         }
 
         void IDisposable.Dispose()
