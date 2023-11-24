@@ -89,6 +89,7 @@ namespace AnimationManagerLib.API
         public TimeSpan Duration { get; set; }
         public float? StartFrame { get; set; }
         public float? EndFrame { get; set; }
+        public ProgressModifierType Modifier { get; set; }
 
         public AnimationRunMetadata(AnimationRequest request)
         {
@@ -96,6 +97,7 @@ namespace AnimationManagerLib.API
             this.Duration = request.Duration;
             this.StartFrame = request.StartFrame;
             this.EndFrame = request.EndFrame;
+            this.Modifier = request.Modifier;
         }
         public static implicit operator AnimationRunMetadata(AnimationRequest request) => new AnimationRunMetadata(request);
     }
@@ -134,6 +136,7 @@ namespace AnimationManagerLib.API
         IAnimationResult Add(IAnimationResult value);
         IAnimationResult Subtract(IAnimationResult value);
         IAnimationResult Average(IAnimationResult value, float weight, float thisWeight = 1);
+        IAnimationResult Lerp(IAnimationResult value, float progress);
         IAnimationResult Identity();
     }
 

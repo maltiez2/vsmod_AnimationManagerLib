@@ -13,6 +13,7 @@ namespace AnimationManagerLib
         private TAnimationResult mDefaultFrame;
         private IAnimation<TAnimationResult> mCurrentAnimation;
         private AnimationRunMetadata mCurrentParameters;
+        private ProgressModifiers.ProgressModifier mProgressModifier;
         private bool mStopped;
 
         void IAnimator<TAnimationResult>.Init(ICoreAPI api, TAnimationResult defaultFrame)
@@ -26,7 +27,8 @@ namespace AnimationManagerLib
         {
             mCurrentAnimation = animation;
             mCurrentParameters = parameters;
-            mStartFrame = mLastFrame;
+            mStartFrame = (TAnimationResult)mLastFrame.Clone();
+            mProgressModifier = ProgressModifiers.Get(parameters.Modifier);
             mStopped = false;
         }
 
@@ -36,8 +38,8 @@ namespace AnimationManagerLib
 
             status = mStopped ? IAnimator<TAnimationResult>.Status.Stopped : IAnimator<TAnimationResult>.Status.Running;
 
-            double progress = mCurrentTime.TotalSeconds / mCurrentParameters.Duration.TotalSeconds;
-            if (progress >= 1.0) mStopped = true;
+            float progress = mProgressModifier((float)mCurrentTime.TotalSeconds / (float)mCurrentParameters.Duration.TotalSeconds);
+            if (progress >= 1) mStopped = true;
             if (mStopped) return mLastFrame;
             
 
@@ -48,23 +50,22 @@ namespace AnimationManagerLib
                     mStopped = true;
                     break;
                 case AnimationPlayerAction.EaseIn:
-                    mLastFrame = mCurrentAnimation.Blend(1f - (float)progress, mCurrentParameters.StartFrame, mStartFrame);
+                    mLastFrame = mCurrentAnimation.Blend(1f - progress, mCurrentParameters.StartFrame, mStartFrame);
                     break;
                 case AnimationPlayerAction.EaseOut:
-                    mLastFrame = mCurrentAnimation.EaseOut((float)progress, mDefaultFrame);
-                    if (progress >= 1.0) status = IAnimator<TAnimationResult>.Status.Finished;
+                    mLastFrame = mCurrentAnimation.EaseOut(progress, mDefaultFrame);
                     break;
                 case AnimationPlayerAction.Start:
-                    mLastFrame = mCurrentAnimation.Play((float)progress, mCurrentParameters.StartFrame, mCurrentParameters.EndFrame);
+                    mLastFrame = mCurrentAnimation.Play(progress, mCurrentParameters.StartFrame, mCurrentParameters.EndFrame);
                     break;
                 case AnimationPlayerAction.Stop:
                     mStopped = true;
                     break;
                 case AnimationPlayerAction.Rewind:
-                    mLastFrame = mCurrentAnimation.Play(1 - (float)progress, mCurrentParameters.StartFrame, mCurrentParameters.EndFrame);
+                    mLastFrame = mCurrentAnimation.Play(1 - progress, mCurrentParameters.StartFrame, mCurrentParameters.EndFrame);
                     break;
                 case AnimationPlayerAction.Clear:
-                    mLastFrame = mDefaultFrame;
+                    mLastFrame = (TAnimationResult)mDefaultFrame.Clone();
                     status = IAnimator<TAnimationResult>.Status.Finished;
                     mStopped = true;
                     break;

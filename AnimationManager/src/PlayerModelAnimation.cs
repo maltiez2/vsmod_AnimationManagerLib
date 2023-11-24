@@ -13,24 +13,25 @@ namespace AnimationManagerLib
         private TAnimationResult mLastFrame;
         private float mLastProgress;
 
-        public PlayerModelAnimation(TAnimationResult[] keyFrames, ushort[] keyFramesPosition)
+        public PlayerModelAnimation(TAnimationResult[] keyFrames, ushort[] keyFramesPosition, TAnimationResult startingFrame)
         {
             mKeyFrames = keyFrames;
             mFrames = keyFramesPosition;
+            mLastFrame = (TAnimationResult)startingFrame.Clone();
         }
 
         TAnimationResult IAnimation<TAnimationResult>.Blend(float progress, float? targetFrame, TAnimationResult endFrame)
         {
             mLastProgress = progress;
             TAnimationResult targetFrameValue = CalcFrame(progress, targetFrame ?? 0, targetFrame ?? 0);
-            mLastFrame = (TAnimationResult)targetFrameValue.Average(endFrame, progress, 1 - progress);
+            mLastFrame = (TAnimationResult)targetFrameValue.Lerp(endFrame, progress);
             return mLastFrame;
         }
 
         TAnimationResult IAnimation<TAnimationResult>.EaseOut(float progress, TAnimationResult endFrame)
         {
             float currentProgress = progress / (1 - mLastProgress);
-            mLastFrame = (TAnimationResult)mLastFrame.Average(endFrame, currentProgress, 1 - currentProgress);
+            mLastFrame = (TAnimationResult)mLastFrame.Lerp(endFrame, currentProgress);
             return mLastFrame;
         }
 
@@ -55,7 +56,7 @@ namespace AnimationManagerLib
             (int prevKeyFrame, int nextKeyFrame, float keyFrameProgress) = ToKeyFrames(progress, startFrame, endFrame);
             Debug.Assert(mKeyFrames.Length > prevKeyFrame && mKeyFrames.Length > nextKeyFrame);
             if (prevKeyFrame == nextKeyFrame) return (TAnimationResult)mKeyFrames[nextKeyFrame].Clone();
-            return (TAnimationResult)mKeyFrames[prevKeyFrame].Average(mKeyFrames[nextKeyFrame], keyFrameProgress, 1 - keyFrameProgress);
+            return (TAnimationResult)mKeyFrames[prevKeyFrame].Lerp(mKeyFrames[nextKeyFrame], keyFrameProgress);
         }
 
         private (int prevKeyFrame, int nextKeyFrame, float keyFrameProgress) ToKeyFrames(float progress, float startFrame, float endFrame)
@@ -68,11 +69,15 @@ namespace AnimationManagerLib
             {
                 prevKeyFrame = nextKeyFrame;
             }
+            prevKeyFrame = GameMath.Min(prevKeyFrame, mKeyFrames.Length - 1);
+            nextKeyFrame = GameMath.Min(nextKeyFrame, mKeyFrames.Length - 1);
 
-            float prevFrame = mFrames[GameMath.Min(prevKeyFrame, mKeyFrames.Length - 1)];
-            float nextFrame = mFrames[GameMath.Min(nextKeyFrame, mKeyFrames.Length - 1)];
+            float prevFrame = mFrames[prevKeyFrame];
+            float nextFrame = mFrames[nextKeyFrame];
 
-            float keyFrameProgress = (currentFrame - prevFrame) / (nextFrame - prevFrame);      
+            if (startFrame == endFrame) return (nextKeyFrame, nextKeyFrame, 1);
+
+            float keyFrameProgress = nextFrame == prevFrame ? 1 : (currentFrame - prevFrame) / (nextFrame - prevFrame);      
 
             return (prevKeyFrame, nextKeyFrame, keyFrameProgress);
         }

@@ -133,6 +133,8 @@ namespace AnimationManagerLib
         {
             if (!mRequests.ContainsKey(runId)) return;
 
+            mClientApi.Logger.Error("Stopping: {0}", runId);
+
             long entityId = mEntitiesByRuns[runId];
             var composer = mComposers[entityId];
             AnimationRequest? request = mRequests[runId].Last();
@@ -156,7 +158,7 @@ namespace AnimationManagerLib
             }
 
             public AnimationRequest? Next() => mNextRequestIndex < mRequests.Length ? mRequests[mNextRequestIndex++] : null;
-            public AnimationRequest? Last() => mNextRequestIndex < mRequests.Length ? mRequests[mNextRequestIndex] : null;
+            public AnimationRequest? Last() => mNextRequestIndex < mRequests.Length ? mRequests[mNextRequestIndex] : mRequests[mRequests.Length - 1];
             public bool Finished() => mNextRequestIndex < mRequests.Length;
 
         }
@@ -209,12 +211,20 @@ namespace AnimationManagerLib
 
             (string name, var composition) = Poses[pose];
 
+            float degX = pose.translateX;
+            float degY = pose.translateY;
+            float degZ = pose.translateZ;
+
             composition.ToAverage.ApplyByAverage(pose, name, 1, composition.Weight);
             composition.ToAdd.ApplyByAddition(pose, name);
 
             Poses.Remove(pose);
 
-            mApi.Logger.Notification("Applied animation to {0} with weight {2}, poses left: {1}", name, Poses.Count, composition.Weight);
+            float degXa = pose.translateX;
+            float degYa = pose.translateY;
+            float degZa = pose.translateZ;
+
+            //mApi.Logger.Notification("Applied animation to {0}: ({1},{2},{3}) -> ({4},{5},{6})", name, degX, degY, degZ, degXa, degYa, degZa);
         }
 
         public void AddAnimation(long entityId, Composition<PlayerModelAnimationFrame> composition)
@@ -242,13 +252,15 @@ namespace AnimationManagerLib
 
             (AnimationKeyFrame[] keyFrames, AnimationMetaData metaData) = AnimationData(api, entityId, name);
 
+            Debug.Assert(metaData != null);
+
             foreach (AnimationKeyFrame frame in keyFrames)
             {
                 constructedKeyFrames.Add(ConstructFrame(frame.Elements, metaData));
                 keyFramesToFrames.Add((ushort)frame.Frame);
             }
 
-            return new PlayerModelAnimation<PlayerModelAnimationFrame>(constructedKeyFrames.ToArray(), keyFramesToFrames.ToArray());
+            return new PlayerModelAnimation<PlayerModelAnimationFrame>(constructedKeyFrames.ToArray(), keyFramesToFrames.ToArray(), new PlayerModelAnimationFrame());
         }
         static private PlayerModelAnimationFrame ConstructFrame(Dictionary<string, AnimationKeyFrameElement> elements, AnimationMetaData metaData)
         {
@@ -256,7 +268,10 @@ namespace AnimationManagerLib
 
             foreach ((string element, var transform) in elements)
             {
-                poses.Add(element, new PlayerModelAnimationPose(transform, metaData.ElementBlendMode[element], metaData.ElementWeight[element]));
+                EnumAnimationBlendMode blendMode = metaData.ElementBlendMode.ContainsKey(element) ? metaData.ElementBlendMode[element] : EnumAnimationBlendMode.Average;
+                float weight = metaData.ElementWeight.ContainsKey(element) ? metaData.ElementWeight[element] : 1;
+
+                poses.Add(element, new PlayerModelAnimationPose(transform, blendMode, weight));
             }
 
             return new PlayerModelAnimationFrame(poses, metaData);
@@ -264,7 +279,7 @@ namespace AnimationManagerLib
         static private (AnimationKeyFrame[] keyFrames, AnimationMetaData metaData) AnimationData(ICoreClientAPI api, long entityId, string name)
         {
             Entity entity = api.World.GetEntityById(entityId);
-            entity.Properties.Client.AnimationsByMetaCode.TryGetValue("aaa", out AnimationMetaData metaData);
+            entity.Properties.Client.AnimationsByMetaCode.TryGetValue(name, out AnimationMetaData metaData);
             Shape shape = entity.Properties.Client.LoadedShapeForEntity;
             Dictionary<uint, Animation> animations = shape.AnimationsByCrc32;
             uint crc32 = Utils.ToCrc32(name);

@@ -38,19 +38,19 @@
       "name": "ItemAnimationBehavior",
       "properties": {
         "heldTpHitAnimation": {
-          "animationCode": "testtorso",
-          "action": "Set",
+          "animationCode": "scythe",
+          "action": "EaseOut",
           "animation": "newHitAnimation",
           "category": {
             "code": "hands",
-            "blending": "Average",
-            "weight": 1
+            "blending": "AverageOnCompose",
+            "weight": 0.03125
             
           },
           "duration_ms": 2000,
-          "dynamic": "Quadratic",
-          "startFrame": 0,
-          "endFrame": 0
+          "dynamic": "Linear",
+          "startFrame": 10,
+          "endFrame": 10
         }
       }
     }

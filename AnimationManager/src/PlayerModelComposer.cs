@@ -27,10 +27,10 @@ namespace AnimationManagerLib
 
         Composition<TAnimationResult> IComposer<TAnimationResult>.Compose(ComposeRequest request, TimeSpan timeElapsed)
         {
-            TAnimationResult sum = mDefaultFrame;
-            TAnimationResult averageOnCompose = mDefaultFrame;
+            TAnimationResult sum = (TAnimationResult)mDefaultFrame.Clone();
+            TAnimationResult averageOnCompose = (TAnimationResult)mDefaultFrame.Clone();
             float totalWeightOfTheAverageOnCompose = 0;
-            TAnimationResult average = mDefaultFrame;
+            TAnimationResult average = (TAnimationResult)mDefaultFrame.Clone();
             float totalWeightOfTheAverage = 0;
 
             IAnimator<TAnimationResult>.Status animatorStatus;
