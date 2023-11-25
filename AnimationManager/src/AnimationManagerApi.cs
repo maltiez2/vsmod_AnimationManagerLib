@@ -16,6 +16,7 @@ namespace AnimationManagerLib.API
         bool Register(AnimationId id, string playerAnimationCode);
         Guid Run(long entityId, params AnimationRequest[] requests);
         Guid Run(long entityId, bool synchronize, params AnimationRequest[] requests);
+        Guid Run(long entityId, Guid runId, params AnimationRequest[] requests);
         void Stop(Guid runId);
     }
 
@@ -103,6 +104,7 @@ namespace AnimationManagerLib.API
         public static implicit operator AnimationRunMetadata(AnimationRequest request) => new AnimationRunMetadata(request);
     }
 
+    [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
     public struct AnimationId
     {
         public uint Hash { get; private set; }
@@ -113,6 +115,7 @@ namespace AnimationManagerLib.API
         public static implicit operator AnimationId(AnimationRequest request) => request.Animation;
     }
 
+    [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
     public struct CategoryId
     {
         public uint Hash { get; set; }
@@ -205,9 +208,11 @@ namespace AnimationManagerLib.API
 
     public interface ISynchronizer : IDisposable
     {
-        public delegate void AnimationRequestHandler(AnimationRequest request);
-        void Init(ICoreAPI api, AnimationRequestHandler handler, string channelName);
-        void Sync(AnimationRequest request);
+        public delegate void AnimationRunHandler(AnimationRunPacket request);
+        public delegate void AnimationStopHandler(AnimationStopPacket request);
+        void Init(ICoreAPI api, AnimationRunHandler runHandler, AnimationStopHandler stopHandler, string channelName);
+        void Sync(AnimationRunPacket request);
+        void Sync(AnimationStopPacket request);
     }
 
     static public class ProgressModifiers

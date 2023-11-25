@@ -2,12 +2,13 @@
 using System;
 using System.Reflection;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 
 namespace AnimationManagerLib.Patches
 {
     static class AnimatorBasePatch
     {
-        public delegate void OnFrameHandler(AnimatorBase animator, float dt);
+        public delegate void OnFrameHandler(Entity entity, float dt);
         public static event OnFrameHandler OnFrameCallback;
 
         public delegate void OnElementPoseUsedHandler(ElementPose pose);
@@ -16,15 +17,15 @@ namespace AnimationManagerLib.Patches
         public static void Patch(string harmonyId)
         {
             {
-                var OriginalMethod = typeof(ClientAnimator).GetMethod("calculateMatrices", AccessTools.all, new Type[] { typeof(float) });
-                var PostfixMethod = AccessTools.Method(typeof(AnimatorBasePatch), nameof(OnFrame));
-                new Harmony(harmonyId).Patch(OriginalMethod, postfix: new HarmonyMethod(PostfixMethod));
+                var OriginalMethod = AccessTools.Method(typeof(AnimationManager), nameof(AnimationManager.OnClientFrame));
+                var PrefixMethod = AccessTools.Method(typeof(AnimatorBasePatch), nameof(OnFrame));
+                new Harmony(harmonyId).Patch(OriginalMethod, prefix: new HarmonyMethod(PrefixMethod));
             }
 
             {
                 var OriginalMethod = AccessTools.Method(typeof(ShapeElement), nameof(GetLocalTransformMatrix));
-                var PostfixMethod = AccessTools.Method(typeof(AnimatorBasePatch), nameof(GetLocalTransformMatrix));
-                new Harmony(harmonyId).Patch(OriginalMethod, prefix: new HarmonyMethod(PostfixMethod));
+                var PrefixMethod = AccessTools.Method(typeof(AnimatorBasePatch), nameof(GetLocalTransformMatrix));
+                new Harmony(harmonyId).Patch(OriginalMethod, prefix: new HarmonyMethod(PrefixMethod));
             }
         }
 
@@ -36,12 +37,18 @@ namespace AnimationManagerLib.Patches
             }
 
             {
-                var OriginalMethod = typeof(ClientAnimator).GetMethod("calculateMatrices", AccessTools.all, new Type[] { typeof(float) });
-                new Harmony(harmonyId).Unpatch(OriginalMethod, HarmonyPatchType.Postfix, harmonyId);
+                var OriginalMethod = AccessTools.Method(typeof(AnimationManager), nameof(AnimationManager.OnClientFrame));
+                new Harmony(harmonyId).Unpatch(OriginalMethod, HarmonyPatchType.Prefix, harmonyId);
             }
         }
 
-        public static void OnFrame(AnimatorBase __instance, float dt) => OnFrameCallback?.Invoke(__instance, dt);
+        public static void OnFrame(AnimationManager __instance, float dt)
+        {
+            Entity entity = (Entity)typeof(AnimationManager)
+                                              .GetField("entity", BindingFlags.NonPublic | BindingFlags.Instance)
+                                              .GetValue(__instance);
+            OnFrameCallback?.Invoke(entity, dt);
+        }
         public static void GetLocalTransformMatrix(ElementPose tf) => OnElementPoseUsedCallback?.Invoke(tf);
     }
 }

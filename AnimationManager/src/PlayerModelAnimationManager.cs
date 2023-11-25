@@ -28,16 +28,17 @@ namespace AnimationManagerLib
         private readonly Dictionary<AnimationId, IAnimation<PlayerModelAnimationFrame>> mAnimations = new();
         private readonly Dictionary<AnimationId, string> mAnimationCodes = new();
         private readonly Dictionary<Guid, AnimationRequestWithStatus> mRequests = new();
-        private readonly Dictionary<long, Patches.AnimatorBasePatch.OnFrameHandler> mHandlers = new();
         private readonly Dictionary<long, Composition<PlayerModelAnimationFrame>> mCompositions = new();
+        private readonly HashSet<Guid> mSynctonizedPackets = new();
+        private long mCurrentRenderedEntity;
 
         public PlayerModelAnimationManager(ICoreClientAPI api, ISynchronizer synchronizer)
         {
             mClientApi = api;
             mSynchronizer = synchronizer;
             mApplier = new(api);
-            Patches.AnimatorBasePatch.OnElementPoseUsedCallback += mApplier.ApplyAnimation;
-            
+            Patches.AnimatorBasePatch.OnElementPoseUsedCallback += OnApplyAnimation;
+            RegisterHandler();
         }
 
         bool API.IAnimationManager.Register(AnimationId id, JsonObject definition) => throw new NotImplementedException();
@@ -45,52 +46,48 @@ namespace AnimationManagerLib
         bool API.IAnimationManager.Register(AnimationId id, string playerAnimationCode) => mAnimationCodes.TryAdd(id, playerAnimationCode);
         Guid API.IAnimationManager.Run(long entityId, params AnimationRequest[] requests) => Run(Guid.NewGuid(), entityId, true, requests);
         Guid API.IAnimationManager.Run(long entityId, bool synchronize, params AnimationRequest[] requests) => Run(Guid.NewGuid(), entityId, synchronize, requests);
+        Guid API.IAnimationManager.Run(long entityId, Guid runId, params AnimationRequest[] requests) => Run(runId, entityId, false, requests);
         void API.IAnimationManager.Stop(Guid runId) => Stop(runId);
         void IDisposable.Dispose() => throw new NotImplementedException();
 
         private void OnRenderFrame(float secondsElapsed, long entityId)
         {
             mCompositions.Clear();
-
-            if (!mComposers.ContainsKey(entityId)) return;
-            
             TimeSpan timeSpan = TimeSpan.FromSeconds(secondsElapsed);
             Composition<PlayerModelAnimationFrame> composition = mComposers[entityId].Compose(new (entityId), timeSpan);
             mApplier.AddAnimation(entityId, composition);
         }
 
-        private void RegisterHandler(long entityId)
+        private void RegisterHandler()
         {
-            Patches.AnimatorBasePatch.OnFrameHandler handler = (AnimatorBase animator, float dt) => OnFrameHandler(animator, dt, entityId);
-            mHandlers.Add(entityId, handler);
-            Patches.AnimatorBasePatch.OnFrameCallback += handler;
+            Patches.AnimatorBasePatch.OnFrameCallback += OnFrameHandler;
         }
 
-        private void UnregisterHandler(long entityId)
+        private void UnregisterHandler()
         {
-            if (!mHandlers.ContainsKey(entityId)) return;
-            Patches.AnimatorBasePatch.OnFrameCallback -= mHandlers[entityId];
-            mHandlers.Remove(entityId);
+            Patches.AnimatorBasePatch.OnFrameCallback -= OnFrameHandler;
         }
 
-        private void OnFrameHandler(AnimatorBase animator, float dt, long entityId)
+        private void OnFrameHandler(Entity entity, float dt)
         {
-            Entity entity = mClientApi.World.GetEntityById(entityId);
+            long entityId = entity.EntityId;
 
-            if (entity == null)
-            {
-                OnNullEntity(entityId);
-                return;
-            }
+            if (!mComposers.ContainsKey(entityId)) return;
 
-            if (animator != entity.AnimManager.Animator) return;
+            mClientApi.Logger.Error("Rendering for: {0}, {1}", (entity as EntityPlayer)?.GetName(), dt);
 
+            mApplier.Clear();
             OnRenderFrame(dt, entityId);
+            mCurrentRenderedEntity = entityId;
+        }
+
+        private void OnApplyAnimation(ElementPose pose)
+        {
+            mApplier.ApplyAnimation(pose);
         }
 
         private void OnNullEntity(long entityId)
         {
-            UnregisterHandler(entityId);
             foreach ((Guid runId, _) in mEntitiesByRuns.Where((key, value) => value == entityId))
             {
                 Stop(runId);
@@ -100,6 +97,21 @@ namespace AnimationManagerLib
         private Guid Run(Guid id, long entityId, bool synchronize, params AnimationRequest[] requests)
         {
             Debug.Assert(requests.Length > 0);
+
+            if (synchronize)
+            {
+                AnimationRunPacket packet = new()
+                {
+                    RunId = id,
+                    EntityId = entityId,
+                    Requests = requests
+                };
+
+                mSynctonizedPackets.Add(id);
+                mSynchronizer.Sync(packet);
+            }
+
+            mClientApi?.Logger.Error("**************** Animator type: {0}", mClientApi.World.GetEntityById(entityId)?.AnimManager.Animator.GetType().FullName);
 
             mRequests.Add(id, new(entityId, synchronize, requests));
 
@@ -132,6 +144,17 @@ namespace AnimationManagerLib
         private void Stop(Guid runId)
         {
             if (!mRequests.ContainsKey(runId)) return;
+
+            if (mSynctonizedPackets.Contains(runId))
+            {
+                AnimationStopPacket packet = new()
+                {
+                    RunId = runId
+                };
+
+                mSynctonizedPackets.Remove(runId);
+                mSynchronizer.Sync(packet);
+            }
 
             mClientApi.Logger.Error("Stopping: {0}", runId);
 
@@ -175,7 +198,6 @@ namespace AnimationManagerLib
             composer.Init(mClientApi, new()); // @TODO Fix null ?
             composer.SetAnimatorType<PlayerModelAnimator<PlayerModelAnimationFrame>>();
             mComposers.Add(entityId, composer);
-            RegisterHandler(entityId);
             return composer;
         }
 
@@ -205,16 +227,20 @@ namespace AnimationManagerLib
             mApi = api;
         }
 
-        public void ApplyAnimation(ElementPose pose)
+        public bool ApplyAnimation(ElementPose pose)
         {
-            if (pose == null || !Poses.ContainsKey(pose)) return;
+            if (pose == null || !Poses.ContainsKey(pose)) return false;
 
             (string name, var composition) = Poses[pose];
+
+            mApi.Logger.Warning("*** ApplyAnimation for {0}", pose.ForElement?.Name);
 
             composition.ToAverage.ApplyByAverage(pose, name, 1, composition.Weight);
             composition.ToAdd.ApplyByAddition(pose, name);
 
             Poses.Remove(pose);
+
+            return true;
         }
 
         public void AddAnimation(long entityId, Composition<PlayerModelAnimationFrame> composition)
@@ -230,6 +256,11 @@ namespace AnimationManagerLib
             {
                 Poses[animator.GetPosebyName(name)] = (name, composition);
             }
+        }
+
+        public void Clear()
+        {
+            Poses.Clear();
         }
     }
 
