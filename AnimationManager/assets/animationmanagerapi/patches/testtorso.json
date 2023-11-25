@@ -22,15 +22,22 @@
     "value": {
       "name": "TestTorso",
       "code": "testtorso",
-      "quantityframes": 1,
+      "quantityframes": 30,
       "onActivityStopped": "EaseOut",
       "onAnimationEnd": "Hold",
       "keyframes": [
         {
-          "frame": 0,
+          "frame": 10,
           "elements": {
             "LowerTorso": {"rotationX": 0, "rotationY": 90, "rotationZ": 0},
             "UpperTorso": {"rotationX": 0, "rotationY": -90, "rotationZ": 0}
+          }
+        },
+        {
+          "frame": 16,
+          "elements": {
+            "LowerTorso": {"rotationX": 0, "rotationY": -90, "rotationZ": 0},
+            "UpperTorso": {"rotationX": 0, "rotationY": 90, "rotationZ": 0}
           }
         }
       ]

@@ -39,9 +39,9 @@
       "properties": {
         "heldTpHitAnimation": [
           {
-            "animationCode": "scythe",
+            "animationCode": "testtorso",
             "action": "EaseIn",
-            "animation": "scythe",
+            "animation": "testtorso",
             "category": {
               "code": "hands",
               "blending": "AverageOnCompose",
@@ -53,9 +53,9 @@
             "endFrame": 10
           },
           {
-            "animationCode": "scythe",
+            "animationCode": "testtorso",
             "action": "Start",
-            "animation": "scythe",
+            "animation": "testtorso",
             "category": {
               "code": "hands",
               "blending": "AverageOnCompose",
@@ -67,9 +67,9 @@
             "endFrame": 16
           },
           {
-            "animationCode": "scythe",
+            "animationCode": "testtorso",
             "action": "EaseOut",
-            "animation": "scythe",
+            "animation": "testtorso",
             "category": {
               "code": "hands",
               "blending": "AverageOnCompose",
@@ -101,7 +101,7 @@
     "blade-sabre-ruined"
   ],
   "shape": { "base": "item/tool/blade/admin" },
-  "heldTpUseAnimation": "idle1",
+  "heldTpUseAnimation": "axechop",
   "texturesByType": {"blade-scrap-scrap": {}, "blade-blackguard-iron": {}, "blade-forlorn-iron": {}, "blade-longsword-admin": {"metal": {"base": "block/fire-pink"}}},
   "attackRangebytype": {"blade-longsword-admin": 10, "*": 2.5},
   "tooltierbytype": {
