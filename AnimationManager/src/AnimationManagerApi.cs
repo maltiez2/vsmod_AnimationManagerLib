@@ -23,6 +23,7 @@ namespace AnimationManagerLib.API
     public interface IAnimationManagerProvider
     {
         IAnimationManager GetAnimationManager();
+        ISynchronizer GetSynchronizer();
     }
 
 
@@ -148,7 +149,6 @@ namespace AnimationManagerLib.API
     public interface IAnimationResult : ICloneable
     {
         IAnimationResult Add(IAnimationResult value);
-        IAnimationResult Subtract(IAnimationResult value);
         IAnimationResult Average(IAnimationResult value, float weight, float thisWeight = 1);
         IAnimationResult Lerp(IAnimationResult value, float progress);
         IAnimationResult Identity();

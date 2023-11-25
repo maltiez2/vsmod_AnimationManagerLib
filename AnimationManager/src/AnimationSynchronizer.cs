@@ -50,15 +50,12 @@ namespace AnimationManagerLib
             }
         }
 
-        void IDisposable.Dispose() => throw new NotImplementedException();
-
 
         // SERVER SIDE
 
         IServerNetworkChannel mServerNetworkChannel;
         private void StartServerSide(ICoreServerAPI api, string channelName)
         {
-
             mServerNetworkChannel = api.Network.RegisterChannel(channelName)
                                                .RegisterMessageType<AnimationRunPacket>()
                                                .SetMessageHandler<AnimationRunPacket>(OnServerPacket)
@@ -79,6 +76,7 @@ namespace AnimationManagerLib
         IClientNetworkChannel mClientNetworkChannel;
         private ISynchronizer.AnimationRunHandler mRunHandler;
         private ISynchronizer.AnimationStopHandler mStopHandler;
+        
 
         private void StartClientSide(ICoreClientAPI api, string channelName)
         {
@@ -99,6 +97,11 @@ namespace AnimationManagerLib
         private void OnClientPacket(AnimationStopPacket packet)
         {
             mStopHandler(packet);
+        }
+
+        void IDisposable.Dispose()
+        {
+            GC.SuppressFinalize(this);
         }
     }
 }

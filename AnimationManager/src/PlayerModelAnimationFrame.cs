@@ -22,7 +22,6 @@ namespace AnimationManagerLib
             mPoses = poses;
             mMetaData = metaData;
         }
-
         public PlayerModelAnimationFrame(Dictionary<string, PlayerModelAnimationPose> poses, AnimationMetaData metaData, bool shallowCopy = true)
         {
             if (shallowCopy)
@@ -73,7 +72,6 @@ namespace AnimationManagerLib
 
             return clone;
         }
-
         IAnimationResult IAnimationResult.Average(IAnimationResult value, float weight, float thisWeight)
         {
             if (!(value is PlayerModelAnimationFrame)) throw new ArgumentException("[PlayerModelAnimationFrame] Argument should be an 'ElementPose'");
@@ -99,7 +97,6 @@ namespace AnimationManagerLib
 
             return clone;
         }
-
         IAnimationResult IAnimationResult.Lerp(IAnimationResult value, float progress)
         {
             if (!(value is PlayerModelAnimationFrame)) throw new ArgumentException("[PlayerModelAnimationFrame] Argument should be an 'ElementPose'");
@@ -133,11 +130,6 @@ namespace AnimationManagerLib
             return clone;
         }
 
-        IAnimationResult IAnimationResult.Subtract(IAnimationResult value)
-        {
-            throw new NotImplementedException();
-        }
-
         IAnimationResult IAnimationResult.Identity()
         {
             return new PlayerModelAnimationFrame();
@@ -146,20 +138,20 @@ namespace AnimationManagerLib
 
     public class PlayerModelAnimationPose : IAnimationResult
     {
-        public EnumAnimationBlendMode BlendMode = EnumAnimationBlendMode.AddAverage;
-        public float ElementWeight = 1f;
+        public EnumAnimationBlendMode BlendMode { get; set; } = EnumAnimationBlendMode.AddAverage;
+        public float ElementWeight { get; set; } = 1f;
 
-        public float? degX = null;
-        public float? degY = null;
-        public float? degZ = null;
+        public float? degX { get; set; } = null;
+        public float? degY { get; set; } = null;
+        public float? degZ { get; set; } = null;
 
-        public float? translateX = null;
-        public float? translateY = null;
-        public float? translateZ = null;
+        public float? translateX { get; set; } = null;
+        public float? translateY { get; set; } = null;
+        public float? translateZ { get; set; } = null;
 
-        public bool RotShortestDistanceX = true;
-        public bool RotShortestDistanceY = true;
-        public bool RotShortestDistanceZ = true;
+        public bool RotShortestDistanceX { get; set; } = true;
+        public bool RotShortestDistanceY { get; set; } = true;
+        public bool RotShortestDistanceZ { get; set; } = true;
 
         public PlayerModelAnimationPose()
         {
@@ -284,11 +276,6 @@ namespace AnimationManagerLib
             PlayerModelAnimationPose clone = (PlayerModelAnimationPose)MemberwiseClone();
 
             return clone;
-        }
-
-        IAnimationResult IAnimationResult.Subtract(IAnimationResult value)
-        {
-            throw new NotImplementedException();
         }
 
         private float? Lerp(float? thisValue, float? givenValue, float progress) => thisValue == null && givenValue == null ? null : Average(thisValue ?? 0, givenValue ?? 0, progress, 1 - progress);

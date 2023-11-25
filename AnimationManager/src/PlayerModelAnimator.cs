@@ -7,11 +7,12 @@ namespace AnimationManagerLib
     public class PlayerModelAnimator<TAnimationResult> : IAnimator<TAnimationResult>
         where TAnimationResult : IAnimationResult
     {
-        private TimeSpan mCurrentTime;
         private TAnimationResult mLastFrame;
         private TAnimationResult mStartFrame;
         private TAnimationResult mDefaultFrame;
         private IAnimation<TAnimationResult> mCurrentAnimation;
+
+        private TimeSpan mCurrentTime;
         private AnimationRunMetadata mCurrentParameters;
         private ProgressModifiers.ProgressModifier mProgressModifier;
         private bool mStopped;
@@ -36,9 +37,6 @@ namespace AnimationManagerLib
             mStopped = false;
             mCurrentTime = new TimeSpan(0);
             mPreviousProgress = mCurrentProgress;
-            Console.WriteLine("*******************************************************************");
-            Console.WriteLine("*** Action: {0}, Duration: {1}, Modifier: {2} ***", parameters.Action, parameters.Duration, parameters.Modifier);
-            Console.WriteLine("*******************************************************************");
         }
 
         TAnimationResult IAnimator<TAnimationResult>.Calculate(TimeSpan timeElapsed, out IAnimator<TAnimationResult>.Status status)
@@ -87,9 +85,27 @@ namespace AnimationManagerLib
             return mLastFrame;
         }
 
+        private bool mDisposedValue;
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!mDisposedValue)
+            {
+                if (disposing)
+                {
+                    (mLastFrame as IDisposable)?.Dispose();
+                    (mStartFrame as IDisposable)?.Dispose();
+                    (mDefaultFrame as IDisposable)?.Dispose();
+                    mCurrentAnimation?.Dispose();
+                }
+
+                mDisposedValue = true;
+            }
+        }
+
         void IDisposable.Dispose()
         {
-            throw new NotImplementedException();
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

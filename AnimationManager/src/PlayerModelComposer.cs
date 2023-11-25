@@ -73,11 +73,6 @@ namespace AnimationManagerLib
             return composition;
         }
 
-        void IDisposable.Dispose()
-        {
-            throw new NotImplementedException();
-        }
-
         private IAnimator<TAnimationResult> TryAddAnimator(AnimationRequest request, IComposer<TAnimationResult>.IfRemoveAnimator finishCallback)
         {
             mCallbacks[request] = finishCallback;
@@ -114,6 +109,29 @@ namespace AnimationManagerLib
                 default:
                     break;
             }
+        }
+
+        private bool mDisposedValue;
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!mDisposedValue)
+            {
+                if (disposing)
+                {
+                    foreach ((_, var animator) in mAnimations)
+                    {
+                        animator.Dispose();
+                    }
+                }
+
+                mDisposedValue = true;
+            }
+        }
+
+        void IDisposable.Dispose()
+        {
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

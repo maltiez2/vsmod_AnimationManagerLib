@@ -31,7 +31,6 @@ namespace AnimationManagerLib
                 (packet) => mManager.Stop(packet.RunId),
                 ChannelName
             );
-
         }
 
         public override void StartServerSide(ICoreServerAPI api)
@@ -47,12 +46,12 @@ namespace AnimationManagerLib
         public override void Dispose()
         {
             if (mApi.Side == EnumAppSide.Client) Patches.AnimatorBasePatch.Unpatch(HarmonyID);
+            mManager.Dispose();
+            mSynchronizer.Dispose();
             base.Dispose();
         }
 
-        API.IAnimationManager API.IAnimationManagerProvider.GetAnimationManager()
-        {
-            return mManager;
-        }
+        API.IAnimationManager API.IAnimationManagerProvider.GetAnimationManager() => mManager;
+        API.ISynchronizer API.IAnimationManagerProvider.GetSynchronizer() => mSynchronizer;
     }
 }

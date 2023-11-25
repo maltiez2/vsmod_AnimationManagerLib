@@ -55,11 +55,6 @@ namespace AnimationManagerLib
             return mLastFrame;
         }
 
-        void IDisposable.Dispose()
-        {
-            throw new NotImplementedException();
-        }
-
         private TAnimationResult CalcFrame(float progress, float startFrame, float endFrame)
         {
             (int prevKeyFrame, int nextKeyFrame, float keyFrameProgress) = ToKeyFrames(progress, startFrame, endFrame);
@@ -92,6 +87,31 @@ namespace AnimationManagerLib
             float keyFrameProgress = nextFrame == prevFrame ? 1 : (currentFrame - prevFrame) / (nextFrame - prevFrame);      
 
             return (prevKeyFrame, nextKeyFrame, keyFrameProgress);
+        }
+
+        private bool mDisposedValue;
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!mDisposedValue)
+            {
+                if (disposing)
+                {
+                    (mLastFrame as IDisposable)?.Dispose();
+                    (mEaseOutFrame as IDisposable)?.Dispose();
+                    foreach (var frame in mKeyFrames)
+                    {
+                        (frame as IDisposable)?.Dispose();
+                    }
+                }
+
+                mDisposedValue = true;
+            }
+        }
+
+        void IDisposable.Dispose()
+        {
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }
