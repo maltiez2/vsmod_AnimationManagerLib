@@ -34,55 +34,50 @@
         "collisionBox": {"x1": 0, "y1": 0, "z1": 0, "x2": 0, "y2": 0, "z2": 0}
       }
     },
-    {
-      "name": "ItemAnimationBehavior",
-      "properties": {
-        "heldTpHitAnimation": [
-          {
-            "animationCode": "testtorso",
-            "action": "EaseIn",
-            "animation": "testtorso",
-            "category": {
-              "code": "hands",
-              "blending": "AverageOnCompose",
-              "weight": 0.03125
-            },
-            "duration_ms": 2000,
-            "dynamic": "SinQuadratic",
-            "startFrame": 10,
-            "endFrame": 10
-          },
-          {
-            "animationCode": "testtorso",
-            "action": "Start",
-            "animation": "testtorso",
-            "category": {
-              "code": "hands",
-              "blending": "AverageOnCompose",
-              "weight": 0.03125
-            },
-            "duration_ms": 2000,
-            "dynamic": "CosShifted",
-            "startFrame": 10,
-            "endFrame": 16
-          },
-          {
-            "animationCode": "testtorso",
-            "action": "EaseOut",
-            "animation": "testtorso",
-            "category": {
-              "code": "hands",
-              "blending": "AverageOnCompose",
-              "weight": 0.03125
-            },
-            "duration_ms": 2000,
-            "dynamic": "Quadratic",
-            "startFrame": 16,
-            "endFrame": 16
-          }
-        ]
+{
+  "name": "ItemAnimationBehavior",
+  "properties": {
+    "heldInteraction": [
+      {
+        "action": "EaseIn",
+        "animation": "testtorso",
+        "category": {
+          "code": "hands",
+          "blending": "AverageOnCompose",
+          "weight": 0.03125
+        },
+        "duration_ms": 2000,
+        "dynamic": "SinQuadratic",
+        "frame": 10
+      },
+      {
+        "action": "Start",
+        "animation": "testtorso",
+        "category": {
+          "code": "hands",
+          "blending": "AverageOnCompose",
+          "weight": 0.03125
+        },
+        "duration_ms": 2000,
+        "dynamic": "CosShifted",
+        "startFrame": 10,
+        "endFrame": 16
+      },
+      {
+        "action": "EaseOut",
+        "animation": "testtorso",
+        "category": {
+          "code": "hands",
+          "blending": "AverageOnCompose",
+          "weight": 0.03125
+        },
+        "duration_ms": 2000,
+        "dynamic": "Quadratic",
+        "frame": 16
       }
-    }
+    ]
+  }
+}
   ],
   "variantgroups": [
     {"code": "type", "states": ["falx", "blackguard", "longsword", "forlorn", "scrap", "gladius", "arming", "claymore", "sabre"]},

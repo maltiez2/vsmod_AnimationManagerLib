@@ -91,7 +91,7 @@ namespace AnimationManagerLib
 
             mAnimators.Remove(category);
 
-            //animator.Dispose(); // @TODO implement dispose
+            animator.Dispose();
         }
 
         private void ProcessStatus(CategoryId category, IAnimator<TAnimationResult>.Status status)

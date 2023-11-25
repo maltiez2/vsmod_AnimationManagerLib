@@ -46,8 +46,8 @@ namespace AnimationManagerLib
         public override void Dispose()
         {
             if (mApi.Side == EnumAppSide.Client) Patches.AnimatorBasePatch.Unpatch(HarmonyID);
-            mManager.Dispose();
-            mSynchronizer.Dispose();
+            mManager?.Dispose();
+            mSynchronizer?.Dispose();
             base.Dispose();
         }
 

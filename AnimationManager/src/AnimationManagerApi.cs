@@ -240,18 +240,24 @@ namespace AnimationManagerLib.API
 
         public static AnimationRequest AnimationRequestFromJson(JsonObject definition)
         {
-            var animation = new AnimationId(definition["animation"].AsString());
-
+            float? startFrame = definition.KeyExists("startFrame") ? definition["startFrame"].AsFloat() : null;
+            float? endFrame = definition.KeyExists("endFrame") ? definition["endFrame"].AsFloat() : null;
+            if (definition.KeyExists("frame"))
+            {
+                float frame = definition["frame"].AsFloat();
+                startFrame = frame;
+                endFrame = frame;
+            }
 
             return new()
             {
                 Action = (AnimationPlayerAction)Enum.Parse(typeof(AnimationPlayerAction), definition["action"].AsString("Set")),
                 Category = CategoryIdFromJson(definition["category"]),
-                Animation = animation,
+                Animation = new AnimationId(definition["animation"].AsString()),
                 Duration = TimeSpan.FromMilliseconds(definition["duration_ms"].AsFloat()),
                 Modifier = (ProgressModifierType)Enum.Parse(typeof(ProgressModifierType), definition["dynamic"].AsString("Linear")),
-                StartFrame = definition.KeyExists("startFrame") ? definition["startFrame"].AsFloat() : null,
-                EndFrame = definition.KeyExists("endFrame") ? definition["endFrame"].AsFloat() : null
+                StartFrame = startFrame,
+                EndFrame = endFrame
             };
         }
 
@@ -261,7 +267,7 @@ namespace AnimationManagerLib.API
             BlendingType blending = (BlendingType)Enum.Parse(typeof(BlendingType), definition["blending"].AsString("Add"));
             float? weight = definition.KeyExists("weight") ? definition["weight"].AsFloat() : null;
 
-            return new CategoryId() { Blending = blending, Hash = Utils.ToCrc32(code), Weight = weight };
+            return new CategoryId() { Blending = blending, Hash = ToCrc32(code), Weight = weight };
         }
     }
 }
