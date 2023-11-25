@@ -37,21 +37,50 @@
     {
       "name": "ItemAnimationBehavior",
       "properties": {
-        "heldTpHitAnimation": {
-          "animationCode": "scythe",
-          "action": "EaseOut",
-          "animation": "newHitAnimation",
-          "category": {
-            "code": "hands",
-            "blending": "AverageOnCompose",
-            "weight": 0.03125
-            
+        "heldTpHitAnimation": [
+          {
+            "animationCode": "scythe",
+            "action": "EaseIn",
+            "animation": "scythe",
+            "category": {
+              "code": "hands",
+              "blending": "AverageOnCompose",
+              "weight": 0.03125
+            },
+            "duration_ms": 2000,
+            "dynamic": "SinQuadratic",
+            "startFrame": 10,
+            "endFrame": 10
           },
-          "duration_ms": 2000,
-          "dynamic": "Linear",
-          "startFrame": 10,
-          "endFrame": 10
-        }
+          {
+            "animationCode": "scythe",
+            "action": "Start",
+            "animation": "scythe",
+            "category": {
+              "code": "hands",
+              "blending": "AverageOnCompose",
+              "weight": 0.03125
+            },
+            "duration_ms": 2000,
+            "dynamic": "CosShifted",
+            "startFrame": 10,
+            "endFrame": 16
+          },
+          {
+            "animationCode": "scythe",
+            "action": "EaseOut",
+            "animation": "scythe",
+            "category": {
+              "code": "hands",
+              "blending": "AverageOnCompose",
+              "weight": 0.03125
+            },
+            "duration_ms": 2000,
+            "dynamic": "Quadratic",
+            "startFrame": 16,
+            "endFrame": 16
+          }
+        ]
       }
     }
   ],

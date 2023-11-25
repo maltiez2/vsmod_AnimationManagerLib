@@ -110,7 +110,7 @@ namespace AnimationManagerLib
             {
                 if (mPoses.ContainsKey(key))
                 {
-                    (pose as IAnimationResult).Lerp(mPoses[key], progress);
+                    (pose as IAnimationResult).Lerp(mPoses[key], 1 - progress);
                 }
             }
 

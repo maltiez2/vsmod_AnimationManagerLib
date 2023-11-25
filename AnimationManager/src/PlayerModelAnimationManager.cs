@@ -120,7 +120,7 @@ namespace AnimationManagerLib
             if (!mRequests.ContainsKey(id)) return true;
             if (mRequests[id].Finished()) return true;
 
-            AnimationRequest? request = mRequests[id].Last();
+            AnimationRequest? request = mRequests[id].Next();
             
             if (request == null) return true;
 
@@ -159,7 +159,7 @@ namespace AnimationManagerLib
 
             public AnimationRequest? Next() => mNextRequestIndex < mRequests.Length ? mRequests[mNextRequestIndex++] : null;
             public AnimationRequest? Last() => mNextRequestIndex < mRequests.Length ? mRequests[mNextRequestIndex] : mRequests[mRequests.Length - 1];
-            public bool Finished() => mNextRequestIndex < mRequests.Length;
+            public bool Finished() => mNextRequestIndex >= mRequests.Length;
 
         }
 
@@ -211,20 +211,10 @@ namespace AnimationManagerLib
 
             (string name, var composition) = Poses[pose];
 
-            float degX = pose.translateX;
-            float degY = pose.translateY;
-            float degZ = pose.translateZ;
-
             composition.ToAverage.ApplyByAverage(pose, name, 1, composition.Weight);
             composition.ToAdd.ApplyByAddition(pose, name);
 
             Poses.Remove(pose);
-
-            float degXa = pose.translateX;
-            float degYa = pose.translateY;
-            float degZa = pose.translateZ;
-
-            //mApi.Logger.Notification("Applied animation to {0}: ({1},{2},{3}) -> ({4},{5},{6})", name, degX, degY, degZ, degXa, degYa, degZa);
         }
 
         public void AddAnimation(long entityId, Composition<PlayerModelAnimationFrame> composition)

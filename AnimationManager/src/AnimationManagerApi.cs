@@ -72,7 +72,8 @@ namespace AnimationManagerLib.API
         Cubic,
         Sqrt,
         Sin,
-        SinQuadratic
+        SinQuadratic,
+        CosShifted
     }
 
     public enum BlendingType : byte
@@ -106,8 +107,8 @@ namespace AnimationManagerLib.API
     {
         public uint Hash { get; private set; }
 
-        public AnimationId(string name) => new AnimationId() { Hash = Utils.ToCrc32(name) };
-        public AnimationId(uint hash) => new AnimationId() { Hash = hash };
+        public AnimationId(string name) => Hash = Utils.ToCrc32(name);
+        public AnimationId(uint hash) => Hash = hash;
 
         public static implicit operator AnimationId(AnimationRequest request) => request.Animation;
     }
@@ -118,8 +119,18 @@ namespace AnimationManagerLib.API
         public BlendingType Blending { get; set; }
         public float? Weight { get; set; }
 
-        public CategoryId((string name, BlendingType blending, float? Weight) parameters) => new CategoryId() { Blending = parameters.blending, Hash = Utils.ToCrc32(parameters.name), Weight = parameters.Weight };
-        public CategoryId((uint hash, BlendingType blending, float? Weight) parameters) => new CategoryId() { Blending = parameters.blending, Hash = parameters.hash, Weight = parameters.Weight };
+        public CategoryId((string name, BlendingType blending, float? weight) parameters)
+        {
+            Blending = parameters.blending;
+            Hash = Utils.ToCrc32(parameters.name);
+            Weight = parameters.weight;
+        }
+        public CategoryId((uint hash, BlendingType blending, float? weight) parameters)
+        {
+            Blending = parameters.blending;
+            Hash = parameters.hash;
+            Weight = parameters.weight;
+        }
         
         public static implicit operator CategoryId(AnimationRequest request) => request.Category;
     }
@@ -128,7 +139,7 @@ namespace AnimationManagerLib.API
     {
         public long EntityId { get; set; }
 
-        public ComposeRequest(long entityId) => new ComposeRequest() { EntityId = entityId };
+        public ComposeRequest(long entityId) => EntityId = entityId;
     }
 
     public interface IAnimationResult : ICloneable
@@ -205,12 +216,13 @@ namespace AnimationManagerLib.API
 
         private readonly static Dictionary<ProgressModifierType, ProgressModifier> Modifiers = new()
         {
-            { ProgressModifierType.Linear,       (float progress) => GameMath.Clamp(progress, 0, 1) },
-            { ProgressModifierType.Quadratic,    (float progress) => GameMath.Clamp(progress * progress, 0, 1) },
-            { ProgressModifierType.Cubic,        (float progress) => GameMath.Clamp(progress * progress * progress, 0, 1) },
-            { ProgressModifierType.Sqrt,         (float progress) => GameMath.Sqrt(GameMath.Clamp(progress, 0, 1)) },
-            { ProgressModifierType.Sin,          (float progress) => GameMath.Sin(GameMath.Clamp(progress, 0, 1) * 2 / GameMath.PI) },
-            { ProgressModifierType.SinQuadratic, (float progress) => GameMath.Sin(GameMath.Clamp(progress * progress, 0, 1) * 2 / GameMath.PI) }
+            { ProgressModifierType.Linear,       (float progress) => progress },
+            { ProgressModifierType.Quadratic,    (float progress) => progress * progress },
+            { ProgressModifierType.Cubic,        (float progress) => progress * progress * progress },
+            { ProgressModifierType.Sqrt,         (float progress) => GameMath.Sqrt(progress) },
+            { ProgressModifierType.Sin,          (float progress) => GameMath.Sin(progress / 2 * GameMath.PI) },
+            { ProgressModifierType.SinQuadratic, (float progress) => GameMath.Sin(progress * progress / 2 * GameMath.PI) },
+            { ProgressModifierType.CosShifted,   (float progress) => 0.5f - GameMath.Cos(progress * GameMath.PI) / 2 },
         };
 
         public static ProgressModifier Get(ProgressModifierType id) => Modifiers[id];
@@ -223,11 +235,14 @@ namespace AnimationManagerLib.API
 
         public static AnimationRequest AnimationRequestFromJson(JsonObject definition)
         {
+            var animation = new AnimationId(definition["animation"].AsString());
+
+
             return new()
             {
                 Action = (AnimationPlayerAction)Enum.Parse(typeof(AnimationPlayerAction), definition["action"].AsString("Set")),
                 Category = CategoryIdFromJson(definition["category"]),
-                Animation = new(definition["animation"].AsString()),
+                Animation = animation,
                 Duration = TimeSpan.FromMilliseconds(definition["duration_ms"].AsFloat()),
                 Modifier = (ProgressModifierType)Enum.Parse(typeof(ProgressModifierType), definition["dynamic"].AsString("Linear")),
                 StartFrame = definition.KeyExists("startFrame") ? definition["startFrame"].AsFloat() : null,

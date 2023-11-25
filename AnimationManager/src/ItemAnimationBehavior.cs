@@ -1,5 +1,5 @@
-﻿using AnimationManagerLib.API;
-using System;
+﻿using System;
+using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -10,7 +10,7 @@ namespace AnimationManagerLib.Extra
     {
         private API.IAnimationManager mAnimationManager;
         private JsonObject mProperties;
-        private API.AnimationRequest mHeldTpHitAnimation;
+        private API.AnimationRequest[] mHeldTpHitAnimation;
         private const string mHeldTpHitAnimationAttrName = "mHeldTpHitAnimation_guid";
         private bool mClientSide;
         private ICoreAPI mApi;
@@ -32,13 +32,17 @@ namespace AnimationManagerLib.Extra
             if (!mClientSide) return;
 
             mApi = api;
-
-            string heldTpHitAnimation = mProperties["heldTpHitAnimation"]["animationCode"].AsString();
-
             mAnimationManager = (api.ModLoader.GetModSystem<AnimationManagerLibSystem>() as API.IAnimationManagerProvider).GetAnimationManager();
-            mAnimationManager.Register(new("heldTpHitAnimation"), heldTpHitAnimation);
 
-            mHeldTpHitAnimation = Utils.AnimationRequestFromJson(mProperties["heldTpHitAnimation"]);
+            List<API.AnimationRequest> requests = new();
+            foreach (JsonObject requestDefinition in mProperties["heldTpHitAnimation"].AsArray())
+            {
+                API.AnimationRequest request = API.Utils.AnimationRequestFromJson(requestDefinition);
+                requests.Add(request);
+                mAnimationManager.Register(request.Animation, requestDefinition["animationCode"].AsString());
+            }
+
+            mHeldTpHitAnimation = requests.ToArray();
         }
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling, ref EnumHandling handling)
@@ -59,7 +63,6 @@ namespace AnimationManagerLib.Extra
 
         public override bool OnHeldAttackCancel(float secondsPassed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel, EnumItemUseCancelReason cancelReason, ref EnumHandHandling handling)
         {
-            //if (mClientSide && slot.Itemstack.TempAttributes.HasAttribute(mHeldTpHitAnimationAttrName)) StopAnimation(slot);
             handling = EnumHandHandling.PreventDefaultAnimation;
             return true;
         }
