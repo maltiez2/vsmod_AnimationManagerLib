@@ -21,15 +21,65 @@ namespace AnimationManagerLib.API
         public Guid RunId { get; set; }
     }
 
-    public enum AnimationPlayerAction : byte
+    public struct AnimationRunMetadata
     {
-        Set,
-        EaseIn,
-        EaseOut,
-        Start,
-        Stop,
-        Rewind,
-        Clear
+        public AnimationPlayerAction Action { get; set; }
+        public TimeSpan Duration { get; set; }
+        public float? StartFrame { get; set; }
+        public float? TargetFrame { get; set; }
+        public ProgressModifierType Modifier { get; set; }
+
+        public AnimationRunMetadata(AnimationRequest request)
+        {
+            this.Action = request.Parameters.Action;
+            this.Duration = request.Parameters.Duration;
+            this.StartFrame = request.Parameters.StartFrame;
+            this.TargetFrame = request.Parameters.TargetFrame;
+            this.Modifier = request.Parameters.Modifier;
+        }
+        public static implicit operator AnimationRunMetadata(AnimationRequest request) => new AnimationRunMetadata(request);
+    }
+
+    public interface IAnimation
+    {
+        public AnimationFrame Play(float progress, float? startFrame = null, float? endFrame = null);
+        public AnimationFrame Blend(float progress, float? targetFrame, AnimationFrame endFrame);
+        public AnimationFrame Blend(float progress, AnimationFrame startFrame, AnimationFrame endFrame);
+    }
+
+    public interface IAnimator
+    {
+        enum Status
+        {
+            Running,
+            Stopped,
+            Finished
+        }
+        
+        public void Init(CategoryId category);
+        public void Run(AnimationRunMetadata parameters, IAnimation animation);
+        public AnimationFrame Calculate(TimeSpan timeElapsed, out Status status);
+    }
+
+    public interface IComposer
+    {
+        delegate bool IfRemoveAnimator();
+
+        void SetAnimatorType<TAnimator>()
+            where TAnimator : IAnimator;
+        bool Register(AnimationId id, IAnimation animation);
+        void Run(AnimationRequest request, IfRemoveAnimator finishCallback);
+        void Stop(AnimationRequest request);
+        AnimationFrame Compose(TimeSpan timeElapsed);
+    }
+
+    public interface ISynchronizer : IDisposable
+    {
+        public delegate void AnimationRunHandler(AnimationRunPacket request);
+        public delegate void AnimationStopHandler(AnimationStopPacket request);
+        void Init(ICoreAPI api, AnimationRunHandler runHandler, AnimationStopHandler stopHandler, string channelName);
+        void Sync(AnimationRunPacket request);
+        void Sync(AnimationStopPacket request);
     }
 
     public enum ProgressModifierType : byte
@@ -41,102 +91,6 @@ namespace AnimationManagerLib.API
         Sin,
         SinQuadratic,
         CosShifted
-    }
-
-    public struct AnimationRunMetadata
-    {
-        public AnimationPlayerAction Action { get; set; }
-        public TimeSpan Duration { get; set; }
-        public float? StartFrame { get; set; }
-        public float? EndFrame { get; set; }
-        public ProgressModifierType Modifier { get; set; }
-
-        public AnimationRunMetadata(AnimationRequest request)
-        {
-            this.Action = request.Action;
-            this.Duration = request.Duration;
-            this.StartFrame = request.StartFrame;
-            this.EndFrame = request.EndFrame;
-            this.Modifier = request.Modifier;
-        }
-        public static implicit operator AnimationRunMetadata(AnimationRequest request) => new AnimationRunMetadata(request);
-    }
-
-    public struct ComposeRequest
-    {
-        public long EntityId { get; set; }
-
-        public ComposeRequest(long entityId) => EntityId = entityId;
-    }
-
-    public interface IAnimationResult : ICloneable
-    {
-        IAnimationResult Add(IAnimationResult value);
-        IAnimationResult Average(IAnimationResult value, float weight, float thisWeight = 1);
-        IAnimationResult Lerp(IAnimationResult value, float progress);
-        IAnimationResult Identity();
-    }
-
-    public interface IAnimation<TAnimationResult> : IDisposable
-        where TAnimationResult : IAnimationResult
-    {
-        public TAnimationResult Play(float progress, float? startFrame = null, float? endFrame = null);
-        public TAnimationResult Blend(float progress, float? targetFrame, TAnimationResult endFrame);
-        public TAnimationResult Blend(float progress, TAnimationResult startFrame, TAnimationResult endFrame);
-    }
-
-    public interface IAnimator<TAnimationResult> : IDisposable
-        where TAnimationResult : IAnimationResult
-    {
-        enum Status
-        {
-            Running,
-            Stopped,
-            Finished
-        }
-        
-        public void Init(ICoreAPI api, TAnimationResult defaultFrame);
-        public void Run(AnimationRunMetadata parameters, IAnimation<TAnimationResult> animation);
-        public TAnimationResult Calculate(TimeSpan timeElapsed, out Status status, ref float weight);
-        public float CalculateProgress(TimeSpan timeElapsed);
-    }
-
-    public class Composition<TAnimationResult>
-        where TAnimationResult : IAnimationResult
-    {
-        public TAnimationResult ToAdd { get; set; }
-        public TAnimationResult ToAverage { get; set; }
-        public float Weight { get; set; }
-
-        public Composition(TAnimationResult toAdd, TAnimationResult toAverage, float weight)
-        {
-            ToAdd = toAdd;
-            Weight = weight;
-            ToAverage = toAverage;
-        }
-    }
-
-    public interface IComposer<TAnimationResult> : IDisposable
-        where TAnimationResult : IAnimationResult
-    {
-        delegate bool IfRemoveAnimator();
-        
-        void Init(ICoreAPI api, TAnimationResult defaultFrame);
-        void SetAnimatorType<TAnimator>()
-            where TAnimator : IAnimator<TAnimationResult>, new();
-        bool Register(AnimationId id, IAnimation<TAnimationResult> animation);
-        void Run(AnimationRequest request, IfRemoveAnimator finishCallback);
-        void Stop(AnimationRequest request);
-        Composition<TAnimationResult> Compose(ComposeRequest request, TimeSpan timeElapsed);
-    }
-
-    public interface ISynchronizer : IDisposable
-    {
-        public delegate void AnimationRunHandler(AnimationRunPacket request);
-        public delegate void AnimationStopHandler(AnimationStopPacket request);
-        void Init(ICoreAPI api, AnimationRunHandler runHandler, AnimationStopHandler stopHandler, string channelName);
-        void Sync(AnimationRunPacket request);
-        void Sync(AnimationStopPacket request);
     }
 
     static public class ProgressModifiers

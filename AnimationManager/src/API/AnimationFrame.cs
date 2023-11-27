@@ -7,7 +7,7 @@ namespace AnimationManagerLib
 {
     public class AnimationFrame
     {
-        private readonly Dictionary<ElementId, (AnimationElement element, EnumAnimationBlendMode blendMode)> mElements = new();
+        public Dictionary<ElementId, (AnimationElement element, EnumAnimationBlendMode blendMode)> Elements { get; set; } = new();
         private readonly EnumAnimationBlendMode mDefaultBlendMode = EnumAnimationBlendMode.Average;
         private readonly float mDefaultElementWeight = 1;
 
@@ -17,6 +17,12 @@ namespace AnimationManagerLib
         {
             mDefaultElementWeight = category.Weight ?? 1;
             mDefaultBlendMode = category.Blending;
+        }
+
+        public AnimationFrame(EnumAnimationBlendMode blendMode, float weight)
+        {
+            mDefaultBlendMode = blendMode;
+            mDefaultElementWeight = weight;
         }
 
         public AnimationFrame(Dictionary<string, AnimationKeyFrameElement> elements, AnimationMetaData metaData, CategoryId category)
@@ -33,44 +39,44 @@ namespace AnimationManagerLib
 
         public virtual void BlendInto(AnimationFrame frame)
         {
-            foreach ((var id, (var element, var blendMode)) in mElements)
+            foreach ((var id, (var element, var blendMode)) in Elements)
             {
-                if (frame.mElements.ContainsKey(id))
+                if (frame.Elements.ContainsKey(id))
                 {
-                    frame.mElements[id] = (CombineElements(element, frame.mElements[id].element, blendMode, mDefaultElementWeight), mDefaultBlendMode);
+                    frame.Elements[id] = (CombineElements(element, frame.Elements[id].element, blendMode, mDefaultElementWeight), mDefaultBlendMode);
                 }
                 else
                 {
-                    frame.mElements[id] = (CombineElements(element, new(id), blendMode, mDefaultElementWeight), mDefaultBlendMode);
+                    frame.Elements[id] = (CombineElements(element, new(id), blendMode, mDefaultElementWeight), mDefaultBlendMode);
                 }
             }
         }
         public virtual void LerpInto(AnimationFrame frame, float progress)
         {
             AnimationElement defaultElement = new();
-            foreach ((var id, (var element, var blendMode)) in mElements)
+            foreach ((var id, (var element, var blendMode)) in Elements)
             {
-                if (frame.mElements.ContainsKey(id))
+                if (frame.Elements.ContainsKey(id))
                 {
-                    frame.mElements[id] = (AnimationElement.Lerp(element, frame.mElements[id].element, progress), blendMode);
+                    frame.Elements[id] = (AnimationElement.Lerp(element, frame.Elements[id].element, progress, blendMode != EnumAnimationBlendMode.Add), blendMode);
                 }
                 else
                 {
-                    frame.mElements.Add(id, (AnimationElement.Lerp(element, defaultElement, progress), blendMode));
+                    frame.Elements.Add(id, (AnimationElement.Lerp(element, defaultElement, progress, blendMode != EnumAnimationBlendMode.Add), blendMode));
                 }
             }
 
-            foreach ((var id, (var element, var blendMode)) in frame.mElements)
+            foreach ((var id, (var element, var blendMode)) in frame.Elements)
             {
-                if (!mElements.ContainsKey(id))
+                if (!Elements.ContainsKey(id))
                 {
-                    frame.mElements[id] = (AnimationElement.Lerp(defaultElement, element, progress), blendMode);
+                    frame.Elements[id] = (AnimationElement.Lerp(defaultElement, element, progress, blendMode != EnumAnimationBlendMode.Add), blendMode);
                 }
             }
         }
         public virtual void Apply(ElementPose pose, float poseWeight, uint nameHash)
         {
-            foreach ((var id, (var element, var blendMode)) in mElements)
+            foreach ((var id, (var element, var blendMode)) in Elements)
             {
                 if (id.ElementNameHash != nameHash) continue;
                 switch (blendMode)
@@ -92,12 +98,22 @@ namespace AnimationManagerLib
             return new AnimationFrame(category);
         }
 
+        public virtual AnimationFrame Clone()
+        {
+            AnimationFrame clone = new(mDefaultBlendMode, mDefaultElementWeight);
+            foreach ((var key, var value) in Elements)
+            {
+                clone.Elements[key] = value;
+            }
+            return clone;
+        }
+
         protected void AddElement(ElementType elementType, string name, double? value, float weight, EnumAnimationBlendMode blendMode)
         {
             if (value == null) return;
             ElementId id = new(name, elementType);
             AnimationElement element = new(id, new((float)value, weight));
-            mElements.Add(id, (element, blendMode));
+            Elements.Add(id, (element, blendMode));
         }
         static protected EnumAnimationBlendMode GetBlendMode(EnumAnimationBlendMode categoryMode, EnumAnimationBlendMode? elementMode)
         {

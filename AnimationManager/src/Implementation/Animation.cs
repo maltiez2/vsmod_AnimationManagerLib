@@ -6,30 +6,33 @@ using Vintagestory.API.MathTools;
 
 namespace AnimationManagerLib
 {
-    public class PlayerModelAnimation<TAnimationResult> : IAnimation<TAnimationResult>
-        where TAnimationResult  : IAnimationResult
+    public class Animation : IAnimation
     {
-        private readonly TAnimationResult[] mKeyFrames;
+        private readonly AnimationFrame[] mKeyFrames;
         private readonly ushort[] mFrames;
 
-        public PlayerModelAnimation(TAnimationResult[] keyFrames, ushort[] keyFramesPosition, TAnimationResult startingFrame)
+        public Animation(AnimationFrame[] keyFrames, ushort[] keyFramesPosition)
         {
             mKeyFrames = keyFrames;
             mFrames = keyFramesPosition;
         }
 
-        TAnimationResult IAnimation<TAnimationResult>.Blend(float progress, float? targetFrame, TAnimationResult endFrame)
+        AnimationFrame IAnimation.Blend(float progress, float? targetFrame, AnimationFrame endFrame)
         {
-            TAnimationResult targetFrameValue = CalcFrame(progress, targetFrame ?? 0, targetFrame ?? 0);
-            return (TAnimationResult)targetFrameValue.Lerp(endFrame, progress);
+            AnimationFrame targetFrameValue = CalcFrame(progress, targetFrame ?? 0, targetFrame ?? 0);
+            AnimationFrame endFrameClone = endFrame.Clone();
+            targetFrameValue.LerpInto(endFrameClone, progress);
+            return endFrameClone;
         }
 
-        TAnimationResult IAnimation<TAnimationResult>.Blend(float progress, TAnimationResult startFrame, TAnimationResult endFrame)
+        AnimationFrame IAnimation.Blend(float progress, AnimationFrame startFrame, AnimationFrame endFrame)
         {
-            return (TAnimationResult)startFrame.Lerp(endFrame, progress);
+            AnimationFrame endFrameClone = endFrame.Clone();
+            startFrame.LerpInto(endFrameClone, progress);
+            return endFrameClone;
         }
 
-        TAnimationResult IAnimation<TAnimationResult>.Play(float progress, float? startFrame, float? endFrame)
+        AnimationFrame IAnimation.Play(float progress, float? startFrame, float? endFrame)
         {
             float startFrameIndex = startFrame == null ? 0 : (float)startFrame;
             float endFrameIndex = endFrame == null ? mFrames[mFrames.Length - 1] : (float)endFrame;
@@ -37,13 +40,14 @@ namespace AnimationManagerLib
             return CalcFrame(progress, startFrameIndex, endFrameIndex);
         }
 
-        private TAnimationResult CalcFrame(float progress, float startFrame, float endFrame)
+        private AnimationFrame CalcFrame(float progress, float startFrame, float endFrame)
         {
             (int prevKeyFrame, int nextKeyFrame, float keyFrameProgress) = ToKeyFrames(progress, startFrame, endFrame);
             Debug.Assert(mKeyFrames.Length > prevKeyFrame && mKeyFrames.Length > nextKeyFrame);
-            if (prevKeyFrame == nextKeyFrame) return (TAnimationResult)mKeyFrames[nextKeyFrame].Clone();
-            Console.WriteLine("From '{0}' to '{1}': {2} ({3} -> {4}: {5})", prevKeyFrame, nextKeyFrame, keyFrameProgress, startFrame, endFrame, progress);
-            return (TAnimationResult)mKeyFrames[prevKeyFrame].Lerp(mKeyFrames[nextKeyFrame], keyFrameProgress);
+            if (prevKeyFrame == nextKeyFrame) return mKeyFrames[nextKeyFrame].Clone();
+            AnimationFrame resultFrame = mKeyFrames[nextKeyFrame].Clone();
+            mKeyFrames[prevKeyFrame].LerpInto(resultFrame, keyFrameProgress);
+            return resultFrame;
         }
 
         private (int prevKeyFrame, int nextKeyFrame, float keyFrameProgress) ToKeyFrames(float progress, float startFrame, float endFrame)
@@ -69,29 +73,6 @@ namespace AnimationManagerLib
             float keyFrameProgress = nextFrame == prevFrame ? 1 : (currentFrame - prevFrame) / (nextFrame - prevFrame);      
 
             return (prevKeyFrame, nextKeyFrame, keyFrameProgress);
-        }
-
-        private bool mDisposedValue;
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!mDisposedValue)
-            {
-                if (disposing)
-                {
-                    foreach (var frame in mKeyFrames)
-                    {
-                        (frame as IDisposable)?.Dispose();
-                    }
-                }
-
-                mDisposedValue = true;
-            }
-        }
-
-        void IDisposable.Dispose()
-        {
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
         }
     }
 }

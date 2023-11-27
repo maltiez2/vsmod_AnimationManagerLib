@@ -17,14 +17,14 @@ namespace AnimationManagerLib
         {
             mApi = api;
             api.RegisterCollectibleBehaviorClass("ItemAnimationBehavior", typeof(Extra.ItemAnimationBehavior));
-            mSynchronizer = new AnimationSynchronizer();
+            mSynchronizer = new Synchronizer();
         }
 
         public override void StartClientSide(ICoreClientAPI api)
         {
             Patches.AnimatorBasePatch.Patch(HarmonyID);
 
-            mManager = new PlayerModelAnimationManager<PlayerModelComposer<PlayerModelAnimationFrame>>(api, mSynchronizer);
+            mManager = new PlayerModelAnimationManager<Composer<PlayerModelAnimationFrame>>(api, mSynchronizer);
             mSynchronizer.Init(
                 api,
                 (packet) => mManager.Run(packet.EntityId, packet.RunId, packet.Requests),

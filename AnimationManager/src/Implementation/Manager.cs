@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Xml.Linq;
 using AnimationManagerLib.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -11,7 +12,7 @@ using Vintagestory.API.Datastructures;
 namespace AnimationManagerLib
 {
     public class PlayerModelAnimationManager<TAnimationComposer> : API.IAnimationManager
-        where TAnimationComposer : IComposer<PlayerModelAnimationFrame>, new()
+        where TAnimationComposer : IComposer, new()
     {
         public const float VanillaAnimationWeight = 1f;
         
@@ -19,13 +20,13 @@ namespace AnimationManagerLib
         private readonly ISynchronizer mSynchronizer;
         private readonly AnimationApplier mApplier;
 
-        private readonly Dictionary<long, IComposer<PlayerModelAnimationFrame>> mComposers = new();
-        private readonly Dictionary<AnimationId, IAnimation<PlayerModelAnimationFrame>> mAnimations = new();
+        private readonly Dictionary<long, IComposer> mComposers = new();
+        private readonly Dictionary<AnimationId, IAnimation> mAnimations = new();
         
         private readonly Dictionary<Guid, long> mEntitiesByRuns = new();
         private readonly Dictionary<AnimationId, string> mAnimationCodes = new();
         private readonly Dictionary<Guid, AnimationRequestWithStatus> mRequests = new();
-        private readonly Dictionary<long, Composition<PlayerModelAnimationFrame>> mCompositions = new();
+        private readonly Dictionary<long, AnimationFrame> mAnimationFrames = new();
         private readonly HashSet<Guid> mSynchronizedPackets = new();
 
 
@@ -45,9 +46,9 @@ namespace AnimationManagerLib
 
         private void OnRenderFrame(float secondsElapsed, long entityId)
         {
-            mCompositions.Clear();
+            mAnimationFrames.Clear();
             TimeSpan timeSpan = TimeSpan.FromSeconds(secondsElapsed);
-            Composition<PlayerModelAnimationFrame> composition = mComposers[entityId].Compose(new (entityId), timeSpan);
+            AnimationFrame composition = mComposers[entityId].Compose(timeSpan);
             mApplier.AddAnimation(entityId, composition);
         }
 
@@ -145,8 +146,6 @@ namespace AnimationManagerLib
         {
             if (!mRequests.ContainsKey(runId)) return;
 
-            Console.WriteLine("*************** PlayerModelAnimationManager Stop: {0}", runId);
-
             if (mSynchronizedPackets.Contains(runId))
             {
                 AnimationStopPacket packet = new()
@@ -186,7 +185,7 @@ namespace AnimationManagerLib
 
         }
 
-        private IComposer<PlayerModelAnimationFrame> TryAddComposer(Guid id, long entityId)
+        private IComposer TryAddComposer(Guid id, long entityId)
         {
             if (mEntitiesByRuns.ContainsKey(id)) return mComposers[mEntitiesByRuns[id]];
 
@@ -194,20 +193,19 @@ namespace AnimationManagerLib
 
             if (mComposers.ContainsKey(entityId)) return mComposers[entityId];
 
-            IComposer<PlayerModelAnimationFrame> composer = Activator.CreateInstance(typeof(TAnimationComposer)) as IComposer<PlayerModelAnimationFrame>;
-            composer.Init(mClientApi, new()); // @TODO Fix null ?
-            composer.SetAnimatorType<PlayerModelAnimator<PlayerModelAnimationFrame>>();
+            IComposer composer = Activator.CreateInstance(typeof(TAnimationComposer)) as IComposer;
+            composer.SetAnimatorType<Animator>();
             mComposers.Add(entityId, composer);
             return composer;
         }
 
-        private IAnimation<PlayerModelAnimationFrame> GetAnimation(AnimationId animationId, long entityId)
+        private IAnimation GetAnimation(AnimationId animationId, long entityId)
         {
             if (mAnimations.ContainsKey(animationId)) return mAnimations[animationId];
 
             Debug.Assert(mAnimationCodes.ContainsKey(animationId));
 
-            var animation = AnimationProvider.Get(mClientApi, entityId, mAnimationCodes[animationId]);
+            var animation = AnimationProvider.Get(mClientApi, animationId.Category, entityId, mAnimationCodes[animationId]);
 
             mAnimations.Add(animationId, animation);
 
@@ -222,16 +220,6 @@ namespace AnimationManagerLib
                 if (disposing)
                 {
                     UnregisterHandlers();
-
-                    foreach ((_, var composer) in mComposers)
-                    {
-                        composer.Dispose();
-                    }
-
-                    foreach ((_, var animation) in mAnimations)
-                    {
-                        animation.Dispose();
-                    }
                 }
 
                 mDisposedValue = true;
@@ -247,13 +235,15 @@ namespace AnimationManagerLib
 
     public class AnimationApplier
     {
-        public Dictionary<ElementPose, (string name, Composition<PlayerModelAnimationFrame> composition)> Poses { get; private set; }
+        public Dictionary<ElementPose, (string name, AnimationFrame composition)> Poses { get; private set; }
+        static public Dictionary<uint, string> PosesNames { get; set; }
 
         private readonly ICoreAPI mApi;
 
         public AnimationApplier(ICoreAPI api)
         {
             Poses = new();
+            PosesNames = new();
             mApi = api;
         }
 
@@ -263,25 +253,20 @@ namespace AnimationManagerLib
 
             (string name, var composition) = Poses[pose];
 
-            composition.ToAverage.ApplyByAverage(pose, name, 1, composition.Weight);
-            composition.ToAdd.ApplyByAddition(pose, name);
+            composition.Apply(pose, 1, Utils.ToCrc32(name));
 
             Poses.Remove(pose);
 
             return true;
         }
 
-        public void AddAnimation(long entityId, Composition<PlayerModelAnimationFrame> composition)
+        public void AddAnimation(long entityId, AnimationFrame composition)
         {
-            IAnimator animator = mApi.World.GetEntityById(entityId).AnimManager.Animator;
+            Vintagestory.API.Common.IAnimator animator = mApi.World.GetEntityById(entityId).AnimManager.Animator;
 
-            foreach (string name in composition.ToAverage.mPoses.Keys)
+            foreach ((var id, _) in composition.Elements)
             {
-                Poses[animator.GetPosebyName(name)] = (name, composition);
-            }
-
-            foreach (string name in composition.ToAdd.mPoses.Keys)
-            {
+                string name = PosesNames[id.ElementNameHash];
                 Poses[animator.GetPosebyName(name)] = (name, composition);
             }
         }
@@ -294,9 +279,9 @@ namespace AnimationManagerLib
 
     static public class AnimationProvider
     {
-        static public IAnimation<PlayerModelAnimationFrame> Get(ICoreClientAPI api, long entityId, string name)
+        static public IAnimation Get(ICoreClientAPI api, CategoryId category, long entityId, string name)
         {
-            List<PlayerModelAnimationFrame> constructedKeyFrames = new();
+            List<AnimationFrame> constructedKeyFrames = new();
             List<ushort> keyFramesToFrames = new();
 
             (AnimationKeyFrame[] keyFrames, AnimationMetaData metaData) = AnimationData(api, entityId, name);
@@ -305,32 +290,30 @@ namespace AnimationManagerLib
 
             foreach (AnimationKeyFrame frame in keyFrames)
             {
-                constructedKeyFrames.Add(ConstructFrame(frame.Elements, metaData));
+                constructedKeyFrames.Add(new AnimationFrame(frame.Elements, metaData, category));
                 keyFramesToFrames.Add((ushort)frame.Frame);
+                AddPosesNames(frame);
             }
 
-            return new PlayerModelAnimation<PlayerModelAnimationFrame>(constructedKeyFrames.ToArray(), keyFramesToFrames.ToArray(), new PlayerModelAnimationFrame());
+            return new Animation(constructedKeyFrames.ToArray(), keyFramesToFrames.ToArray());
         }
-        static private PlayerModelAnimationFrame ConstructFrame(Dictionary<string, AnimationKeyFrameElement> elements, AnimationMetaData metaData)
+        static private void AddPosesNames(AnimationKeyFrame frame)
         {
-            Dictionary<string, PlayerModelAnimationPose> poses = new();
-
-            foreach ((string element, var transform) in elements)
+            foreach ((string poseName, _) in frame.Elements)
             {
-                EnumAnimationBlendMode? blendMode = metaData.ElementBlendMode.ContainsKey(element) ? metaData.ElementBlendMode[element] : null;
-                float weight = metaData.ElementWeight.ContainsKey(element) ? metaData.ElementWeight[element] : 1;
-
-                poses.Add(element, new PlayerModelAnimationPose(transform, blendMode, weight));
+                uint hash = Utils.ToCrc32(poseName);
+                if (!AnimationApplier.PosesNames.ContainsKey(hash))
+                {
+                    AnimationApplier.PosesNames[hash] = (string)poseName.Clone();
+                }
             }
-
-            return new PlayerModelAnimationFrame(poses, metaData);
         }
         static private (AnimationKeyFrame[] keyFrames, AnimationMetaData metaData) AnimationData(ICoreClientAPI api, long entityId, string name)
         {
             Entity entity = api.World.GetEntityById(entityId);
             entity.Properties.Client.AnimationsByMetaCode.TryGetValue(name, out AnimationMetaData metaData);
             Shape shape = entity.Properties.Client.LoadedShapeForEntity;
-            Dictionary<uint, Animation> animations = shape.AnimationsByCrc32;
+            Dictionary<uint, Vintagestory.API.Common.Animation> animations = shape.AnimationsByCrc32;
             uint crc32 = Utils.ToCrc32(name);
             return (animations[crc32].KeyFrames, metaData);
         }

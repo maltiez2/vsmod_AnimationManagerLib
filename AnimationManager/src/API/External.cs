@@ -6,7 +6,7 @@ namespace AnimationManagerLib.API
 {
     public interface IAnimationManager : IDisposable
     {
-        bool Register(AnimationId id, string playerAnimationCode);
+        bool Register(AnimationId id, string animationCode);
         Guid Run(long entityId, params AnimationRequest[] requests);
         Guid Run(long entityId, bool synchronize, params AnimationRequest[] requests);
         Guid Run(long entityId, Guid runId, params AnimationRequest[] requests);
@@ -19,16 +19,34 @@ namespace AnimationManagerLib.API
         ISynchronizer GetSynchronizer();
     }
 
+    public enum AnimationPlayerAction : byte
+    {
+        Set, // Set to TargetFrame
+        EaseIn, // Lerp from last frame to TargetFrame
+        EaseOut, // Lerp from last frame to empty frame
+        Start, // Play animation from StartFrame to TargetFrame
+        Stop, // Stop animation at last frame and keep it
+        Rewind, // Play animation from last frame to TargetFrame
+        Clear // Set to empty frame
+    }
+
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
     public struct AnimationRequest
     {
-        public AnimationPlayerAction Action { get; set; }
-        public CategoryId Category { get; set; }
         public AnimationId Animation { get; set; }
+        public RunParameters Parameters { get; set; }
+    }
+
+    [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
+    public struct RunParameters
+    {
+        public AnimationPlayerAction Action { get; set; }
         public TimeSpan Duration { get; set; }
         public ProgressModifierType Modifier { get; set; }
+        public float? TargetFrame { get; set; }
         public float? StartFrame { get; set; }
-        public float? EndFrame { get; set; }
+
+        public static implicit operator RunParameters(AnimationRequest request) => request.Parameters;
     }
 
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
@@ -58,19 +76,19 @@ namespace AnimationManagerLib.API
         public EnumAnimationBlendMode Blending { get; set; }
         public float? Weight { get; set; }
 
-        public CategoryId((string name, EnumAnimationBlendMode blending, float? weight) parameters)
+        public CategoryId(string name, EnumAnimationBlendMode blending, float? weight)
         {
-            Blending = parameters.blending;
-            Hash = Utils.ToCrc32(parameters.name);
-            Weight = parameters.weight;
+            Blending = blending;
+            Hash = Utils.ToCrc32(name);
+            Weight = weight;
         }
-        public CategoryId((uint hash, EnumAnimationBlendMode blending, float? weight) parameters)
+        public CategoryId(uint hash, EnumAnimationBlendMode blending, float? weight)
         {
-            Blending = parameters.blending;
-            Hash = parameters.hash;
-            Weight = parameters.weight;
+            Blending = blending;
+            Hash = hash;
+            Weight = weight;
         }
 
-        public static implicit operator CategoryId(AnimationRequest request) => request.Category;
+        public static implicit operator CategoryId(AnimationRequest request) => request.Animation.Category;
     }
 }

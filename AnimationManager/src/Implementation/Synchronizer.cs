@@ -6,7 +6,7 @@ using Vintagestory.API.Server;
 
 namespace AnimationManagerLib
 {
-    public class AnimationSynchronizer : ISynchronizer
+    public class Synchronizer : ISynchronizer
     {
         private EnumAppSide mSide;
 
