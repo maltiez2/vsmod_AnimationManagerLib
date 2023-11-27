@@ -5,21 +5,21 @@ using System;
 
 namespace AnimationManagerLib
 {
-    public class EntityAnimationFrame
+    public class AnimationFrame
     {
         private readonly Dictionary<ElementId, (AnimationElement element, EnumAnimationBlendMode blendMode)> mElements = new();
         private readonly EnumAnimationBlendMode mDefaultBlendMode = EnumAnimationBlendMode.Average;
         private readonly float mDefaultElementWeight = 1;
 
-        public EntityAnimationFrame() { }
+        public AnimationFrame() { }
 
-        public EntityAnimationFrame(CategoryId category)
+        public AnimationFrame(CategoryId category)
         {
             mDefaultElementWeight = category.Weight ?? 1;
             mDefaultBlendMode = category.Blending;
         }
 
-        public EntityAnimationFrame(Dictionary<string, AnimationKeyFrameElement> elements, AnimationMetaData metaData, CategoryId category)
+        public AnimationFrame(Dictionary<string, AnimationKeyFrameElement> elements, AnimationMetaData metaData, CategoryId category)
         {
             mDefaultElementWeight = category.Weight ?? 1;
             mDefaultBlendMode = category.Blending;
@@ -31,7 +31,7 @@ namespace AnimationManagerLib
             }
         }
 
-        public virtual void BlendInto(EntityAnimationFrame frame)
+        public virtual void BlendInto(AnimationFrame frame)
         {
             foreach ((var id, (var element, var blendMode)) in mElements)
             {
@@ -45,7 +45,7 @@ namespace AnimationManagerLib
                 }
             }
         }
-        public virtual void LerpInto(EntityAnimationFrame frame, float progress)
+        public virtual void LerpInto(AnimationFrame frame, float progress)
         {
             AnimationElement defaultElement = new();
             foreach ((var id, (var element, var blendMode)) in mElements)
@@ -87,9 +87,9 @@ namespace AnimationManagerLib
                 }
             }
         }
-        static public EntityAnimationFrame Default(CategoryId category)
+        static public AnimationFrame Default(CategoryId category)
         {
-            return new EntityAnimationFrame(category);
+            return new AnimationFrame(category);
         }
 
         protected void AddElement(ElementType elementType, string name, double? value, float weight, EnumAnimationBlendMode blendMode)
