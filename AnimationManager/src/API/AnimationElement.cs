@@ -1,4 +1,5 @@
 ﻿using AnimationManagerLib.API;
+using Newtonsoft.Json.Linq;
 using System.Diagnostics;
 using Vintagestory.API.Common;
 
@@ -25,6 +26,8 @@ namespace AnimationManagerLib
             ElementNameHash = nameHash;
             ElementType = elementType;
         }
+
+        public override string ToString() => string.Format("({0}){1}", ElementNameHash, ElementType);
     }
 
     public struct AnimationElement
@@ -152,6 +155,8 @@ namespace AnimationManagerLib
                 Id = from.Id
             };
         }
+
+        public override string ToString() => string.Format("(id: {0}, value: {1})", Value, Value);
     }
 
     public struct WeightedValue
@@ -191,13 +196,13 @@ namespace AnimationManagerLib
         {
             if (from == null) return new()
             {
-                Value = to.Value.Value * (weighted ? 1 : progress),
+                Value = to.Value.Value * progress,
                 Weight = to.Value.Weight * (weighted ? progress : 1)
             };
 
             if (to == null) return new()
             {
-                Value = from.Value.Value * (1 - (weighted ? 0 : progress)),
+                Value = from.Value.Value * (1 - progress),
                 Weight = from.Value.Weight * (1 - (weighted ? progress : 0))
             };
 
@@ -207,5 +212,7 @@ namespace AnimationManagerLib
                 Weight = from.Value.Weight * (1 - progress) + to.Value.Weight * progress
             };
         }
+
+        public override string ToString() => string.Format("{0} (weight: {1})", Value, Weight);
     }
 }

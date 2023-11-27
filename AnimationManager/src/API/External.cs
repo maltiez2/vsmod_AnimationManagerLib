@@ -35,6 +35,8 @@ namespace AnimationManagerLib.API
     {
         public AnimationId Animation { get; set; }
         public RunParameters Parameters { get; set; }
+
+        public override string ToString() => string.Format("Animation ({0}) \t|  {1}", Animation, Parameters);
     }
 
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
@@ -47,6 +49,8 @@ namespace AnimationManagerLib.API
         public float? StartFrame { get; set; }
 
         public static implicit operator RunParameters(AnimationRequest request) => request.Parameters;
+
+        public override string ToString() => string.Format("{0} for '{1} ms' ({2}): {3} -> {4}", Action, Duration.TotalMilliseconds, Modifier, StartFrame != null ? StartFrame : "null", TargetFrame != null ? TargetFrame : "null");
     }
 
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
@@ -67,6 +71,8 @@ namespace AnimationManagerLib.API
         }
 
         public static implicit operator AnimationId(AnimationRequest request) => request.Animation;
+
+        public override string ToString() => string.Format("animation: {0} {1}", Hash, Category);
     }
 
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
@@ -90,5 +96,7 @@ namespace AnimationManagerLib.API
         }
 
         public static implicit operator CategoryId(AnimationRequest request) => request.Animation.Category;
+
+        public override string ToString() => string.Format("category: {0} ({1}: {2})", Hash, Blending, Weight == null ? "null" : Weight);
     }
 }

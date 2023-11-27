@@ -11,34 +11,17 @@ namespace AnimationManagerLib.API
 
         public static AnimationRequest AnimationRequestFromJson(JsonObject definition)
         {
-            float? startFrame = definition.KeyExists("startFrame") ? definition["startFrame"].AsFloat() : null;
-            float? endFrame = definition.KeyExists("endFrame") ? definition["endFrame"].AsFloat() : null;
-            if (definition.KeyExists("frame"))
-            {
-                float frame = definition["frame"].AsFloat();
-                startFrame = frame;
-                endFrame = frame;
-            }
-
             CategoryId category = definition.KeyExists("category") ? CategoryIdFromJson(definition["category"]) : new CategoryId();
-
-            RunParameters runParameters = new RunParameters()
-            {
-                Action = (AnimationPlayerAction)Enum.Parse(typeof(AnimationPlayerAction), definition["action"].AsString("Set")),
-                Duration = TimeSpan.FromMilliseconds(definition["duration_ms"].AsFloat()),
-                Modifier = (ProgressModifierType)Enum.Parse(typeof(ProgressModifierType), definition["dynamic"].AsString("Linear")),
-                StartFrame = startFrame,
-                TargetFrame = endFrame
-            };
-
-            return new()
-            {
-                Animation = new AnimationId(category, definition["animation"].AsString()),
-                Parameters = runParameters
-            };
+            return AnimationRequestFromJson(definition, category);
         }
 
         public static AnimationRequest AnimationRequestFromJson(JsonObject definition, bool noCategory)
+        {
+            CategoryId category = !noCategory && definition.KeyExists("category") ? CategoryIdFromJson(definition["category"]) : new CategoryId();
+            return AnimationRequestFromJson(definition, category);
+        }
+
+        public static AnimationRequest AnimationRequestFromJson(JsonObject definition, CategoryId category)
         {
             float? startFrame = definition.KeyExists("startFrame") ? definition["startFrame"].AsFloat() : null;
             float? endFrame = definition.KeyExists("endFrame") ? definition["endFrame"].AsFloat() : null;
@@ -48,8 +31,6 @@ namespace AnimationManagerLib.API
                 startFrame = frame;
                 endFrame = frame;
             }
-
-            CategoryId category = !noCategory && definition.KeyExists("category") ? CategoryIdFromJson(definition["category"]) : new CategoryId();
 
             RunParameters runParameters = new RunParameters()
             {

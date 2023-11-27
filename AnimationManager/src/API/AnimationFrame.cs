@@ -114,6 +114,16 @@ namespace AnimationManagerLib
             }
             return clone;
         }
+        public override string ToString()
+        {
+            string toString = "";
+            int index = 1;
+            foreach ((_, (var element, _)) in Elements)
+            {
+                toString += string.Format("\n{0}: {1}", index++, element);
+            }
+            return toString;
+        }
 
         protected void AddElement(ElementType elementType, string name, double? value, float weight, EnumAnimationBlendMode blendMode)
         {
@@ -124,9 +134,6 @@ namespace AnimationManagerLib
         }
         static protected EnumAnimationBlendMode GetBlendMode(EnumAnimationBlendMode categoryMode, EnumAnimationBlendMode? elementMode)
         {
-            //return EnumAnimationBlendMode.Average;
-
-
             if (elementMode == null) return categoryMode;
 
             return categoryMode switch
