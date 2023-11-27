@@ -164,27 +164,6 @@ namespace AnimationManagerLib
             mRequests.Remove(runId);
         }
 
-        private sealed class AnimationRequestWithStatus
-        {
-            private readonly AnimationRequest[] mRequests;
-            private int mNextRequestIndex = 0;
-
-            public bool Synchronize { get; set; }
-            public long EntityId { get; set; }
-
-            public AnimationRequestWithStatus(long entityId, bool synchronize, AnimationRequest[] requests)
-            {
-                mRequests = requests;
-                Synchronize = synchronize;
-                EntityId = entityId;
-            }
-
-            public AnimationRequest? Next() => mNextRequestIndex < mRequests.Length ? mRequests[mNextRequestIndex++] : null;
-            public AnimationRequest? Last() => mNextRequestIndex < mRequests.Length ? mRequests[mNextRequestIndex] : mRequests[mRequests.Length - 1];
-            public bool Finished() => mNextRequestIndex >= mRequests.Length;
-
-        }
-
         private IComposer TryAddComposer(Guid id, long entityId)
         {
             if (mEntitiesByRuns.ContainsKey(id)) return mComposers[mEntitiesByRuns[id]];
@@ -230,6 +209,27 @@ namespace AnimationManagerLib
         {
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
+        }
+
+        private sealed class AnimationRequestWithStatus
+        {
+            private readonly AnimationRequest[] mRequests;
+            private int mNextRequestIndex = 0;
+
+            public bool Synchronize { get; set; }
+            public long EntityId { get; set; }
+
+            public AnimationRequestWithStatus(long entityId, bool synchronize, AnimationRequest[] requests)
+            {
+                mRequests = requests;
+                Synchronize = synchronize;
+                EntityId = entityId;
+            }
+
+            public AnimationRequest? Next() => mNextRequestIndex < mRequests.Length ? mRequests[mNextRequestIndex++] : null;
+            public AnimationRequest? Last() => mNextRequestIndex < mRequests.Length ? mRequests[mNextRequestIndex] : mRequests[mRequests.Length - 1];
+            public bool Finished() => mNextRequestIndex >= mRequests.Length;
+
         }
     }
 

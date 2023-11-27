@@ -13,7 +13,6 @@ namespace AnimationManagerLib.Extra
         private API.AnimationRequest[] mHeldTpHitAnimation;
         private const string mHeldTpHitAnimationAttrName = "heldInteraction_guid";
         private bool mClientSide;
-        private ICoreAPI mApi;
 
         public ItemAnimationBehavior(CollectibleObject collObj) : base(collObj)
         {
@@ -31,7 +30,6 @@ namespace AnimationManagerLib.Extra
             mClientSide = api.Side == EnumAppSide.Client;
             if (!mClientSide) return;
 
-            mApi = api;
             mAnimationManager = (api.ModLoader.GetModSystem<AnimationManagerLibSystem>() as API.IAnimationManagerProvider).GetAnimationManager();
 
             List<API.AnimationRequest> requests = new();

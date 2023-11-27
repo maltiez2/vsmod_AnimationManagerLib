@@ -1,6 +1,4 @@
-﻿using ProtoBuf;
-using System;
-using System.Collections.Generic;
+﻿using System;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -24,15 +22,19 @@ namespace AnimationManagerLib.API
 
             CategoryId category = definition.KeyExists("category") ? CategoryIdFromJson(definition["category"]) : new CategoryId();
 
-            return new()
+            RunParameters runParameters = new RunParameters()
             {
                 Action = (AnimationPlayerAction)Enum.Parse(typeof(AnimationPlayerAction), definition["action"].AsString("Set")),
-                Category = category,
-                Animation = new AnimationId(category, definition["animation"].AsString()),
                 Duration = TimeSpan.FromMilliseconds(definition["duration_ms"].AsFloat()),
                 Modifier = (ProgressModifierType)Enum.Parse(typeof(ProgressModifierType), definition["dynamic"].AsString("Linear")),
                 StartFrame = startFrame,
-                EndFrame = endFrame
+                TargetFrame = endFrame
+            };
+
+            return new()
+            {
+                Animation = new AnimationId(category, definition["animation"].AsString()),
+                Parameters = runParameters
             };
         }
 
@@ -49,15 +51,19 @@ namespace AnimationManagerLib.API
 
             CategoryId category = !noCategory && definition.KeyExists("category") ? CategoryIdFromJson(definition["category"]) : new CategoryId();
 
-            return new()
+            RunParameters runParameters = new RunParameters()
             {
                 Action = (AnimationPlayerAction)Enum.Parse(typeof(AnimationPlayerAction), definition["action"].AsString("Set")),
-                Category = category,
-                Animation = new AnimationId(category, definition["animation"].AsString()),
                 Duration = TimeSpan.FromMilliseconds(definition["duration_ms"].AsFloat()),
                 Modifier = (ProgressModifierType)Enum.Parse(typeof(ProgressModifierType), definition["dynamic"].AsString("Linear")),
                 StartFrame = startFrame,
-                EndFrame = endFrame
+                TargetFrame = endFrame
+            };
+
+            return new()
+            {
+                Animation = new AnimationId(category, definition["animation"].AsString()),
+                Parameters = runParameters
             };
         }
 

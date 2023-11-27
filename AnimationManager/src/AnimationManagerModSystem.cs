@@ -24,7 +24,7 @@ namespace AnimationManagerLib
         {
             Patches.AnimatorBasePatch.Patch(HarmonyID);
 
-            mManager = new PlayerModelAnimationManager<Composer<PlayerModelAnimationFrame>>(api, mSynchronizer);
+            mManager = new PlayerModelAnimationManager<Composer>(api, mSynchronizer);
             mSynchronizer.Init(
                 api,
                 (packet) => mManager.Run(packet.EntityId, packet.RunId, packet.Requests),
