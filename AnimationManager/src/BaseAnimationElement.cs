@@ -21,6 +21,12 @@ namespace AnimationManagerLib
             ElementNameHash = Utils.ToCrc32(name);
             ElementType = elementType;
         }
+
+        public ElementId(uint nameHash, ElementType elementType)
+        {
+            ElementNameHash = nameHash;
+            ElementType = elementType;
+        }
     }
 
     public struct AnimationElement

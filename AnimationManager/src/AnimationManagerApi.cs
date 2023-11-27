@@ -120,16 +120,16 @@ namespace AnimationManagerLib.API
     public struct CategoryId
     {
         public uint Hash { get; set; }
-        public BlendingType Blending { get; set; }
+        public EnumAnimationBlendMode Blending { get; set; }
         public float? Weight { get; set; }
 
-        public CategoryId((string name, BlendingType blending, float? weight) parameters)
+        public CategoryId((string name, EnumAnimationBlendMode blending, float? weight) parameters)
         {
             Blending = parameters.blending;
             Hash = Utils.ToCrc32(parameters.name);
             Weight = parameters.weight;
         }
-        public CategoryId((uint hash, BlendingType blending, float? weight) parameters)
+        public CategoryId((uint hash, EnumAnimationBlendMode blending, float? weight) parameters)
         {
             Blending = parameters.blending;
             Hash = parameters.hash;

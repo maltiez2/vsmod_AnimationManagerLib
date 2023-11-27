@@ -1,165 +1,133 @@
 ﻿using Vintagestory.API.Common;
 using System.Collections.Generic;
 using System;
+using AnimationManagerLib.API;
+using System.Xml.Linq;
+using System.Linq;
 
 namespace AnimationManagerLib
 {
     public class EntityAnimationFrame
     {
-        private readonly Dictionary<ElementId, AnimationElement> mElements = new();
-        private readonly Dictionary<ElementId, EnumAnimationBlendMode> mBlendModes = new();
+        private readonly Dictionary<ElementId, (AnimationElement element, EnumAnimationBlendMode blendMode)> mElements = new();
+        private readonly EnumAnimationBlendMode mDefaultBlendMode = EnumAnimationBlendMode.Average;
         private readonly float mDefaultElementWeight = 1;
 
         public EntityAnimationFrame() { }
 
-        public EntityAnimationFrame(Dictionary<string, AnimationKeyFrameElement> elements, AnimationMetaData metaData, float weight = 1, float elementWeightMultiplier = 1, float defaultElementWeight = 1)
+        public EntityAnimationFrame(Dictionary<string, AnimationKeyFrameElement> elements, AnimationMetaData metaData, CategoryId category)
         {
-            mDefaultElementWeight = defaultElementWeight;
-
+            mDefaultElementWeight = category.Weight ?? 1;
+            mDefaultBlendMode = category.Blending;
             foreach ((string element, AnimationKeyFrameElement keyFrameElement) in elements)
             {
                 EnumAnimationBlendMode? blendMode = metaData.ElementBlendMode.ContainsKey(element) ? metaData.ElementBlendMode[element] : null;
-                float elementWeight = metaData.ElementWeight.ContainsKey(element) ? metaData.ElementWeight[element] * elementWeightMultiplier : weight;
-                ForEachElementType((elementType, value) => ConstructElement(elementType, element, value, elementWeight, blendMode), keyFrameElement);
+                float elementWeight = metaData.ElementWeight.ContainsKey(element) ? metaData.ElementWeight[element] * mDefaultElementWeight : mDefaultElementWeight;
+                ForEachElementType((elementType, value) => ConstructElement(elementType, element, value, elementWeight, GetBlendMode(mDefaultBlendMode, blendMode.Value)), keyFrameElement);
             }
         }
 
-        private void ConstructElement(ElementType elementType, string name, double? value, float weight, EnumAnimationBlendMode? blendMode)
+        public void BlendInto(EntityAnimationFrame frame)
+        {
+            foreach ((var id, (var element, var blendMode)) in mElements)
+            {
+                if (frame.mElements.ContainsKey(id))
+                {
+                    frame.mElements[id] = (CombineElements(element, frame.mElements[id].element, blendMode), mDefaultBlendMode);
+                }
+                else
+                {
+                    frame.mElements[id] = (CombineElements(element, new(id), blendMode), mDefaultBlendMode);
+                }
+            }
+        }
+        public void LerpInto(EntityAnimationFrame frame, float progress)
+        {
+            AnimationElement defaultElement = new();
+            foreach ((var id, (var element, var blendMode)) in mElements)
+            {
+                if (frame.mElements.ContainsKey(id))
+                {
+                    frame.mElements[id] = (AnimationElement.Lerp(element, frame.mElements[id].element, progress), blendMode);
+                }
+                else
+                {
+                    frame.mElements.Add(id, (AnimationElement.Lerp(element, defaultElement, progress), blendMode));
+                }
+            }
+
+            foreach ((var id, (var element, var blendMode)) in frame.mElements)
+            {
+                if (!mElements.ContainsKey(id))
+                {
+                    frame.mElements[id] = (AnimationElement.Lerp(defaultElement, element, progress), blendMode);
+                }
+            }
+        }
+        public void Apply(ElementPose pose, float poseWeight, uint nameHash)
+        {
+            foreach ((var id, (var element, var blendMode)) in mElements)
+            {
+                if (id.ElementNameHash != nameHash) continue;
+                switch (blendMode)
+                {
+                    case EnumAnimationBlendMode.Add:
+                        element.Add(pose);
+                        break;
+                    case EnumAnimationBlendMode.Average:
+                        element.Average(pose, poseWeight);
+                        break;
+                    case EnumAnimationBlendMode.AddAverage:
+                        element.Add(pose);
+                        break;
+                }
+            }
+        }
+
+        private void ConstructElement(ElementType elementType, string name, double? value, float weight, EnumAnimationBlendMode blendMode)
         {
             if (value == null) return;
             ElementId id = new(name, elementType);
             AnimationElement element = new(id, new((float)value, weight));
-            mElements.Add(id, element);
-            if (blendMode != null) mBlendModes.Add(id, blendMode.Value);
+            mElements.Add(id, (element, blendMode));
         }
-
-        public void BlendInto(EntityAnimationFrame frame, EnumAnimationBlendMode blendMode)
+        private EnumAnimationBlendMode GetBlendMode(EnumAnimationBlendMode categoryMode, EnumAnimationBlendMode? elementMode)
         {
-            switch (blendMode)
-            {
-                case EnumAnimationBlendMode.Add:
-                    AddTo(frame, mDefaultElementWeight);
-                    break;
-                case EnumAnimationBlendMode.Average:
-                    AverageTo(frame);
-                    break;
-                case EnumAnimationBlendMode.AddAverage:
-                    AddAverageTo(frame, mDefaultElementWeight);
-                    break;
-            }
-        }
+            if (elementMode == null) return categoryMode;
 
-        public void LerpInto(EntityAnimationFrame frame, float progress)
+            return categoryMode switch
+            {
+                EnumAnimationBlendMode.Add => elementMode switch
+                {
+                    EnumAnimationBlendMode.Add => EnumAnimationBlendMode.Add,
+                    EnumAnimationBlendMode.Average => EnumAnimationBlendMode.Add,
+                    EnumAnimationBlendMode.AddAverage => EnumAnimationBlendMode.Add
+                },
+                EnumAnimationBlendMode.Average => elementMode switch
+                {
+                    EnumAnimationBlendMode.Add => EnumAnimationBlendMode.Add,
+                    EnumAnimationBlendMode.Average => EnumAnimationBlendMode.Average,
+                    EnumAnimationBlendMode.AddAverage => EnumAnimationBlendMode.AddAverage
+                },
+                EnumAnimationBlendMode.AddAverage => elementMode switch
+                {
+                    EnumAnimationBlendMode.Add => EnumAnimationBlendMode.Add,
+                    EnumAnimationBlendMode.Average => EnumAnimationBlendMode.Average,
+                    EnumAnimationBlendMode.AddAverage => EnumAnimationBlendMode.AddAverage
+                },
+            };
+        }
+        private AnimationElement CombineElements(AnimationElement from, AnimationElement to, EnumAnimationBlendMode blendMode)
         {
-            AnimationElement defaultElement = new();
-            foreach ((var id, var element) in mElements)
+            return blendMode switch
             {
-                if (frame.mElements.ContainsKey(id))
-                {
-                    frame.mElements[id] = AnimationElement.Lerp(element, frame.mElements[id], progress);
-                }
-                else
-                {
-                    frame.mElements.Add(id, AnimationElement.Lerp(element, defaultElement, progress));
-                }
-            }
-
-            foreach ((var id, var element) in frame.mElements)
-            {
-                if (!mElements.ContainsKey(id))
-                {
-                    frame.mElements[id] = AnimationElement.Lerp(defaultElement, element, progress);
-                }
-            }
+                EnumAnimationBlendMode.Add => AnimationElement.Sum(to, from.Value != null ? from.Value.Value.Value : null, mDefaultElementWeight),
+                EnumAnimationBlendMode.Average => AnimationElement.Average(from, to),
+                EnumAnimationBlendMode.AddAverage => AnimationElement.Sum(from, to)
+            };
         }
 
-        private void AddTo(EntityAnimationFrame frame, float defaultWeight = 1)
-        {
-            foreach ((var id, var element) in mElements)
-            {
-                if (frame.mElements.ContainsKey(id))
-                {
-                    frame.mElements[id] = AnimationElement.Sum(frame.mElements[id], element.Value != null ? element.Value.Value.Value : null, defaultWeight);
-                }
-                else
-                {
-                    AnimationElement newElement = new()
-                    {
-                        Value = element.Value == null ? null : new WeightedValue(element.Value.Value.Value, defaultWeight),
-                        Id = element.Id
-                    };
-                    frame.mElements.Add(id, newElement);
-                }
-            }
-        }
-
-        private void AverageTo(EntityAnimationFrame frame)
-        {
-            foreach ((var id, var element) in mElements)
-            {
-                if (frame.mElements.ContainsKey(id))
-                {
-                    if (mBlendModes.ContainsKey(id))
-                    {
-                        switch (mBlendModes[id])
-                        {
-                            case EnumAnimationBlendMode.Add:
-                                frame.mElements[id] = AnimationElement.Sum(frame.mElements[id], mElements[id]);
-                                break;
-                            case EnumAnimationBlendMode.Average:
-                                frame.mElements[id] = AnimationElement.Average(frame.mElements[id], mElements[id]);
-                                break;
-                            case EnumAnimationBlendMode.AddAverage:
-                                frame.mElements[id] = AnimationElement.Sum(frame.mElements[id], mElements[id]);
-                                break;
-                        }
-                    }
-                    else
-                    {
-                        frame.mElements[id] = AnimationElement.Average(frame.mElements[id], mElements[id]);
-                    }
-                }
-                else
-                {
-                    frame.mElements.Add(id, element);
-                }
-            }
-        }
-
-        private void AddAverageTo(EntityAnimationFrame frame, float defaultWeight = 1)
-        {
-            foreach ((var id, var element) in mElements)
-            {
-                if (frame.mElements.ContainsKey(id))
-                {
-                    if (mBlendModes.ContainsKey(id))
-                    {
-                        switch (mBlendModes[id])
-                        {
-                            case EnumAnimationBlendMode.Add:
-                                frame.mElements[id] = AnimationElement.Sum(frame.mElements[id], element.Value != null ? element.Value.Value.Value : null, defaultWeight);
-                                break;
-                            case EnumAnimationBlendMode.Average:
-                                frame.mElements[id] = AnimationElement.Average(frame.mElements[id], mElements[id]);
-                                break;
-                            case EnumAnimationBlendMode.AddAverage:
-                                frame.mElements[id] = AnimationElement.Sum(frame.mElements[id], mElements[id]);
-                                break;
-                        }
-                    }
-                    else
-                    {
-                        frame.mElements[id] = AnimationElement.Sum(frame.mElements[id], mElements[id]);
-                    }
-                }
-                else
-                {
-                    frame.mElements.Add(id, element);
-                }
-            }
-        }
-
-        private void ForEachElementType(Action<ElementType> action)
+        static public void ForEachElementType(Action<ElementType> action)
         {
             action(ElementType.translateX);
             action(ElementType.translateY);
@@ -168,7 +136,7 @@ namespace AnimationManagerLib
             action(ElementType.degY);
             action(ElementType.degZ);
         }
-        private void ForEachElementType(Action<ElementType, double?> action, AnimationKeyFrameElement keyFrameElement)
+        static public void ForEachElementType(Action<ElementType, double?> action, AnimationKeyFrameElement keyFrameElement)
         {
             action(ElementType.translateX, keyFrameElement.OffsetX);
             action(ElementType.translateY, keyFrameElement.OffsetY);
@@ -177,7 +145,7 @@ namespace AnimationManagerLib
             action(ElementType.degY, keyFrameElement.RotationY);
             action(ElementType.degZ, keyFrameElement.RotationZ);
         }
-        private void ForEachElementType(Action<ElementType, float?> action, ElementPose pose)
+        static public void ForEachElementType(Action<ElementType, float?> action, ElementPose pose)
         {
             action(ElementType.translateX, pose.translateX);
             action(ElementType.translateY, pose.translateY);
