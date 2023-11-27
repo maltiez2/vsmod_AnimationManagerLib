@@ -1,4 +1,6 @@
-﻿using System.Diagnostics;
+﻿using AnimationManagerLib.API;
+using System;
+using System.Diagnostics;
 using Vintagestory.API.Common;
 
 namespace AnimationManagerLib
@@ -13,6 +15,12 @@ namespace AnimationManagerLib
     {
         public uint ElementNameHash { get; set; }
         public ElementType ElementType { get; set; }
+
+        public ElementId(string name, ElementType elementType)
+        {
+            ElementNameHash = Utils.ToCrc32(name);
+            ElementType = elementType;
+        }
     }
 
     public struct AnimationElement
@@ -98,6 +106,33 @@ namespace AnimationManagerLib
             };
         }
 
+        static public AnimationElement Sum(AnimationElement element, float? value, float defaultWeight = 1)
+        {
+            if (element.Value == null && value == null)
+            {
+                return new()
+                {
+                    Value = null,
+                    Id = element.Id
+                };
+            }
+
+            if (element.Value == null && value != null)
+            {
+                return new()
+                {
+                    Value = new(value.Value, defaultWeight),
+                    Id = element.Id
+                };
+            }
+
+            return new()
+            {
+                Value = new(element.Value.Value.Value + value ?? 0, element.Value.Value.Weight),
+                Id = element.Id
+            };
+        }
+
         static public AnimationElement Average(AnimationElement first, AnimationElement second)
         {
             Debug.Assert(first.Id.ElementNameHash == second.Id.ElementNameHash && second.Id.ElementType == first.Id.ElementType);
@@ -125,6 +160,12 @@ namespace AnimationManagerLib
     {
         public float Value { get; set; }
         public float Weight { get; set; }
+
+        public WeightedValue(float value, float weight)
+        {
+            Value = value;
+            Weight = weight;
+        }
 
         static public WeightedValue? Sum(WeightedValue? first, WeightedValue? second)
         {
