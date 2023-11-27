@@ -1,5 +1,4 @@
 ﻿using AnimationManagerLib.API;
-using System;
 using System.Diagnostics;
 using Vintagestory.API.Common;
 
@@ -21,7 +20,6 @@ namespace AnimationManagerLib
             ElementNameHash = Utils.ToCrc32(name);
             ElementType = elementType;
         }
-
         public ElementId(uint nameHash, ElementType elementType)
         {
             ElementNameHash = nameHash;
@@ -35,7 +33,6 @@ namespace AnimationManagerLib
         public ElementId Id { get; set; }
 
         public AnimationElement(ElementId id) => Id = id;
-
         public AnimationElement(ElementId id, WeightedValue value)
         {
             Id = id;
@@ -68,7 +65,6 @@ namespace AnimationManagerLib
                     break;
             }
         }
-
         public void Average(ElementPose pose, float poseWeight = 1)
         {
             if (Value == null) return;
@@ -95,7 +91,6 @@ namespace AnimationManagerLib
                     break;
             }
         }
-
         private float Average(float value, float weight)
         {
             return (Value.Value.Value * Value.Value.Weight + value * weight) / (Value.Value.Weight + weight);
@@ -111,7 +106,6 @@ namespace AnimationManagerLib
                 Id = first.Id
             };
         }
-
         static public AnimationElement Sum(AnimationElement element, float? value, float defaultWeight = 1)
         {
             if (element.Value == null && value == null)
@@ -138,7 +132,6 @@ namespace AnimationManagerLib
                 Id = element.Id
             };
         }
-
         static public AnimationElement Average(AnimationElement first, AnimationElement second)
         {
             Debug.Assert(first.Id.ElementNameHash == second.Id.ElementNameHash && second.Id.ElementType == first.Id.ElementType);
@@ -149,7 +142,6 @@ namespace AnimationManagerLib
                 Id = first.Id
             };
         }
-
         static public AnimationElement Lerp(AnimationElement from, AnimationElement to, float progress, bool weighted = true)
         {
             Debug.Assert(from.Id.ElementNameHash == to.Id.ElementNameHash && from.Id.ElementType == to.Id.ElementType);
@@ -184,7 +176,6 @@ namespace AnimationManagerLib
                 Weight = first.Value.Weight + second.Value.Weight
             };
         }
-
         static public WeightedValue? Average(WeightedValue? first, WeightedValue? second)
         {
             if (first == null) return second;
@@ -196,7 +187,6 @@ namespace AnimationManagerLib
                 Weight = first.Value.Weight + second.Value.Weight
             };
         }
-
         static public WeightedValue? Lerp(WeightedValue? from, WeightedValue? to, float progress, bool weighted = true)
         {
             if (from == null) return new()
