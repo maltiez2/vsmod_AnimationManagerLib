@@ -2,6 +2,7 @@
 using AnimationManagerLib.API;
 using System.Collections.Generic;
 using System;
+using Newtonsoft.Json.Linq;
 
 namespace AnimationManagerLib
 {
@@ -33,7 +34,14 @@ namespace AnimationManagerLib
             {
                 EnumAnimationBlendMode? blendMode = metaData.ElementBlendMode.ContainsKey(element) ? metaData.ElementBlendMode[element] : null;
                 float elementWeight = metaData.ElementWeight.ContainsKey(element) ? metaData.ElementWeight[element] * mDefaultElementWeight : mDefaultElementWeight;
-                ForEachElementType((elementType, value) => AddElement(elementType, element, value, elementWeight, GetBlendMode(mDefaultBlendMode, blendMode.Value)), keyFrameElement);
+
+
+                AddElement(ElementType.translateX, element, keyFrameElement.OffsetX / 16, elementWeight, GetBlendMode(mDefaultBlendMode, blendMode));
+                AddElement(ElementType.translateY, element, keyFrameElement.OffsetY / 16, elementWeight, GetBlendMode(mDefaultBlendMode, blendMode));
+                AddElement(ElementType.translateZ, element, keyFrameElement.OffsetZ / 16, elementWeight, GetBlendMode(mDefaultBlendMode, blendMode));
+                AddElement(ElementType.degX, element, keyFrameElement.RotationX, elementWeight, GetBlendMode(mDefaultBlendMode, blendMode));
+                AddElement(ElementType.degY, element, keyFrameElement.RotationY, elementWeight, GetBlendMode(mDefaultBlendMode, blendMode));
+                AddElement(ElementType.degZ, element, keyFrameElement.RotationZ, elementWeight, GetBlendMode(mDefaultBlendMode, blendMode));
             }
         }
 
@@ -53,7 +61,6 @@ namespace AnimationManagerLib
         }
         public virtual void LerpInto(AnimationFrame frame, float progress)
         {
-            AnimationElement defaultElement = new();
             foreach ((var id, (var element, var blendMode)) in Elements)
             {
                 if (frame.Elements.ContainsKey(id))
@@ -62,7 +69,7 @@ namespace AnimationManagerLib
                 }
                 else
                 {
-                    frame.Elements.Add(id, (AnimationElement.Lerp(element, defaultElement, progress, blendMode != EnumAnimationBlendMode.Add), blendMode));
+                    frame.Elements.Add(id, (AnimationElement.Lerp(element, new(id), progress, blendMode != EnumAnimationBlendMode.Add), blendMode));
                 }
             }
 
@@ -70,7 +77,7 @@ namespace AnimationManagerLib
             {
                 if (!Elements.ContainsKey(id))
                 {
-                    frame.Elements[id] = (AnimationElement.Lerp(defaultElement, element, progress, blendMode != EnumAnimationBlendMode.Add), blendMode);
+                    frame.Elements[id] = (AnimationElement.Lerp(new(id), element, progress, blendMode != EnumAnimationBlendMode.Add), blendMode);
                 }
             }
         }
@@ -117,6 +124,9 @@ namespace AnimationManagerLib
         }
         static protected EnumAnimationBlendMode GetBlendMode(EnumAnimationBlendMode categoryMode, EnumAnimationBlendMode? elementMode)
         {
+            //return EnumAnimationBlendMode.Average;
+
+
             if (elementMode == null) return categoryMode;
 
             return categoryMode switch

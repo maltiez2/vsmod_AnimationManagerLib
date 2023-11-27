@@ -7,7 +7,7 @@
       "code": "testtorso",
       "animation": "testtorso",
       "animationSpeed": 1.0,
-      "blendMode": "Add",
+      "blendMode": "AddAverage",
       "elementWeight": {"UpperTorso": 32, "LowerTorso": 32},
       "elementBlendMode": {
         "UpperTorso": "AddAverage",

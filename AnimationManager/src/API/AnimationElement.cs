@@ -197,8 +197,8 @@ namespace AnimationManagerLib
 
             if (to == null) return new()
             {
-                Value = from.Value.Value * (1 - (weighted ? 1 : progress)),
-                Weight = from.Value.Weight * (1 - (weighted ? progress : 1))
+                Value = from.Value.Value * (1 - (weighted ? 0 : progress)),
+                Weight = from.Value.Weight * (1 - (weighted ? progress : 0))
             };
 
             return new()

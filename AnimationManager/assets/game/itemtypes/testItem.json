@@ -43,8 +43,8 @@
             "animation": "scythe",
             "category": {
               "code": "hands",
-              "blending": "AverageOnCompose",
-              "weight": 0.03125
+              "blending": "Average",
+              "weight": 16
             },
             "duration_ms": 2000,
             "dynamic": "SinQuadratic",
@@ -55,8 +55,8 @@
             "animation": "scythe",
             "category": {
               "code": "hands",
-              "blending": "AverageOnCompose",
-              "weight": 0.03125
+              "blending": "Average",
+              "weight": 16
             },
             "duration_ms": 2000,
             "dynamic": "CosShifted",
@@ -68,8 +68,8 @@
             "animation": "scythe",
             "category": {
               "code": "hands",
-              "blending": "AverageOnCompose",
-              "weight": 0.03125
+              "blending": "Average",
+              "weight": 16
             },
             "duration_ms": 2000,
             "dynamic": "Quadratic",
