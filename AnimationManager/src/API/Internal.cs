@@ -90,7 +90,9 @@ namespace AnimationManagerLib.API
         Sqrt,
         Sin,
         SinQuadratic,
-        CosShifted
+        CosShifted,
+        SqrtSqrt,
+        Bounce
     }
 
     static public class ProgressModifiers
@@ -106,6 +108,8 @@ namespace AnimationManagerLib.API
             { ProgressModifierType.Sin,          (float progress) => GameMath.Sin(progress / 2 * GameMath.PI) },
             { ProgressModifierType.SinQuadratic, (float progress) => GameMath.Sin(progress * progress / 2 * GameMath.PI) },
             { ProgressModifierType.CosShifted,   (float progress) => 0.5f - GameMath.Cos(progress * GameMath.PI) / 2 },
+            { ProgressModifierType.SqrtSqrt,     (float progress) => GameMath.Sqrt(GameMath.Sqrt(progress)) },
+            { ProgressModifierType.Bounce,       (float progress) => 0.5f - GameMath.Cos(progress * GameMath.PI) / 2 + MathF.Pow(GameMath.Sin(progress * GameMath.PI), 2) * 0.35f }
         };
 
         public static ProgressModifier Get(ProgressModifierType id) => Modifiers[id];
