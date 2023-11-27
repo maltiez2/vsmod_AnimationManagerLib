@@ -1,6 +1,7 @@
 ﻿using System;
 using Vintagestory.API.Common;
 using AnimationManagerLib.API;
+using Vintagestory.API.MathTools;
 
 namespace AnimationManagerLib
 {
@@ -36,33 +37,76 @@ namespace AnimationManagerLib
             mProgressModifier = ProgressModifiers.Get(parameters.Modifier);
             mStopped = false;
             mCurrentTime = new TimeSpan(0);
+            Console.WriteLine("IAnimator<TAnimationResult>.Run, progress: {0} -> {1}", mPreviousProgress, mCurrentProgress);
             mPreviousProgress = mCurrentProgress;
         }
 
-        TAnimationResult IAnimator<TAnimationResult>.Calculate(TimeSpan timeElapsed, out IAnimator<TAnimationResult>.Status status)
+        TAnimationResult IAnimator<TAnimationResult>.Calculate(TimeSpan timeElapsed, out IAnimator<TAnimationResult>.Status status, ref float weight)
         {
             mCurrentTime += timeElapsed;
 
+            float duration = (float)mCurrentParameters.Duration.TotalSeconds;
+
+            switch (mCurrentParameters.Action)
+            {
+                case AnimationPlayerAction.EaseOut:
+                    duration = duration * mPreviousProgress;
+                    break;
+                case AnimationPlayerAction.Rewind:
+                    duration = duration * mPreviousProgress;
+                    break;
+                default:
+                    break;
+            }
+
             status = mStopped ? IAnimator<TAnimationResult>.Status.Stopped : IAnimator<TAnimationResult>.Status.Running;
+            if (mStopped) return mLastFrame;
+
+            mCurrentProgress = GameMath.Clamp((float)mCurrentTime.TotalSeconds / duration, 0, 1);
+            if (mCurrentProgress >= 1) mStopped = true;
+            //Console.WriteLine("Action: {1}, Progress: {0}, Modified: {2}, Previous: {3}", mCurrentProgress, mCurrentParameters.Action, mProgressModifier(mCurrentProgress), mPreviousProgress);
             
-            float progress = (float)mCurrentTime.TotalSeconds / (float)mCurrentParameters.Duration.TotalSeconds * mPreviousProgress + (1 - mPreviousProgress);
-            Console.WriteLine("Progress: {0} ({4}), Status: {1}, Action: {2}, Duration: {3}", progress, mStopped ? "Stopped" : "Running", mCurrentParameters.Action, mCurrentParameters.Duration, mProgressModifier(progress));
-            if (progress >= 1) mStopped = true;
-            mCurrentProgress = mProgressModifier(progress);
-            
+
+            switch (mCurrentParameters.Action)
+            {
+                case AnimationPlayerAction.EaseOut:
+                    mCurrentProgress = 1 - mProgressModifier(1 - mCurrentProgress);
+                    break;
+                case AnimationPlayerAction.Rewind:
+                    mCurrentProgress = 1 - mProgressModifier(1 - mCurrentProgress);
+                    break;
+                default:
+                    mCurrentProgress = mProgressModifier(mCurrentProgress);
+                    break;
+            }
+
+            switch (mCurrentParameters.Action)
+            {
+                case AnimationPlayerAction.EaseOut:
+                    if (mStopped) status = IAnimator<TAnimationResult>.Status.Finished;
+                    break;
+                case AnimationPlayerAction.Clear:
+                    if (mStopped) status = IAnimator<TAnimationResult>.Status.Finished;
+                    break;
+                default:
+                    break;
+            }
+
             if (mStopped) return mLastFrame;
 
             switch (mCurrentParameters.Action)
             {
                 case AnimationPlayerAction.Set:
-                    mLastFrame = mCurrentAnimation.Play(1.0f, mCurrentParameters.StartFrame, mCurrentParameters.EndFrame);
+                    mLastFrame = mCurrentAnimation.Play(1, mCurrentParameters.StartFrame, mCurrentParameters.EndFrame);
                     mStopped = true;
                     break;
                 case AnimationPlayerAction.EaseIn:
-                    mLastFrame = mCurrentAnimation.Blend(1f - mCurrentProgress, mCurrentParameters.StartFrame, mStartFrame);
+                    //weight *= mCurrentProgress;
+                    mLastFrame = mCurrentAnimation.Blend(1 - mCurrentProgress, mCurrentParameters.StartFrame, mStartFrame);
                     break;
                 case AnimationPlayerAction.EaseOut:
-                    mLastFrame = mCurrentAnimation.EaseOut(mCurrentProgress, mDefaultFrame);
+                    //weight *= (1 - mCurrentProgress);
+                    mLastFrame = mCurrentAnimation.Blend(mCurrentProgress, mStartFrame, mDefaultFrame);
                     break;
                 case AnimationPlayerAction.Start:
                     mLastFrame = mCurrentAnimation.Play(mCurrentProgress, mCurrentParameters.StartFrame, mCurrentParameters.EndFrame);
@@ -71,11 +115,10 @@ namespace AnimationManagerLib
                     mStopped = true;
                     break;
                 case AnimationPlayerAction.Rewind:
-                    mLastFrame = mCurrentAnimation.Play(1 - mCurrentProgress, mCurrentParameters.StartFrame, mCurrentParameters.EndFrame);
+                    mLastFrame = mCurrentAnimation.Play(1 - mCurrentProgress * mPreviousProgress, mCurrentParameters.StartFrame, mCurrentParameters.EndFrame);
                     break;
                 case AnimationPlayerAction.Clear:
                     mLastFrame = (TAnimationResult)mDefaultFrame.Clone();
-                    status = IAnimator<TAnimationResult>.Status.Finished;
                     mStopped = true;
                     break;
                 default:
@@ -106,6 +149,45 @@ namespace AnimationManagerLib
         {
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
+        }
+
+        float IAnimator<TAnimationResult>.CalculateProgress(TimeSpan timeElapsed) => CalculateProgress(timeElapsed) ?? 1;
+
+        private float? CalculateProgress(TimeSpan timeElapsed)
+        {
+            TimeSpan totalTime = mCurrentTime + timeElapsed;
+            float duration = (float)mCurrentParameters.Duration.TotalSeconds;
+
+            switch (mCurrentParameters.Action)
+            {
+                case AnimationPlayerAction.EaseOut:
+                    duration = duration * mPreviousProgress;
+                    break;
+                case AnimationPlayerAction.Rewind:
+                    duration = duration * mPreviousProgress;
+                    break;
+                default:
+                    break;
+            }
+
+            float progress = GameMath.Clamp((float)totalTime.TotalSeconds / duration, 0, 1);
+            if (progress >= 1) return null;
+
+
+            switch (mCurrentParameters.Action)
+            {
+                case AnimationPlayerAction.EaseOut:
+                    progress = 1 - mProgressModifier(1 - progress);
+                    break;
+                case AnimationPlayerAction.Rewind:
+                    progress = 1 - mProgressModifier(1 - progress);
+                    break;
+                default:
+                    progress = mProgressModifier(progress);
+                    break;
+            }
+
+            return progress;
         }
     }
 }

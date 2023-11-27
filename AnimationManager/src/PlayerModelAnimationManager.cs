@@ -147,6 +147,8 @@ namespace AnimationManagerLib
         {
             if (!mRequests.ContainsKey(runId)) return;
 
+            Console.WriteLine("*************** PlayerModelAnimationManager Stop: {0}", runId);
+
             if (mSynchronizedPackets.Contains(runId))
             {
                 AnimationStopPacket packet = new()
@@ -317,7 +319,7 @@ namespace AnimationManagerLib
 
             foreach ((string element, var transform) in elements)
             {
-                EnumAnimationBlendMode blendMode = metaData.ElementBlendMode.ContainsKey(element) ? metaData.ElementBlendMode[element] : EnumAnimationBlendMode.Average;
+                EnumAnimationBlendMode? blendMode = metaData.ElementBlendMode.ContainsKey(element) ? metaData.ElementBlendMode[element] : null;
                 float weight = metaData.ElementWeight.ContainsKey(element) ? metaData.ElementWeight[element] : 1;
 
                 poses.Add(element, new PlayerModelAnimationPose(transform, blendMode, weight));

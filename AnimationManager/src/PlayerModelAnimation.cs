@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using AnimationManagerLib.API;
 using Vintagestory.API.MathTools;
@@ -10,37 +11,22 @@ namespace AnimationManagerLib
     {
         private readonly TAnimationResult[] mKeyFrames;
         private readonly ushort[] mFrames;
-        private TAnimationResult mLastFrame;
-        private TAnimationResult mEaseOutFrame;
-        private bool mEaseOutFrameValid;
-        private float mLastProgress;
 
         public PlayerModelAnimation(TAnimationResult[] keyFrames, ushort[] keyFramesPosition, TAnimationResult startingFrame)
         {
             mKeyFrames = keyFrames;
             mFrames = keyFramesPosition;
-            mLastFrame = (TAnimationResult)startingFrame.Clone();
         }
 
         TAnimationResult IAnimation<TAnimationResult>.Blend(float progress, float? targetFrame, TAnimationResult endFrame)
         {
-            mLastProgress = progress;
             TAnimationResult targetFrameValue = CalcFrame(progress, targetFrame ?? 0, targetFrame ?? 0);
-            mLastFrame = (TAnimationResult)targetFrameValue.Lerp(endFrame, progress);
-            mEaseOutFrameValid = false;
-            return mLastFrame;
+            return (TAnimationResult)targetFrameValue.Lerp(endFrame, progress);
         }
 
-        TAnimationResult IAnimation<TAnimationResult>.EaseOut(float progress, TAnimationResult endFrame)
+        TAnimationResult IAnimation<TAnimationResult>.Blend(float progress, TAnimationResult startFrame, TAnimationResult endFrame)
         {
-            if (!mEaseOutFrameValid)
-            {
-                mEaseOutFrame = (TAnimationResult)mLastFrame.Clone();
-                mEaseOutFrameValid = true;
-            }
-            float currentProgress = (1 - progress) * mLastProgress;
-            mLastFrame = (TAnimationResult)mEaseOutFrame.Lerp(endFrame, 1 - currentProgress);
-            return mLastFrame;
+            return (TAnimationResult)startFrame.Lerp(endFrame, progress);
         }
 
         TAnimationResult IAnimation<TAnimationResult>.Play(float progress, float? startFrame, float? endFrame)
@@ -48,11 +34,7 @@ namespace AnimationManagerLib
             float startFrameIndex = startFrame == null ? 0 : (float)startFrame;
             float endFrameIndex = endFrame == null ? mFrames[mFrames.Length - 1] : (float)endFrame;
 
-            mLastFrame = CalcFrame(progress, startFrameIndex, endFrameIndex);
-            mEaseOutFrameValid = false;
-            mLastProgress = progress;
-
-            return mLastFrame;
+            return CalcFrame(progress, startFrameIndex, endFrameIndex);
         }
 
         private TAnimationResult CalcFrame(float progress, float startFrame, float endFrame)
@@ -96,8 +78,6 @@ namespace AnimationManagerLib
             {
                 if (disposing)
                 {
-                    (mLastFrame as IDisposable)?.Dispose();
-                    (mEaseOutFrame as IDisposable)?.Dispose();
                     foreach (var frame in mKeyFrames)
                     {
                         (frame as IDisposable)?.Dispose();

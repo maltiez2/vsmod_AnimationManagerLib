@@ -82,7 +82,7 @@ namespace AnimationManagerLib
             {
                 if (mPoses.ContainsKey(key))
                 {
-                    (pose as IAnimationResult).Average(mPoses[key], weight, thisWeight / pose.ElementWeight);
+                    (pose as IAnimationResult).Average(mPoses[key], thisWeight / pose.ElementWeight, weight);
                 }
             }
 
@@ -91,7 +91,7 @@ namespace AnimationManagerLib
                 if (!clone.mPoses.ContainsKey(key))
                 {
                     clone.mPoses.Add(key, new PlayerModelAnimationPose());
-                    (clone.mPoses[key] as IAnimationResult).Average(pose, weight, thisWeight / pose.ElementWeight);
+                    (clone.mPoses[key] as IAnimationResult).Average(pose, thisWeight / pose.ElementWeight, weight);
                 }
             }
 
@@ -138,7 +138,7 @@ namespace AnimationManagerLib
 
     public class PlayerModelAnimationPose : IAnimationResult
     {
-        public EnumAnimationBlendMode BlendMode { get; set; } = EnumAnimationBlendMode.AddAverage;
+        public EnumAnimationBlendMode? BlendMode { get; set; } = EnumAnimationBlendMode.AddAverage;
         public float ElementWeight { get; set; } = 1f;
 
         public float? degX { get; set; } = null;
@@ -158,7 +158,7 @@ namespace AnimationManagerLib
 
         }
 
-        public PlayerModelAnimationPose(AnimationKeyFrameElement pose, EnumAnimationBlendMode blendMode, float weight)
+        public PlayerModelAnimationPose(AnimationKeyFrameElement pose, EnumAnimationBlendMode? blendMode, float weight)
         {
             BlendMode = blendMode;
             ElementWeight = weight;
@@ -185,17 +185,17 @@ namespace AnimationManagerLib
 
         public void ApplyByAverage(ElementPose pose, float poseWeight, float thisWeight)
         {
-            if (translateX != null) pose.translateX += Average((float)translateX / 16, pose.translateX, poseWeight, thisWeight * ElementWeight);
-            if (translateY != null) pose.translateY += Average((float)translateY / 16, pose.translateY, poseWeight, thisWeight * ElementWeight);
-            if (translateZ != null) pose.translateZ += Average((float)translateZ / 16, pose.translateZ, poseWeight, thisWeight * ElementWeight);
-            if (degX != null) pose.degX += Average((float)degX, pose.degX, poseWeight, thisWeight * ElementWeight);
-            if (degY != null) pose.degY += Average((float)degY, pose.degY, poseWeight, thisWeight * ElementWeight);
-            if (degZ != null) pose.degZ += Average((float)degZ, pose.degZ, poseWeight, thisWeight * ElementWeight);
+            if (translateX != null) pose.translateX = Average((float)translateX / 16, pose.translateX, poseWeight, thisWeight * 1);
+            if (translateY != null) pose.translateY = Average((float)translateY / 16, pose.translateY, poseWeight, thisWeight * 1);
+            if (translateZ != null) pose.translateZ = Average((float)translateZ / 16, pose.translateZ, poseWeight, thisWeight * 1);
+            if (degX != null) pose.degX = Average((float)degX, pose.degX, poseWeight, thisWeight * 1);
+            if (degY != null) pose.degY = Average((float)degY, pose.degY, poseWeight, thisWeight * 1);
+            if (degZ != null) pose.degZ = Average((float)degZ, pose.degZ, poseWeight, thisWeight * 1);
         }
 
         IAnimationResult IAnimationResult.Add(IAnimationResult value)
         {
-            if (!(value is PlayerModelAnimationPose)) throw new ArgumentException(" [PlayerModelAnimationPose] Argument should be an 'PlayerModelAnimationPose'");
+            if (value is not PlayerModelAnimationPose) throw new ArgumentException(" [PlayerModelAnimationPose] Argument should be an 'PlayerModelAnimationPose'");
 
             PlayerModelAnimationPose pose = value as PlayerModelAnimationPose;
 
@@ -216,13 +216,15 @@ namespace AnimationManagerLib
 
         IAnimationResult IAnimationResult.Average(IAnimationResult value, float weight, float thisWeight)
         {
-            if (!(value is PlayerModelAnimationPose)) throw new ArgumentException(" [PlayerModelAnimationPose] Argument should be an 'PlayerModelAnimationPose'");
+            if (value is not PlayerModelAnimationPose) throw new ArgumentException(" [PlayerModelAnimationPose] Argument should be an 'PlayerModelAnimationPose'");
 
             PlayerModelAnimationPose pose = value as PlayerModelAnimationPose;
 
-            float elementWeight = thisWeight * ElementWeight;
+            float elementWeight = thisWeight * 1;
+            AverageToPose(pose, weight, elementWeight);
+            //pose.ElementWeight += ElementWeight;
 
-            switch (BlendMode)
+            /*switch (BlendMode ?? EnumAnimationBlendMode.Average)
             {
                 case EnumAnimationBlendMode.Average:
                     AverageToPose(pose, weight, elementWeight);
@@ -235,7 +237,7 @@ namespace AnimationManagerLib
                     AddToPose(pose);
                     pose.ElementWeight += elementWeight;
                     break;
-            }
+            }*/
 
             return this;
         }
@@ -252,7 +254,7 @@ namespace AnimationManagerLib
 
         IAnimationResult IAnimationResult.Lerp(IAnimationResult value, float progress)
         {
-            if (!(value is PlayerModelAnimationPose)) throw new ArgumentException(" [PlayerModelAnimationPose] Argument should be an 'PlayerModelAnimationPose'");
+            if (value is not PlayerModelAnimationPose) throw new ArgumentException(" [PlayerModelAnimationPose] Argument should be an 'PlayerModelAnimationPose'");
 
             PlayerModelAnimationPose pose = value as PlayerModelAnimationPose;
 
@@ -278,10 +280,10 @@ namespace AnimationManagerLib
             return clone;
         }
 
-        private float? Lerp(float? thisValue, float? givenValue, float progress) => thisValue == null && givenValue == null ? null : Average(thisValue ?? 0, givenValue ?? 0, progress, 1 - progress);
-        private float? Average(float? thisValue, float? givenValue, float weight, float thisWeight = 1) => thisValue == null || givenValue == null ? thisValue ?? givenValue : Average((float)thisValue, (float)givenValue, weight, thisWeight);
-        private float Average(float thisValue, float givenValue, float weight, float thisWeight = 1) => (thisValue * thisWeight + givenValue * weight) / (thisWeight + weight);
-        private float? Add(float? thisValue, float? valueToAdd) => thisValue != null ? thisValue + valueToAdd ?? 0 : valueToAdd;
+        static private float? Lerp(float? thisValue, float? givenValue, float progress) => thisValue == null && givenValue == null ? null : Average(thisValue ?? 0, givenValue ?? 0, progress, 1 - progress);
+        static private float? Average(float? thisValue, float? givenValue, float weight, float thisWeight = 1) => thisValue == null || givenValue == null ? thisValue ?? givenValue : Average((float)thisValue, (float)givenValue, weight, thisWeight);
+        static private float Average(float thisValue, float givenValue, float weight, float thisWeight = 1) => (thisValue * thisWeight + givenValue * weight) / (thisWeight + weight);
+        static private float? Add(float? thisValue, float? valueToAdd) => thisValue != null ? thisValue + valueToAdd ?? 0 : valueToAdd;
 
         IAnimationResult IAnimationResult.Identity()
         {

@@ -159,7 +159,7 @@ namespace AnimationManagerLib.API
     {
         public TAnimationResult Play(float progress, float? startFrame = null, float? endFrame = null);
         public TAnimationResult Blend(float progress, float? targetFrame, TAnimationResult endFrame);
-        public TAnimationResult EaseOut(float progress, TAnimationResult endFrame);
+        public TAnimationResult Blend(float progress, TAnimationResult startFrame, TAnimationResult endFrame);
     }
 
     public interface IAnimator<TAnimationResult> : IDisposable
@@ -174,7 +174,8 @@ namespace AnimationManagerLib.API
         
         public void Init(ICoreAPI api, TAnimationResult defaultFrame);
         public void Run(AnimationRunMetadata parameters, IAnimation<TAnimationResult> animation);
-        public TAnimationResult Calculate(TimeSpan timeElapsed, out Status status);
+        public TAnimationResult Calculate(TimeSpan timeElapsed, out Status status, ref float weight);
+        public float CalculateProgress(TimeSpan timeElapsed);
     }
 
     public class Composition<TAnimationResult>
@@ -252,7 +253,30 @@ namespace AnimationManagerLib.API
             return new()
             {
                 Action = (AnimationPlayerAction)Enum.Parse(typeof(AnimationPlayerAction), definition["action"].AsString("Set")),
-                Category = CategoryIdFromJson(definition["category"]),
+                Category = definition.KeyExists("category") ? CategoryIdFromJson(definition["category"]) : new CategoryId(),
+                Animation = new AnimationId(definition["animation"].AsString()),
+                Duration = TimeSpan.FromMilliseconds(definition["duration_ms"].AsFloat()),
+                Modifier = (ProgressModifierType)Enum.Parse(typeof(ProgressModifierType), definition["dynamic"].AsString("Linear")),
+                StartFrame = startFrame,
+                EndFrame = endFrame
+            };
+        }
+
+        public static AnimationRequest AnimationRequestFromJson(JsonObject definition, bool noCategory)
+        {
+            float? startFrame = definition.KeyExists("startFrame") ? definition["startFrame"].AsFloat() : null;
+            float? endFrame = definition.KeyExists("endFrame") ? definition["endFrame"].AsFloat() : null;
+            if (definition.KeyExists("frame"))
+            {
+                float frame = definition["frame"].AsFloat();
+                startFrame = frame;
+                endFrame = frame;
+            }
+
+            return new()
+            {
+                Action = (AnimationPlayerAction)Enum.Parse(typeof(AnimationPlayerAction), definition["action"].AsString("Set")),
+                Category = !noCategory && definition.KeyExists("category") ? CategoryIdFromJson(definition["category"]) : new CategoryId(),
                 Animation = new AnimationId(definition["animation"].AsString()),
                 Duration = TimeSpan.FromMilliseconds(definition["duration_ms"].AsFloat()),
                 Modifier = (ProgressModifierType)Enum.Parse(typeof(ProgressModifierType), definition["dynamic"].AsString("Linear")),
