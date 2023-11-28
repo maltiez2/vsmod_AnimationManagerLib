@@ -64,8 +64,6 @@ namespace AnimationManagerLib
 
             if (!mComposers.ContainsKey(animationTarget)) return;
 
-            Console.WriteLine("OnFrameHandler, dt: {0}", dt);
-
             mApplier.Clear();
 
             mAnimationFrames.Clear();
@@ -231,8 +229,6 @@ namespace AnimationManagerLib
             (string name, var composition) = Poses[pose];
 
             composition.Apply(pose, 1, Utils.ToCrc32(name));
-
-            Console.WriteLine("OnFrameHandler APPLY pose: {0}", pose.ToString());
 
             Poses.Remove(pose);
 

@@ -315,7 +315,7 @@ namespace AnimationManagerLib.CollectibleBehaviors
                 prog.UniformMatrices4x3(
                     "elementTransforms",
                     GlobalConstants.MaxAnimatedElements,
-                    Animator.Matrices4x3
+                    Animator.TransformationMatrices4x3
                 );
 
                 capi.Render.RenderMesh(currentMeshRef);
