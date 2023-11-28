@@ -1,5 +1,4 @@
 ﻿using AnimationManagerLib.API;
-using Newtonsoft.Json.Linq;
 using System.Diagnostics;
 using Vintagestory.API.Common;
 

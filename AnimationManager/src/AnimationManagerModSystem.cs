@@ -19,6 +19,9 @@ namespace AnimationManagerLib
         private API.IAnimationManager mManager;
         private API.ISynchronizer mSynchronizer;
 
+        public API.IAnimationManager GetAnimationManager() => mManager;
+        public API.ISynchronizer GetSynchronizer() => mSynchronizer;
+
         public override void Start(ICoreAPI api)
         {
             mApi = api;
@@ -88,8 +91,5 @@ namespace AnimationManagerLib
             }
             base.Dispose();
         }
-
-        API.IAnimationManager API.IAnimationManagerProvider.GetAnimationManager() => mManager;
-        API.ISynchronizer API.IAnimationManagerProvider.GetSynchronizer() => mSynchronizer;
     }
 }
