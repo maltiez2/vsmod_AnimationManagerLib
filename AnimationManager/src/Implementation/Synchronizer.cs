@@ -98,10 +98,5 @@ namespace AnimationManagerLib
         {
             mStopHandler(packet);
         }
-
-        void IDisposable.Dispose()
-        {
-            GC.SuppressFinalize(this);
-        }
     }
 }

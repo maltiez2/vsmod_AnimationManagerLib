@@ -4,9 +4,9 @@ using System.Text;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
-namespace AnimationManagerLib.Extra
+namespace AnimationManagerLib.CollectibleBehaviors
 {
-    public class ItemAnimationBehavior : CollectibleBehavior
+    public class PlayerAnimation : CollectibleBehavior
     {
         private API.IAnimationManager mAnimationManager;
         private JsonObject mProperties;
@@ -14,7 +14,7 @@ namespace AnimationManagerLib.Extra
         private const string mHeldTpHitAnimationAttrName = "heldInteraction_guid";
         private bool mClientSide;
 
-        public ItemAnimationBehavior(CollectibleObject collObj) : base(collObj)
+        public PlayerAnimation(CollectibleObject collObj) : base(collObj)
         {
         }
         public override void Initialize(JsonObject properties)
@@ -78,7 +78,7 @@ namespace AnimationManagerLib.Extra
         }
         private void StartAnimation(ItemSlot slot, EntityAgent byEntity)
         {
-            Guid runId = mAnimationManager.Run(byEntity.EntityId, mHeldTpHitAnimation);
+            Guid runId = mAnimationManager.Run(new(byEntity.EntityId), mHeldTpHitAnimation);
             slot.Itemstack.TempAttributes.SetBytes(mHeldTpHitAnimationAttrName, runId.ToByteArray());
         }
     }

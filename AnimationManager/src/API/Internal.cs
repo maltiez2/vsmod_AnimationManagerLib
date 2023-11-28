@@ -11,7 +11,7 @@ namespace AnimationManagerLib.API
     public struct AnimationRunPacket
     {
         public Guid RunId { get; set; }
-        public long EntityId { get; set; }
+        public AnimationTarget AnimationTarget { get; set; }
         public AnimationRequest[] Requests { get; set; }
     }
 
@@ -73,7 +73,7 @@ namespace AnimationManagerLib.API
         AnimationFrame Compose(TimeSpan timeElapsed);
     }
 
-    public interface ISynchronizer : IDisposable
+    public interface ISynchronizer
     {
         public delegate void AnimationRunHandler(AnimationRunPacket request);
         public delegate void AnimationStopHandler(AnimationStopPacket request);

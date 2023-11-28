@@ -1,5 +1,4 @@
 ﻿using System;
-using Vintagestory.API.Common;
 using AnimationManagerLib.API;
 using Vintagestory.API.MathTools;
 using IAnimator = AnimationManagerLib.API.IAnimator;

@@ -1,15 +1,18 @@
 ﻿using ProtoBuf;
 using System;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 
 namespace AnimationManagerLib.API
 {
-    public interface IAnimationManager : IDisposable
+    public interface IAnimationManager
     {
         bool Register(AnimationId id, string animationCode);
-        Guid Run(long entityId, params AnimationRequest[] requests);
-        Guid Run(long entityId, bool synchronize, params AnimationRequest[] requests);
-        Guid Run(long entityId, Guid runId, params AnimationRequest[] requests);
+        bool Register(AnimationId id, string animationCode, Entity entity);
+        bool Register(AnimationId id, string animationCode, Shape shape, AnimationMetaData metaData);
+        Guid Run(AnimationTarget animationTarget, params AnimationRequest[] requests);
+        Guid Run(AnimationTarget animationTarget, bool synchronize, params AnimationRequest[] requests);
+        Guid Run(AnimationTarget animationTarget, Guid runId, params AnimationRequest[] requests);
         void Stop(Guid runId);
     }
 
@@ -28,6 +31,30 @@ namespace AnimationManagerLib.API
         Stop, // Stop animation at last frame and keep it
         Rewind, // Play animation from last frame to TargetFrame
         Clear // Set to empty frame
+    }
+
+    public enum AnimationTargetType
+    {
+        Entity,
+        HeldItemFp
+    }
+
+    [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
+    public struct AnimationTarget
+    {
+        public AnimationTargetType TargetType { get; set; }
+        public long? EntityId { get; set; }
+
+        public AnimationTarget(AnimationTargetType targetType, long? entityId = null)
+        {
+            TargetType = targetType;
+            EntityId = entityId;
+        }
+        public AnimationTarget(long entityId)
+        {
+            TargetType = AnimationTargetType.Entity;
+            EntityId = entityId;
+        }
     }
 
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]

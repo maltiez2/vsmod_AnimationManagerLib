@@ -3,10 +3,11 @@
     "modid": "animationmanagerlib",
     "name": "Animation Manager (Alpha)",
     "authors": [
-        "Maltiez"
+        "Maltiez",
+        "TeacupAngel"
     ],
     "description": "Animation manager library for more procedual entity animation",
-    "version": "0.0.1",
+    "version": "0.0.3",
     "dependencies": {
         "game": "1.18.8"
     }

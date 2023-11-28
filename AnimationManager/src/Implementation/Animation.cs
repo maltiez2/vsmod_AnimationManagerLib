@@ -68,8 +68,6 @@ namespace AnimationManagerLib
 
             if (startFrame == endFrame) return (nextKeyFrame, nextKeyFrame, 1);
 
-            //Console.WriteLine("prevKeyFrame: {3}, nextKeyFrame{4}, prevFrame: {0}, currentFrame: {1}, nextFrame: {2}", prevFrame, currentFrame, nextFrame, prevKeyFrame, nextKeyFrame);
-
             float keyFrameProgress = nextFrame == prevFrame ? 1 : (currentFrame - prevFrame) / (nextFrame - prevFrame);      
 
             return (prevKeyFrame, nextKeyFrame, keyFrameProgress);
