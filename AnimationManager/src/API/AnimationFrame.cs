@@ -142,20 +142,24 @@ namespace AnimationManagerLib
                 {
                     EnumAnimationBlendMode.Add => EnumAnimationBlendMode.Add,
                     EnumAnimationBlendMode.Average => EnumAnimationBlendMode.Add,
-                    EnumAnimationBlendMode.AddAverage => EnumAnimationBlendMode.Add
+                    EnumAnimationBlendMode.AddAverage => EnumAnimationBlendMode.Add,
+                    _ => throw new NotImplementedException()
                 },
                 EnumAnimationBlendMode.Average => elementMode switch
                 {
                     EnumAnimationBlendMode.Add => EnumAnimationBlendMode.Add,
                     EnumAnimationBlendMode.Average => EnumAnimationBlendMode.Average,
-                    EnumAnimationBlendMode.AddAverage => EnumAnimationBlendMode.AddAverage
+                    EnumAnimationBlendMode.AddAverage => EnumAnimationBlendMode.AddAverage,
+                    _ => throw new NotImplementedException()
                 },
                 EnumAnimationBlendMode.AddAverage => elementMode switch
                 {
                     EnumAnimationBlendMode.Add => EnumAnimationBlendMode.Add,
                     EnumAnimationBlendMode.Average => EnumAnimationBlendMode.Average,
-                    EnumAnimationBlendMode.AddAverage => EnumAnimationBlendMode.AddAverage
+                    EnumAnimationBlendMode.AddAverage => EnumAnimationBlendMode.AddAverage,
+                    _ => throw new NotImplementedException()
                 },
+                _ => throw new NotImplementedException(),
             };
         }
         static protected AnimationElement CombineElements(AnimationElement from, AnimationElement to, EnumAnimationBlendMode blendMode, float defaultWeight = 1)
@@ -164,7 +168,8 @@ namespace AnimationManagerLib
             {
                 EnumAnimationBlendMode.Add => AnimationElement.Sum(to, from.Value != null ? from.Value.Value.Value : null, defaultWeight),
                 EnumAnimationBlendMode.Average => AnimationElement.Average(from, to),
-                EnumAnimationBlendMode.AddAverage => AnimationElement.Sum(from, to)
+                EnumAnimationBlendMode.AddAverage => AnimationElement.Sum(from, to),
+                _ => throw new NotImplementedException()
             };
         }
 
