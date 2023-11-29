@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
 namespace AnimationManagerLib.API
@@ -9,7 +8,9 @@ namespace AnimationManagerLib.API
     /// Default option usually is <see cref="Linear"/><br/><br/>
     /// Animations themselves is smoothed by Animator itself, but animation speed is not, that can result in more harsh and robotic animations.<br/>
     /// Animation speed can modified and smoothed by applying <see cref="ProgressModifiers.ProgressModifier"/> to animation progress.<br/>
-    /// In the future automatic smoothing for animation speed will be added.<br/>
+    /// In the future automatic smoothing for animation speed will be added.<br/><br/>
+    /// </summary>
+    /// <remarks>
     /// There are two groups of <see cref="ProgressModifierType"/>: smoothing and not smoothing.<br/>
     /// First group ensures that animation speed at the start and the end of animation is zero.<br/><br/>
     /// It consists of:
@@ -21,6 +22,7 @@ namespace AnimationManagerLib.API
     /// </list>
     /// Also <see cref="Sin"/> has similar property: speed at the end of animation is zero, but not in the start.<br/>
     /// All other modifiers do not smooth animation speed. But they still useful when this smoothing is not required.<br/><br/>
+    /// 
     /// <b>Example of modifiers use cases for attack animations:</b><br/><br/>
     /// For hit animations try using:
     /// <list type="bullet">
@@ -41,7 +43,7 @@ namespace AnimationManagerLib.API
     ///     <item><see cref="SinQuartic"/></item>
     ///     <item><see cref="Bounce"/></item>
     /// </list>
-    /// </summary>
+    /// </remarks>
     public enum ProgressModifierType
     {
         /// <summary>
@@ -105,7 +107,8 @@ namespace AnimationManagerLib.API
         /// </summary>
         CosShifted,
         /// <summary>
-        /// Starts slow, ends slow, has a bump at the end that overshoots animation a bit and returns back.
+        /// Starts slow, ends slow, has a bump at the end that overshoots animation a bit and returns back.<br/>
+        /// Version of <see cref="SinQuadratic"/> but with bounce.
         ///  <seealso href="https://www.wolframalpha.com/input?i=plot+0.5-0.5*Cos+x*pi+%2B+0.35*Sin^2+x*pi+from+0+to+1">Progress curve</seealso>.
         ///  <seealso href="https://www.wolframalpha.com/input?i=plot+derivative+0.5-0.5*Cos+x*pi+%2B+0.35*Sin^2+x*pi+from+0+to+1">Speed curve</seealso>.
         /// </summary>
