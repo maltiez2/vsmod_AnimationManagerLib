@@ -35,13 +35,33 @@ namespace AnimationManagerLib
             mApplier = new(api);
         }
 
-        bool API.IAnimationManager.Register(AnimationId id, string animationCode) => mAnimationData.TryAdd(id, new (animationCode, null, null, null));
-        bool API.IAnimationManager.Register(AnimationId id, string animationCode, Entity entity) => mAnimationData.TryAdd(id, new(animationCode, entity, null, null));
-        bool API.IAnimationManager.Register(AnimationId id, string animationCode, Shape shape, AnimationMetaData metaData) => mAnimationData.TryAdd(id, new(animationCode, null, shape, metaData));
-        Guid API.IAnimationManager.Run(AnimationTarget animationTarget, params AnimationRequest[] requests) => Run(Guid.NewGuid(), animationTarget, true, requests);
-        Guid API.IAnimationManager.Run(AnimationTarget animationTarget, bool synchronize, params AnimationRequest[] requests) => Run(Guid.NewGuid(), animationTarget, synchronize, requests);
-        Guid API.IAnimationManager.Run(AnimationTarget animationTarget, Guid runId, params AnimationRequest[] requests) => Run(runId, animationTarget, false, requests);
-        void API.IAnimationManager.Stop(Guid runId) => Stop(runId);
+        public bool Register(AnimationId id, string animationCode) => mAnimationData.TryAdd(id, new (animationCode, null, null, null));
+        public bool Register(AnimationId id, string animationCode, Entity entity) => mAnimationData.TryAdd(id, new(animationCode, entity, null, null));
+        public bool Register(AnimationId id, string animationCode, Shape shape, AnimationMetaData metaData) => mAnimationData.TryAdd(id, new(animationCode, null, shape, metaData));
+        public Guid Run(AnimationTarget animationTarget, params AnimationRequest[] requests) => Run(Guid.NewGuid(), animationTarget, true, requests);
+        public Guid Run(AnimationTarget animationTarget, bool synchronize, params AnimationRequest[] requests) => Run(Guid.NewGuid(), animationTarget, synchronize, requests);
+        public Guid Run(AnimationTarget animationTarget, Guid runId, params AnimationRequest[] requests) => Run(runId, animationTarget, false, requests);
+        public void Stop(Guid runId)
+        {
+            if (!mRequests.ContainsKey(runId)) return;
+
+            if (mSynchronizedPackets.Contains(runId))
+            {
+                AnimationStopPacket packet = new()
+                {
+                    RunId = runId
+                };
+
+                mSynchronizedPackets.Remove(runId);
+                mSynchronizer.Sync(packet);
+            }
+
+            AnimationTarget animationTarget = mEntitiesByRuns[runId];
+            var composer = mComposers[animationTarget];
+            AnimationRequest? request = mRequests[runId].Last();
+            if (request != null) composer.Stop((AnimationRequest)request);
+            mRequests.Remove(runId);
+        }
 
         public void OnFrameHandler(Entity entity, float dt)
         {
@@ -135,28 +155,6 @@ namespace AnimationManagerLib
             mComposers[mEntitiesByRuns[id]].Run((AnimationRequest)request, () => ComposerCallback(id));
 
             return false;
-        }
-
-        private void Stop(Guid runId)
-        {
-            if (!mRequests.ContainsKey(runId)) return;
-
-            if (mSynchronizedPackets.Contains(runId))
-            {
-                AnimationStopPacket packet = new()
-                {
-                    RunId = runId
-                };
-
-                mSynchronizedPackets.Remove(runId);
-                mSynchronizer.Sync(packet);
-            }
-
-            AnimationTarget animationTarget = mEntitiesByRuns[runId];
-            var composer = mComposers[animationTarget];
-            AnimationRequest? request = mRequests[runId].Last();
-            if (request != null) composer.Stop((AnimationRequest)request);
-            mRequests.Remove(runId);
         }
 
         private IComposer TryAddComposer(Guid id, AnimationTarget animationTargety)

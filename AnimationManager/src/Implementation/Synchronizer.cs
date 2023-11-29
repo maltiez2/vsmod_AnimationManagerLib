@@ -10,7 +10,7 @@ namespace AnimationManagerLib
     {
         private EnumAppSide mSide;
 
-        void ISynchronizer.Init(ICoreAPI api, ISynchronizer.AnimationRunHandler runHandler, ISynchronizer.AnimationStopHandler stopHandler, string channelName)
+        public void Init(ICoreAPI api, ISynchronizer.AnimationRunHandler runHandler, ISynchronizer.AnimationStopHandler stopHandler, string channelName)
         {
             mSide = api.Side;
 
@@ -26,8 +26,7 @@ namespace AnimationManagerLib
                 StartClientSide(api as ICoreClientAPI, channelName);
             }
         }
-
-        void ISynchronizer.Sync(AnimationRunPacket request)
+        public void Sync(AnimationRunPacket request)
         {
             if (mSide == EnumAppSide.Server)
             {
@@ -38,7 +37,7 @@ namespace AnimationManagerLib
                 SendPacket(request);
             }
         }
-        void ISynchronizer.Sync(AnimationStopPacket request)
+        public void Sync(AnimationStopPacket request)
         {
             if (mSide == EnumAppSide.Server)
             {

@@ -17,7 +17,7 @@ namespace AnimationManagerLib
             mFrames = keyFramesPosition;
         }
 
-        AnimationFrame IAnimation.Blend(float progress, float? targetFrame, AnimationFrame endFrame)
+        public AnimationFrame Blend(float progress, float? targetFrame, AnimationFrame endFrame)
         {
             AnimationFrame targetFrameValue = CalcFrame(progress, targetFrame ?? 0, targetFrame ?? 0);
             AnimationFrame endFrameClone = endFrame.Clone();
@@ -25,14 +25,14 @@ namespace AnimationManagerLib
             return endFrameClone;
         }
 
-        AnimationFrame IAnimation.Blend(float progress, AnimationFrame startFrame, AnimationFrame endFrame)
+        public AnimationFrame Blend(float progress, AnimationFrame startFrame, AnimationFrame endFrame)
         {
             AnimationFrame endFrameClone = endFrame.Clone();
             startFrame.LerpInto(endFrameClone, progress);
             return endFrameClone;
         }
 
-        AnimationFrame IAnimation.Play(float progress, float? startFrame, float? endFrame)
+        public AnimationFrame Play(float progress, float? startFrame, float? endFrame)
         {
             float startFrameIndex = startFrame == null ? 0 : (float)startFrame;
             float endFrameIndex = endFrame == null ? mFrames[mFrames.Length - 1] : (float)endFrame;

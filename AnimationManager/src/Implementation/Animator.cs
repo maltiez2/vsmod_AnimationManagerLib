@@ -19,14 +19,14 @@ namespace AnimationManagerLib
         private float mCurrentProgress = 1;
         private float mPreviousProgress = 1;
 
-        void IAnimator.Init(CategoryId category)
+        public void Init(CategoryId category)
         {
             mDefaultFrame = AnimationFrame.Default(category);
             mStartFrame = AnimationFrame.Default(category);
             mLastFrame = AnimationFrame.Default(category);
         }
 
-        void IAnimator.Run(AnimationRunMetadata parameters, IAnimation animation)
+        public void Run(AnimationRunMetadata parameters, IAnimation animation)
         {
             mCurrentAnimation = animation;
             mCurrentParameters = parameters;
@@ -37,7 +37,7 @@ namespace AnimationManagerLib
             mPreviousProgress = mCurrentProgress;
         }
 
-        AnimationFrame IAnimator.Calculate(TimeSpan timeElapsed, out IAnimator.Status status)
+        public AnimationFrame Calculate(TimeSpan timeElapsed, out IAnimator.Status status)
         {
             mCurrentTime += timeElapsed;
 
@@ -92,11 +92,11 @@ namespace AnimationManagerLib
             switch (mCurrentParameters.Action)
             {
                 case AnimationPlayerAction.Set:
-                    mLastFrame = mCurrentAnimation.Play(1, mCurrentParameters.StartFrame, mCurrentParameters.TargetFrame);
+                    mLastFrame = mCurrentAnimation.Play(1, null, mCurrentParameters.TargetFrame);
                     mStopped = true;
                     break;
                 case AnimationPlayerAction.EaseIn:
-                    mLastFrame = mCurrentAnimation.Blend(1 - mCurrentProgress, mCurrentParameters.StartFrame, mStartFrame);
+                    mLastFrame = mCurrentAnimation.Blend(1 - mCurrentProgress, mCurrentParameters.TargetFrame, mStartFrame);
                     break;
                 case AnimationPlayerAction.EaseOut:
                     mLastFrame = mCurrentAnimation.Blend(mCurrentProgress, mStartFrame, mDefaultFrame);

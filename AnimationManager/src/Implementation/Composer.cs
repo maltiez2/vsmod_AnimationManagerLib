@@ -20,12 +20,15 @@ namespace AnimationManagerLib
             mDefaultFrame = AnimationFrame.Default(new(0, EnumAnimationBlendMode.Average, 0));
         }
 
-        void IComposer.SetAnimatorType<TAnimator>() => mAnimatorType = typeof(TAnimator);
-        bool IComposer.Register(AnimationId id, IAnimation animation) => mAnimations.TryAdd(id, animation);
-        void IComposer.Run(AnimationRequest request, IComposer.IfRemoveAnimator finishCallback) => TryAddAnimator(request, finishCallback).Run(request, mAnimations[request]);
-        void IComposer.Stop(AnimationRequest request) => RemoveAnimator(request);
-
-        AnimationFrame IComposer.Compose(TimeSpan timeElapsed)
+        public void SetAnimatorType<TAnimator>()
+            where TAnimator : IAnimator
+        {
+            mAnimatorType = typeof(TAnimator);
+        }
+        public bool Register(AnimationId id, IAnimation animation) => mAnimations.TryAdd(id, animation);
+        public void Run(AnimationRequest request, IComposer.IfRemoveAnimator finishCallback) => TryAddAnimator(request, finishCallback).Run(request, mAnimations[request]);
+        public void Stop(AnimationRequest request) => RemoveAnimator(request);
+        public AnimationFrame Compose(TimeSpan timeElapsed)
         {
             AnimationFrame composition = mDefaultFrame.Clone();
 

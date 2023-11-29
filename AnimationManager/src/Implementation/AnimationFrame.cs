@@ -2,7 +2,6 @@
 using AnimationManagerLib.API;
 using System.Collections.Generic;
 using System;
-using Newtonsoft.Json.Linq;
 
 namespace AnimationManagerLib
 {
