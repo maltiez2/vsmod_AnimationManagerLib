@@ -1,9 +1,7 @@
 ﻿using ProtoBuf;
 using System;
 using System.Diagnostics;
-using System.Xml.Linq;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
 
 namespace AnimationManagerLib.API
 {
@@ -24,7 +22,7 @@ namespace AnimationManagerLib.API
         /// <param name="animationCode">Animation code ( example: <c>"axechop"</c> )</param>
         /// <param name="entity">Entity that has specified animation</param>
         /// <returns><c>false</c> if animation already registered</returns>
-        bool Register(AnimationId id, string animationCode, Entity entity);
+        bool Register(AnimationId id, string animationCode, Vintagestory.API.Common.Entities.Entity entity);
 
         /// <summary>
         /// Registers animation for an item, should be called on all clients in order to synchronize animations
@@ -77,18 +75,47 @@ namespace AnimationManagerLib.API
 
     public enum AnimationPlayerAction : byte
     {
-        Set, // Set to TargetFrame
-        EaseIn, // Lerp from last frame to TargetFrame
-        EaseOut, // Lerp from last frame to empty frame
-        Start, // Play animation from StartFrame to TargetFrame
-        Stop, // Stop animation at last frame and keep it
-        Rewind, // Play animation from last frame to TargetFrame (needs StartFrame to calculate last frame)
-        Clear // Set to empty frame
+        /// <summary>
+        /// Sets animation to <see cref="RunParameters.TargetFrame"/>
+        /// </summary>
+        Set,
+        /// <summary>
+        /// Lerp to <see cref="RunParameters.TargetFrame"/> from last played frame
+        /// </summary>
+        EaseIn,
+        /// <summary>
+        /// Lerps from last played frame to empty frame
+        /// </summary>
+        EaseOut,
+        /// <summary>
+        /// Plays animation from <see cref="RunParameters.StartFrame"/> to <see cref="RunParameters.TargetFrame"/>
+        /// </summary>
+        Play,
+        /// <summary>
+        /// Stops animation at last played frame and keeps this frame
+        /// </summary>
+        Stop,
+        /// <summary>
+        /// Plays animation from last played frame to <see cref="RunParameters.StartFrame"/>.<br/>
+        /// Meant to be used only after <see cref="AnimationPlayerAction.Play"/> action or it but followed by <see cref="AnimationPlayerAction.Stop"/>.<br/>
+        /// Requires both <see cref="RunParameters.StartFrame"/> and <see cref="RunParameters.TargetFrame"/> that were used with <see cref="AnimationPlayerAction.Play"/>
+        /// </summary>
+        Rewind,
+        /// <summary>
+        /// Sets animation to empty frame
+        /// </summary>
+        Clear
     }
 
     public enum AnimationTargetType
     {
+        /// <summary>
+        /// Entity model, entity is specified by <see cref="Vintagestory.API.Common.Entities.Entity.EntityId"/> in <see cref="AnimationTarget.EntityId"/>
+        /// </summary>
         Entity,
+        /// <summary>
+        /// Item currently held by player in first person view
+        /// </summary>
         HeldItemFp
     }
 
@@ -149,22 +176,22 @@ namespace AnimationManagerLib.API
             Duration = duration;
             TargetFrame = targetFrame;
             Modifier = modifier;
-            TargetFrame = startFrame;
+            StartFrame = startFrame;
         }
 
         public RunParameters(AnimationPlayerAction action, TimeSpan duration, float startFrame, float targetFrame, ProgressModifierType modifier = ProgressModifierType.Linear)
         {
             Debug.Assert(
                 action == AnimationPlayerAction.Rewind ||
-                action == AnimationPlayerAction.Start,
-                "Only 'Start' and 'Rewind' actions need both 'StartFrame' and 'TargetFrame'"
+                action == AnimationPlayerAction.Play,
+                "Only 'Play' and 'Rewind' actions need both 'StartFrame' and 'TargetFrame'"
                 );
 
             Action = action;
             Duration = duration;
             TargetFrame = targetFrame;
             Modifier = modifier;
-            TargetFrame = startFrame;
+            StartFrame = startFrame;
         }
 
         public RunParameters(AnimationPlayerAction action, TimeSpan duration, float frame, ProgressModifierType modifier = ProgressModifierType.Linear)
@@ -179,7 +206,21 @@ namespace AnimationManagerLib.API
             Duration = duration;
             TargetFrame = frame;
             Modifier = modifier;
+            StartFrame = frame;
+        }
+
+        public RunParameters(AnimationPlayerAction action, float frame)
+        {
+            Debug.Assert(
+                action == AnimationPlayerAction.Set,
+                "Only 'Set' action can be defined only by frame"
+                );
+
+            Action = action;
+            Duration = TimeSpan.Zero;
             TargetFrame = frame;
+            Modifier = ProgressModifierType.Linear;
+            StartFrame = frame;
         }
 
         public RunParameters(AnimationPlayerAction action, TimeSpan duration, ProgressModifierType modifier = ProgressModifierType.Linear)
@@ -195,7 +236,150 @@ namespace AnimationManagerLib.API
             Duration = duration;
             TargetFrame = null;
             Modifier = modifier;
+            StartFrame = null;
+        }
+
+        public RunParameters(AnimationPlayerAction action)
+        {
+            Debug.Assert(
+                action == AnimationPlayerAction.Stop ||
+                action == AnimationPlayerAction.Clear,
+                "Only 'Stop' and 'Clear' do not need any parameters"
+                );
+
+            Action = action;
+            Duration = TimeSpan.Zero;
             TargetFrame = null;
+            Modifier = ProgressModifierType.Linear;
+            StartFrame = null;
+        }
+
+        /// <summary>
+        /// Sets animation to <paramref name="frame"/>
+        /// </summary>
+        /// <param name="frame">Frame to set animation to, can be fractional</param>
+        /// <returns></returns>
+        public static RunParameters Set(float frame)
+        {
+            return new()
+            {
+                Action = AnimationPlayerAction.Set,
+                Duration = TimeSpan.Zero,
+                TargetFrame = frame,
+                Modifier = ProgressModifierType.Linear,
+                StartFrame = frame
+            };
+        }
+
+        /// <summary>
+        /// Lerps to <paramref name="frame"/> from last played frame
+        /// </summary>
+        /// <param name="duration">Ease-in duration</param>
+        /// <param name="frame">Frame to ease-in to, can be fractional</param>
+        /// <param name="modifier">Modifies speed of animation based on its progress</param>
+        /// <returns></returns>
+        public static RunParameters EaseIn(TimeSpan duration, float frame, ProgressModifierType modifier = ProgressModifierType.Linear)
+        {
+            return new()
+            {
+                Action = AnimationPlayerAction.EaseIn,
+                Duration = duration,
+                TargetFrame = frame,
+                Modifier = modifier,
+                StartFrame = frame
+            };
+        }
+
+        /// <summary>
+        /// Lerps from last played frame to an empty frame
+        /// </summary>
+        /// <param name="duration">Total ease-out duration, will be multiplied by previous animation progress to get actual ease-out duration. It keeps movement speed of model elements more consistent.</param>
+        /// <param name="modifier">Modifies speed of animation based on its progress</param>
+        /// <returns></returns>
+        public static RunParameters EaseOut(TimeSpan duration, ProgressModifierType modifier = ProgressModifierType.Linear)
+        {
+            return new()
+            {
+                Action = AnimationPlayerAction.EaseOut,
+                Duration = duration,
+                TargetFrame = null,
+                Modifier = modifier,
+                StartFrame = null
+            };
+        }
+
+        /// <summary>
+        /// Plays animation from <paramref name="startFrame"/> to <paramref name="targetFrame"/>
+        /// </summary>
+        /// <param name="duration">Animation duration</param>
+        /// <param name="startFrame">Start frame of an animation, can be fractional</param>
+        /// <param name="targetFrame">Last frame of an animation, can be fractional</param>
+        /// <param name="modifier">Modifies speed of animation based on its progress</param>
+        /// <returns></returns>
+        public static RunParameters Play(TimeSpan duration, float startFrame, float targetFrame, ProgressModifierType modifier = ProgressModifierType.Linear)
+        {
+            return new()
+            {
+                Action = AnimationPlayerAction.Play,
+                Duration = duration,
+                TargetFrame = targetFrame,
+                Modifier = modifier,
+                StartFrame = startFrame
+            };
+        }
+
+        /// <summary>
+        /// Stops animation at last played frame and keeps this frame
+        /// </summary>
+        /// <returns></returns>
+        public static RunParameters Stop()
+        {
+            return new()
+            {
+                Action = AnimationPlayerAction.Stop,
+                Duration = TimeSpan.Zero,
+                TargetFrame = null,
+                Modifier = ProgressModifierType.Linear,
+                StartFrame = null
+            };
+        }
+
+        /// <summary>
+        /// Plays animation from last played frame to <paramref name="startFrame"/>.<br/>
+        /// Meant to be used only after <see cref="AnimationPlayerAction.Play"/> action or it but followed by <see cref="AnimationPlayerAction.Stop"/>.<br/>
+        /// Requires both <see cref="RunParameters.StartFrame"/> and <see cref="RunParameters.TargetFrame"/> that were used with <see cref="AnimationPlayerAction.Play"/>
+        /// </summary>
+        /// <param name="duration">Total rewind duration, will be multiplied by previous animation progress to get actual rewind duration. It keeps movement speed of model elements more consistent.</param>
+        /// <param name="startFrame">Animation will be reminded to this frame. Meant to be equal to <see cref="RunParameters.StartFrame"/> of previous <see cref="AnimationPlayerAction.Play"/> animation</param>
+        /// <param name="targetFrame">Is used to determine first frame of rewind animation. Meant to be equal to <see cref="RunParameters.TargetFrame"/> of previous  <see cref="AnimationPlayerAction.Play"/> animation. </param>
+        /// <param name="modifier">Modifies speed of animation based on its progress</param>
+        /// <returns></returns>
+        public static RunParameters Rewind(TimeSpan duration, float startFrame, float targetFrame, ProgressModifierType modifier = ProgressModifierType.Linear)
+        {
+            return new()
+            {
+                Action = AnimationPlayerAction.Rewind,
+                Duration = duration,
+                TargetFrame = targetFrame,
+                Modifier = modifier,
+                StartFrame = startFrame
+            };
+        }
+
+        /// <summary>
+        /// Sets animation to empty frame
+        /// </summary>
+        /// <returns></returns>
+        public static RunParameters Clear()
+        {
+            return new()
+            {
+                Action = AnimationPlayerAction.Clear,
+                Duration = TimeSpan.Zero,
+                TargetFrame = null,
+                Modifier = ProgressModifierType.Linear,
+                StartFrame = null
+            };
         }
 
         public static implicit operator RunParameters(AnimationRequest request) => request.Parameters;

@@ -51,7 +51,7 @@
             "frame": 10
           },
           {
-            "action": "Start",
+            "action": "Play",
             "animation": "scythe",
             "category": {
               "code": "hands",

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using AnimationManagerLib.API;
 using Vintagestory.API.MathTools;
 using IAnimator = AnimationManagerLib.API.IAnimator;
@@ -33,7 +34,7 @@ namespace AnimationManagerLib
             mStartFrame = mLastFrame.Clone();
             mProgressModifier = ProgressModifiers.Get(parameters.Modifier);
             mStopped = false;
-            mCurrentTime = new TimeSpan(0);
+            mCurrentTime = TimeSpan.Zero;
             mPreviousProgress = mCurrentProgress;
         }
 
@@ -42,6 +43,14 @@ namespace AnimationManagerLib
             mCurrentTime += timeElapsed;
 
             float duration = (float)mCurrentParameters.Duration.TotalSeconds;
+            bool instant = mCurrentParameters.Duration == TimeSpan.Zero;
+
+            Debug.Assert(!instant ||
+                    mCurrentParameters.Action == AnimationPlayerAction.Set ||
+                    mCurrentParameters.Action == AnimationPlayerAction.Stop ||
+                    mCurrentParameters.Action == AnimationPlayerAction.Clear,
+                    "Only 'Set', 'Stop' and 'Clear' actions can have zero duration"
+                );
 
             switch (mCurrentParameters.Action)
             {
@@ -58,8 +67,26 @@ namespace AnimationManagerLib
             status = mStopped ? IAnimator.Status.Stopped : IAnimator.Status.Running;
             if (mStopped) return mLastFrame;
 
-            mCurrentProgress = GameMath.Clamp((float)mCurrentTime.TotalSeconds / duration, 0, 1);
-            if (mCurrentProgress >= 1) mStopped = true;
+            mCurrentProgress = instant ? 1 : GameMath.Clamp((float)mCurrentTime.TotalSeconds / duration, 0, 1);
+            if (mCurrentProgress >= 1)
+            {
+                mStopped = true;
+
+                switch (mCurrentParameters.Action)
+                {
+                    case AnimationPlayerAction.Set:
+                        mLastFrame = mCurrentAnimation.Play(1, null, mCurrentParameters.TargetFrame);
+                        mStopped = true;
+                        break;
+                    case AnimationPlayerAction.Stop:
+                        mStopped = true;
+                        break;
+                    case AnimationPlayerAction.Clear:
+                        mLastFrame = mDefaultFrame.Clone();
+                        mStopped = true;
+                        break;
+                }
+            }
             
 
             switch (mCurrentParameters.Action)
@@ -101,7 +128,7 @@ namespace AnimationManagerLib
                 case AnimationPlayerAction.EaseOut:
                     mLastFrame = mCurrentAnimation.Blend(mCurrentProgress, mStartFrame, mDefaultFrame);
                     break;
-                case AnimationPlayerAction.Start:
+                case AnimationPlayerAction.Play:
                     mLastFrame = mCurrentAnimation.Play(mCurrentProgress, mCurrentParameters.StartFrame, mCurrentParameters.TargetFrame);
                     break;
                 case AnimationPlayerAction.Stop:
