@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -55,6 +57,15 @@ namespace AnimationManagerLib.API
             float? weight = definition.KeyExists("weight") ? definition["weight"].AsFloat() : null;
 
             return new CategoryId() { Blending = blending, Hash = ToCrc32(code), Weight = weight };
+        }
+
+        public static AnimationMetaData GenerateMetaData(Dictionary<string, EnumAnimationBlendMode> elementsBlendModes = null, Dictionary<string, float> elementsWeights = null)
+        {
+            return new AnimationMetaData()
+            {
+                ElementWeight = elementsWeights,
+                ElementBlendMode = elementsBlendModes,
+            };
         }
     }
 }
