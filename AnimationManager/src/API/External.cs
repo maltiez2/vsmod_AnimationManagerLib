@@ -27,7 +27,7 @@ namespace AnimationManagerLib.API
         /// <summary>
         /// Registers animation for an item, should be called on all clients in order to synchronize animations
         /// </summary>
-        /// <param name="id">>Used in <see cref="Run"/> in <see cref="AnimationRequest"/> to specify animation to play</param>
+        /// <param name="id">Used in <see cref="Run"/> in <see cref="AnimationRequest"/> to specify animation to play</param>
         /// <param name="animationCode">Animation code ( example: <c>"axechop"</c> )</param>
         /// <param name="shape">Item shape, can be acquired from <see cref="CollectibleBehaviors.Animatable"/></param>
         /// <param name="metaData">Currently only <see cref="AnimationMetaData.ElementBlendMode"/> and <see cref="AnimationMetaData.ElementWeight"/> fields are used from meta data, all other are igonred</param>
