@@ -48,7 +48,6 @@ namespace AnimationManagerLib
             mCallbacks[request.Animation.Category.Hash] = finishCallback;
             mCategories[request.Animation.Category.Hash] = request;
             if (mAnimators.ContainsKey(request.Animation.Category.Hash)) return mAnimators[request.Animation.Category.Hash];
-            Console.WriteLine("TryAddAnimator: {0}", request.Animation.Category);
             IAnimator animator = Activator.CreateInstance(mAnimatorType) as IAnimator;
             animator.Init(request.Animation.Category);
             mAnimators.Add(request.Animation.Category.Hash, animator);
@@ -58,7 +57,6 @@ namespace AnimationManagerLib
         private void RemoveAnimator(CategoryId category)
         {
             if (!mAnimators.ContainsKey(category.Hash)) return;
-            Console.WriteLine("RemoveAnimator: {0}", category);
             mAnimators.Remove(category.Hash);
         }
 
