@@ -44,7 +44,7 @@ namespace AnimationManagerLib
         {
             (int prevKeyFrame, int nextKeyFrame, float keyFrameProgress) = ToKeyFrames(progress, startFrame, endFrame);
             Debug.Assert(mKeyFrames.Length > prevKeyFrame && mKeyFrames.Length > nextKeyFrame);
-            if (prevKeyFrame == nextKeyFrame) return mKeyFrames[nextKeyFrame].Clone();
+            if (prevKeyFrame == nextKeyFrame) return mKeyFrames[nextKeyFrame].Clone(); // @TODO need more testing
             AnimationFrame resultFrame = mKeyFrames[nextKeyFrame].Clone();
             mKeyFrames[prevKeyFrame].LerpInto(resultFrame, keyFrameProgress);
             return resultFrame;
@@ -66,9 +66,9 @@ namespace AnimationManagerLib
             float prevFrame = mFrames[prevKeyFrame];
             float nextFrame = mFrames[nextKeyFrame];
 
-            if (startFrame == endFrame) return (nextKeyFrame, nextKeyFrame, 1);
+            //if (startFrame == endFrame) return (nextKeyFrame, nextKeyFrame, 1); // @TODO refactor
 
-            float keyFrameProgress = nextFrame == prevFrame ? 1 : (currentFrame - prevFrame) / (nextFrame - prevFrame);      
+            float keyFrameProgress = prevKeyFrame == nextKeyFrame ? 1 : (currentFrame - prevFrame) / (nextFrame - prevFrame);      
 
             return (prevKeyFrame, nextKeyFrame, keyFrameProgress);
         }
