@@ -1,7 +1,10 @@
 ﻿using AnimationManagerLib.API;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using Vintagestory.API.Common;
+using static System.Net.Mime.MediaTypeNames;
+using Vintagestory.API.MathTools;
 
 namespace AnimationManagerLib
 {
@@ -113,7 +116,8 @@ namespace AnimationManagerLib
             return new()
             {
                 Value = WeightedValue.Sum(first.Value, second.Value),
-                Id = first.Id
+                Id = first.Id,
+                ShortestAngularDistance = first.ShortestAngularDistance || second.ShortestAngularDistance
             };
         }
         static public AnimationElement Sum(AnimationElement element, float? value, float defaultWeight = 1)
@@ -123,7 +127,8 @@ namespace AnimationManagerLib
                 return new()
                 {
                     Value = null,
-                    Id = element.Id
+                    Id = element.Id,
+                    ShortestAngularDistance = element.ShortestAngularDistance
                 };
             }
 
@@ -132,14 +137,16 @@ namespace AnimationManagerLib
                 return new()
                 {
                     Value = new(value.Value, defaultWeight),
-                    Id = element.Id
+                    Id = element.Id,
+                    ShortestAngularDistance = element.ShortestAngularDistance
                 };
             }
 
             return new()
             {
                 Value = new(element.Value.Value.Value + value ?? 0, element.Value.Value.Weight),
-                Id = element.Id
+                Id = element.Id,
+                ShortestAngularDistance = element.ShortestAngularDistance
             };
         }
         static public AnimationElement Average(AnimationElement first, AnimationElement second)
@@ -149,7 +156,8 @@ namespace AnimationManagerLib
             return new()
             {
                 Value = WeightedValue.Average(first.Value, second.Value),
-                Id = first.Id
+                Id = first.Id,
+                ShortestAngularDistance = first.ShortestAngularDistance || second.ShortestAngularDistance
             };
         }
         static public AnimationElement Lerp(AnimationElement from, AnimationElement to, float progress, bool weighted = true)
@@ -161,14 +169,16 @@ namespace AnimationManagerLib
                 return new()
                 {
                     Value = WeightedValue.CircularLerp(from.Value, to.Value, progress, 360, weighted),
-                    Id = from.Id
+                    Id = from.Id,
+                    ShortestAngularDistance = from.ShortestAngularDistance || to.ShortestAngularDistance
                 };
             }
 
             return new()
             {
                 Value = WeightedValue.Lerp(from.Value, to.Value, progress, weighted),
-                Id = from.Id
+                Id = from.Id,
+                ShortestAngularDistance = from.ShortestAngularDistance || to.ShortestAngularDistance
             };
         }
 
@@ -256,7 +266,9 @@ namespace AnimationManagerLib
             
             if (MathF.Abs(fromValue - toValue) < max / 2) return fromValue + (toValue - fromValue) * progress;
 
-            float distance = (toValue + max - fromValue) * progress;
+            float distance = GameMath.AngleDegDistance(fromValue, toValue) * progress;
+
+            Console.WriteLine("CalcResultValue - toValue: {0}, fromValue: {1}, progress: {2}, distance: {3}", toValue, fromValue, progress, distance);
 
             if (distance < max - fromValue)
             {
