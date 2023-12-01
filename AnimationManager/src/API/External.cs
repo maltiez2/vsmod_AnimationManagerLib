@@ -182,8 +182,8 @@ namespace AnimationManagerLib.API
             Code = code;
             Shape = shape;
             Cyclic = cyclic;
-            ElementBlendMode = elementBlendMode;
-            ElementWeight = elementWeight;
+            ElementBlendMode = elementBlendMode ?? new();
+            ElementWeight = elementWeight ?? new();
         }
     }
 
