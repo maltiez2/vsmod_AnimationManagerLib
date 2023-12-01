@@ -66,7 +66,7 @@ namespace AnimationManagerLib
             float lastFrame = mFrames[endKeyFrame];
             float keyFrameProgress = (currentFrame - firstFrame) / (lastFrame - firstFrame);
 
-            return (endKeyFrame, startKeyFrame, keyFrameProgress);
+            return (startKeyFrame, endKeyFrame, keyFrameProgress);
         }
 
         private float CalcCurrentFrame(float progress, float startFrame, float endFrame)
@@ -88,14 +88,14 @@ namespace AnimationManagerLib
         private (int startKeyFrame, int endKeyFrame) FindKeyFrames(float currentFrame)
         {
             int endKeyFrame = 0;
-            int startKeyFrame;
+            int startKeyFrame = 0;
 
-            for (startKeyFrame = 0; startKeyFrame < mKeyFrames.Length && mFrames[startKeyFrame] < currentFrame; startKeyFrame++)
+            for (endKeyFrame = 0; endKeyFrame < mKeyFrames.Length && mFrames[endKeyFrame] < currentFrame; endKeyFrame++)
             {
-                endKeyFrame = startKeyFrame;
+                startKeyFrame = endKeyFrame;
             }
 
-            if (startKeyFrame >= mKeyFrames.Length) startKeyFrame = mKeyFrames.Length - 1;
+            if (endKeyFrame >= mKeyFrames.Length) endKeyFrame = mKeyFrames.Length - 1;
 
             if (mCyclic && startKeyFrame == endKeyFrame) endKeyFrame = 0;
 

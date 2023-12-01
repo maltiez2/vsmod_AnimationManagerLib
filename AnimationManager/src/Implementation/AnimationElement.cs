@@ -1,4 +1,5 @@
 ﻿using AnimationManagerLib.API;
+using System;
 using System.Diagnostics;
 using Vintagestory.API.Common;
 
@@ -253,7 +254,7 @@ namespace AnimationManagerLib
             float fromValue = from.Value.Value % max;
             float toValue = (to?.Value ?? 0) % max;
             
-            if (fromValue < toValue) return fromValue + (toValue - fromValue) * progress;
+            if (MathF.Abs(fromValue - toValue) < max / 2) return fromValue + (toValue - fromValue) * progress;
 
             float distance = (toValue + max - fromValue) * progress;
 
