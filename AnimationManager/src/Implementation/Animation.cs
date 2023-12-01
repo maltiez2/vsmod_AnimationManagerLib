@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using AnimationManagerLib.API;
 using Vintagestory.API.MathTools;
 
@@ -10,11 +8,15 @@ namespace AnimationManagerLib
     {
         private readonly AnimationFrame[] mKeyFrames;
         private readonly ushort[] mFrames;
+        private readonly bool mCyclic;
+        private readonly float mTotalFrames;
 
-        public Animation(AnimationFrame[] keyFrames, ushort[] keyFramesPosition)
+        public Animation(AnimationFrame[] keyFrames, ushort[] keyFramesPosition, float totalFrames, bool cyclic = false)
         {
             mKeyFrames = keyFrames;
             mFrames = keyFramesPosition;
+            mCyclic = cyclic;
+            mTotalFrames = totalFrames;
         }
 
         public AnimationFrame Blend(float progress, float? targetFrame, AnimationFrame endFrame)
@@ -32,7 +34,7 @@ namespace AnimationManagerLib
             return endFrameClone;
         }
 
-        public AnimationFrame Play(float progress, float? startFrame, float? endFrame)
+        public AnimationFrame Play(float progress, float? startFrame = null, float? endFrame = null)
         {
             float startFrameIndex = startFrame == null ? 0 : (float)startFrame;
             float endFrameIndex = endFrame == null ? mFrames[mFrames.Length - 1] : (float)endFrame;
@@ -44,7 +46,9 @@ namespace AnimationManagerLib
         {
             (int prevKeyFrame, int nextKeyFrame, float keyFrameProgress) = ToKeyFrames(progress, startFrame, endFrame);
             Debug.Assert(mKeyFrames.Length > prevKeyFrame && mKeyFrames.Length > nextKeyFrame);
+            
             if (prevKeyFrame == nextKeyFrame) return mKeyFrames[nextKeyFrame].Clone(); // @TODO need more testing
+            
             AnimationFrame resultFrame = mKeyFrames[nextKeyFrame].Clone();
             mKeyFrames[prevKeyFrame].LerpInto(resultFrame, keyFrameProgress);
             return resultFrame;
@@ -52,25 +56,50 @@ namespace AnimationManagerLib
 
         private (int prevKeyFrame, int nextKeyFrame, float keyFrameProgress) ToKeyFrames(float progress, float startFrame, float endFrame)
         {
-            float currentFrame = startFrame + (endFrame - startFrame) * progress;
+            float currentFrame = CalcCurrentFrame(progress, startFrame, endFrame);
 
-            int nextKeyFrame, prevKeyFrame = 0;
+            (int startKeyFrame, int endKeyFrame) = FindKeyFrames(currentFrame);
 
-            for (nextKeyFrame = 0; nextKeyFrame < mKeyFrames.Length && mFrames[nextKeyFrame] < currentFrame; nextKeyFrame++)
+            if (endKeyFrame == startKeyFrame) return (startKeyFrame, startKeyFrame, 1);
+
+            float firstFrame = mFrames[startKeyFrame];
+            float lastFrame = mFrames[endKeyFrame];
+            float keyFrameProgress = (currentFrame - firstFrame) / (lastFrame - firstFrame);
+
+            return (endKeyFrame, startKeyFrame, keyFrameProgress);
+        }
+
+        private float CalcCurrentFrame(float progress, float startFrame, float endFrame)
+        {
+            if (!mCyclic || startFrame < endFrame) return startFrame + (endFrame - startFrame) * progress;
+
+            float framesLeft = mTotalFrames - startFrame;
+            float frameProgress = progress * (endFrame + framesLeft);
+            if (frameProgress < framesLeft)
             {
-                prevKeyFrame = nextKeyFrame;
+                return startFrame + frameProgress;
             }
-            prevKeyFrame = GameMath.Min(prevKeyFrame, mKeyFrames.Length - 1);
-            nextKeyFrame = GameMath.Min(nextKeyFrame, mKeyFrames.Length - 1);
+            else
+            {
+                return frameProgress - framesLeft;
+            }
+        }
 
-            float prevFrame = mFrames[prevKeyFrame];
-            float nextFrame = mFrames[nextKeyFrame];
+        private (int startKeyFrame, int endKeyFrame) FindKeyFrames(float currentFrame)
+        {
+            int endKeyFrame = 0;
+            int startKeyFrame;
 
-            //if (startFrame == endFrame) return (nextKeyFrame, nextKeyFrame, 1); // @TODO refactor
+            for (startKeyFrame = 0; startKeyFrame < mKeyFrames.Length && mFrames[startKeyFrame] < currentFrame; startKeyFrame++)
+            {
+                endKeyFrame = startKeyFrame;
+            }
 
-            float keyFrameProgress = prevKeyFrame == nextKeyFrame ? 1 : (currentFrame - prevFrame) / (nextFrame - prevFrame);      
+            if (startKeyFrame >= mKeyFrames.Length) startKeyFrame = mKeyFrames.Length - 1;
 
-            return (prevKeyFrame, nextKeyFrame, keyFrameProgress);
+            if (mCyclic && startKeyFrame == endKeyFrame) endKeyFrame = 0;
+
+            return (startKeyFrame, endKeyFrame);
         }
     }
 }

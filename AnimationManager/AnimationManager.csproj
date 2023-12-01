@@ -7,9 +7,19 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Reference Include="ImGui.NET">
+      <HintPath>..\..\VSImGui\VSImGui\bin\Release\Mods\mod\ImGui.NET.dll</HintPath>
+      <Private>False</Private>
+      <EmbedInteropTypes>False</EmbedInteropTypes>
+    </Reference>
     <Reference Include="VintagestoryAPI">
       <HintPath>D:\Projects\Firearms\game/VintagestoryAPI.dll</HintPath>
       <Private>false</Private>
+    </Reference>
+    <Reference Include="VSImGui">
+      <HintPath>..\..\VSImGui\VSImGui\bin\Release\Mods\mod\VSImGui.dll</HintPath>
+      <Private>False</Private>
+      <EmbedInteropTypes>False</EmbedInteropTypes>
     </Reference>
     <Reference Include="VSSurvivalMod">
       <HintPath>D:\Projects\Firearms\game/Mods/VSSurvivalMod.dll</HintPath>

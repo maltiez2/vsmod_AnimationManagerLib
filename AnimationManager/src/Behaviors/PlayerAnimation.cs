@@ -37,7 +37,7 @@ namespace AnimationManagerLib.CollectibleBehaviors
             {
                 API.AnimationRequest request = API.Utils.AnimationRequestFromJson(requestDefinition);
                 requests.Add(request);
-                mAnimationManager.Register(request.Animation, requestDefinition["animation"].AsString());
+                //mAnimationManager.Register(request.Animation, requestDefinition["animation"].AsString());
             }
 
             mHeldTpHitAnimation = requests.ToArray();

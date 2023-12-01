@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using AnimationManagerLib.API;
+using HarmonyLib;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -22,7 +23,6 @@ namespace AnimationManagerLib
         private readonly Dictionary<AnimationId, IAnimation> mAnimations = new();
         
         private readonly Dictionary<Guid, AnimationTarget> mEntitiesByRuns = new();
-        private readonly Dictionary<AnimationId, AnimationData> mAnimationData = new();
         private readonly Dictionary<Guid, AnimationRequestWithStatus> mRequests = new();
         private readonly Dictionary<AnimationTarget, AnimationFrame> mAnimationFrames = new();
         private readonly HashSet<Guid> mSynchronizedPackets = new();
@@ -33,11 +33,12 @@ namespace AnimationManagerLib
             mClientApi = api;
             mSynchronizer = synchronizer;
             mApplier = new(api);
+#if DEBUG
+            api.ModLoader.GetModSystem<VSImGui.VSImGuiModSystem>().SetUpImGuiWindows += SetUpDebugWindow;
+#endif
         }
 
-        public bool Register(AnimationId id, string animationCode) => mAnimationData.TryAdd(id, new (animationCode, null, null, null));
-        public bool Register(AnimationId id, string animationCode, Entity entity) => mAnimationData.TryAdd(id, new(animationCode, entity, null, null));
-        public bool Register(AnimationId id, string animationCode, Shape shape, AnimationMetaData metaData) => mAnimationData.TryAdd(id, new(animationCode, null, shape, metaData));
+        public bool Register(AnimationId id, AnimationData animation) => mAnimations.TryAdd(id, ConstructAnimation(id, animation));
         public Guid Run(AnimationTarget animationTarget, params AnimationRequest[] requests) => Run(Guid.NewGuid(), animationTarget, true, requests);
         public Guid Run(AnimationTarget animationTarget, bool synchronize, params AnimationRequest[] requests) => Run(Guid.NewGuid(), animationTarget, synchronize, requests);
         public Guid Run(AnimationTarget animationTarget, Guid runId, params AnimationRequest[] requests) => Run(runId, animationTarget, false, requests);
@@ -135,7 +136,7 @@ namespace AnimationManagerLib
 
             foreach (AnimationId animationId in requests.Select(request => request.Animation))
             {
-                composer.Register(animationId, GetAnimation(animationId, animationTarget));
+                composer.Register(animationId, mAnimations[animationId]);
             }
 
             composer.Run((AnimationRequest)mRequests[id].Next(), () => ComposerCallback(id));
@@ -150,38 +151,60 @@ namespace AnimationManagerLib
 
             AnimationRequest? request = mRequests[id].Next();
             
-            if (request == null) return true;
+            if (request == null)
+            {
+                mRequests.Remove(id);
+                return true;
+            }
 
             mComposers[mEntitiesByRuns[id]].Run((AnimationRequest)request, () => ComposerCallback(id));
 
             return false;
         }
 
-        private IComposer TryAddComposer(Guid id, AnimationTarget animationTargety)
+        private IComposer TryAddComposer(Guid id, AnimationTarget animationTarget)
         {
             if (mEntitiesByRuns.ContainsKey(id)) return mComposers[mEntitiesByRuns[id]];
 
-            mEntitiesByRuns.Add(id, animationTargety);
+            mEntitiesByRuns.Add(id, animationTarget);
 
-            if (mComposers.ContainsKey(animationTargety)) return mComposers[animationTargety];
+            if (mComposers.ContainsKey(animationTarget)) return mComposers[animationTarget];
 
             IComposer composer = Activator.CreateInstance(typeof(TAnimationComposer)) as IComposer;
             composer.SetAnimatorType<Animator>();
-            mComposers.Add(animationTargety, composer);
+            mComposers.Add(animationTarget, composer);
             return composer;
         }
 
-        private IAnimation GetAnimation(AnimationId animationId, AnimationTarget animationTarget)
+        static private IAnimation ConstructAnimation(AnimationId id, AnimationData data)
         {
-            if (mAnimations.ContainsKey(animationId)) return mAnimations[animationId];
+            Dictionary<uint, Vintagestory.API.Common.Animation> animations = data.Shape.AnimationsByCrc32;
+            uint crc32 = Utils.ToCrc32(data.Code);
+            float totalFrames = animations[crc32].QuantityFrames;
+            AnimationKeyFrame[] keyFrames = animations[crc32].KeyFrames;
 
-            Debug.Assert(mAnimationData.ContainsKey(animationId));
+            List<AnimationFrame> constructedKeyFrames = new();
+            List<ushort> keyFramesToFrames = new();
+            foreach (AnimationKeyFrame frame in keyFrames)
+            {
+                constructedKeyFrames.Add(new AnimationFrame(frame.Elements, data, id.Category));
+                keyFramesToFrames.Add((ushort)frame.Frame);
+                AddPosesNames(frame);
+            }
 
-            var animation = mAnimationData[animationId].GetAnimation(mClientApi, animationId.Category, animationTarget.EntityId);
+            return new Animation(constructedKeyFrames.ToArray(), keyFramesToFrames.ToArray(), totalFrames, data.Cyclic);
+        }
 
-            mAnimations.Add(animationId, animation);
-
-            return animation;
+        static private void AddPosesNames(AnimationKeyFrame frame)
+        {
+            foreach ((string poseName, _) in frame.Elements)
+            {
+                uint hash = Utils.ToCrc32(poseName);
+                if (!AnimationApplier.PosesNames.ContainsKey(hash))
+                {
+                    AnimationApplier.PosesNames[hash] = poseName;
+                }
+            }
         }
 
         private sealed class AnimationRequestWithStatus
@@ -200,9 +223,25 @@ namespace AnimationManagerLib
             }
 
             public AnimationRequest? Next() => mNextRequestIndex < mRequests.Length ? mRequests[mNextRequestIndex++] : null;
-            public AnimationRequest? Last() => mNextRequestIndex < mRequests.Length ? mRequests[mNextRequestIndex] : mRequests[mRequests.Length - 1];
+            public AnimationRequest? Last() => mNextRequestIndex < mRequests.Length ? mRequests[mNextRequestIndex] : mRequests[^1];
             public bool Finished() => mNextRequestIndex >= mRequests.Length;
 
+        }
+
+        public void SetUpDebugWindow()
+        {
+#if DEBUG
+            ImGuiNET.ImGui.Begin("Current animations");
+            ImGuiNET.ImGui.Text(string.Format("Registered animations: {0}", mAnimations.Count));
+            ImGuiNET.ImGui.Text(string.Format("Active requests: {0}", mRequests.Count));
+            ImGuiNET.ImGui.Text(string.Format("Active composers: {0}", mComposers.Count));
+            ImGuiNET.ImGui.End();
+
+            foreach ((_, IComposer composer) in mComposers)
+            {
+                composer.SetUpDebugWindow();
+            }
+#endif
         }
     }
 
@@ -252,77 +291,6 @@ namespace AnimationManagerLib
         public void Clear()
         {
             Poses.Clear();
-        }
-    }
-
-    public struct AnimationData
-    {
-        string Code { get; set; }
-        Entity Entity { get; set; }
-        Shape Shape { get; set; }
-        AnimationMetaData MetaData { get; set; }
-
-        public AnimationData(string code, Entity entity, Shape shape, AnimationMetaData metaData)
-        {
-            Code = code;
-            Entity = entity;
-            Shape = shape;
-            MetaData = metaData;
-        }
-
-        public IAnimation GetAnimation(ICoreClientAPI api, CategoryId category, long? entityId)
-        {
-            List<AnimationFrame> constructedKeyFrames = new();
-            List<ushort> keyFramesToFrames = new();
-
-            (AnimationKeyFrame[] keyFrames, AnimationMetaData metaData) = GetData(api, entityId);
-
-            Debug.Assert(metaData != null);
-
-            foreach (AnimationKeyFrame frame in keyFrames)
-            {
-                constructedKeyFrames.Add(new AnimationFrame(frame.Elements, metaData, category));
-                keyFramesToFrames.Add((ushort)frame.Frame);
-                AddPosesNames(frame);
-            }
-
-            return new Animation(constructedKeyFrames.ToArray(), keyFramesToFrames.ToArray());
-        }
-
-        private (AnimationKeyFrame[] keyFrames, AnimationMetaData metaData) GetData(ICoreClientAPI api, long? entityId)
-        {
-            Shape shape = Shape;
-            AnimationMetaData metaData = MetaData;
-
-            if (shape == null)
-            {
-                Entity entity = Entity;
-
-                if (entity == null)
-                {
-                    entity = api.World.GetEntityById(entityId.Value);
-                }
-
-                entity.Properties.Client.AnimationsByMetaCode.TryGetValue(Code, out metaData);
-
-                shape = entity.Properties.Client.LoadedShapeForEntity;
-            }
-
-            Dictionary<uint, Vintagestory.API.Common.Animation> animations = shape.AnimationsByCrc32;
-            uint crc32 = Utils.ToCrc32(Code);
-            return (animations[crc32].KeyFrames, metaData);
-        }
-
-        static private void AddPosesNames(AnimationKeyFrame frame)
-        {
-            foreach ((string poseName, _) in frame.Elements)
-            {
-                uint hash = Utils.ToCrc32(poseName);
-                if (!AnimationApplier.PosesNames.ContainsKey(hash))
-                {
-                    AnimationApplier.PosesNames[hash] = poseName;
-                }
-            }
         }
     }
 }

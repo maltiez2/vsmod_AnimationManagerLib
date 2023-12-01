@@ -1,38 +1,23 @@
 ﻿using ProtoBuf;
 using System;
+using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 
 namespace AnimationManagerLib.API
 {
     public interface IAnimationManager
     {
         /// <summary>
-        /// Registers animation of player model, should be called on all clients in order to synchronize animations
+        /// Registers animation in manager. For animation to be played it is required to register it.
         /// </summary>
         /// <param name="id">Used in <see cref="Run"/> in <see cref="AnimationRequest"/> to specify animation to play</param>
-        /// <param name="animationCode">Animation code ( example: <c>"axechop"</c> )</param>
+        /// <param name="animation">Animation data used to construct frames</param>
         /// <returns><c>false</c> if animation already registered</returns>
-        bool Register(AnimationId id, string animationCode);
-
-        /// <summary>
-        /// Registers animation of an entity model, should be called on all clients in order to synchronize animations
-        /// </summary>
-        /// <param name="id">Used in <see cref="Run"/> in <see cref="AnimationRequest"/> to specify animation to play</param>
-        /// <param name="animationCode">Animation code ( example: <c>"axechop"</c> )</param>
-        /// <param name="entity">Entity that has specified animation</param>
-        /// <returns><c>false</c> if animation already registered</returns>
-        bool Register(AnimationId id, string animationCode, Vintagestory.API.Common.Entities.Entity entity);
-
-        /// <summary>
-        /// Registers animation for an item, should be called on all clients in order to synchronize animations
-        /// </summary>
-        /// <param name="id">Used in <see cref="Run"/> in <see cref="AnimationRequest"/> to specify animation to play</param>
-        /// <param name="animationCode">Animation code ( example: <c>"axechop"</c> )</param>
-        /// <param name="shape">Item shape, can be acquired from <see cref="CollectibleBehaviors.Animatable"/></param>
-        /// <param name="metaData">Currently only <see cref="AnimationMetaData.ElementBlendMode"/> and <see cref="AnimationMetaData.ElementWeight"/> fields are used from meta data, all other are igonred</param>
-        /// <returns><c>false</c> if animation already registered</returns>
-        bool Register(AnimationId id, string animationCode, Shape shape, AnimationMetaData metaData);
+        bool Register(AnimationId id, AnimationData animation);
 
         /// <summary>
         /// Starts the animation sequence, synchronized between clients, unless <see cref="AnimationTarget.TargetType"/> is <see cref="AnimationTargetType.HeldItemFp"/>
@@ -110,7 +95,7 @@ namespace AnimationManagerLib.API
     public enum AnimationTargetType
     {
         /// <summary>
-        /// Entity model, entity is specified by <see cref="Vintagestory.API.Common.Entities.Entity.EntityId"/> in <see cref="AnimationTarget.EntityId"/>
+        /// Some entity, specific one is specified by <see cref="Entity.EntityId"/> in <see cref="AnimationTarget.EntityId"/>
         /// </summary>
         Entity,
         /// <summary>
@@ -143,6 +128,62 @@ namespace AnimationManagerLib.API
         {
             TargetType = AnimationTargetType.Entity;
             EntityId = entityId;
+        }
+    }
+
+    public class AnimationData
+    {
+        public string Code { get; set; }
+        public bool Cyclic { get; set; }
+        public Shape Shape { get; set; }
+        public Dictionary<string, float> ElementWeight { get; set; }
+        public Dictionary<string, EnumAnimationBlendMode> ElementBlendMode { get; set; }
+
+        static public AnimationData Player(string code, ICoreClientAPI api, bool cyclic = false) => new (code, api, cyclic);
+        static public AnimationData Entity(string code, Entity entity, bool cyclic = false) => new(code, entity, cyclic);
+        static public AnimationData HeldItem(
+            string code,
+            Shape shape,
+            bool cyclic = false,
+            Dictionary<string, EnumAnimationBlendMode> elementBlendMode = null,
+            Dictionary<string, float> elementWeight = null
+            ) => new(code, shape, cyclic, elementBlendMode, elementWeight);
+
+        
+        private AnimationData(string code, ICoreClientAPI api, bool cyclic = false)
+        {
+            Entity entity = api.World.Player.Entity;
+            AnimationMetaData metaData;
+            entity.Properties.Client.AnimationsByMetaCode.TryGetValue(Code, out metaData);
+
+            Code = code;
+            Shape = entity.Properties.Client.LoadedShapeForEntity;
+            ElementWeight = metaData.ElementWeight;
+            ElementBlendMode = metaData.ElementBlendMode;
+            Cyclic = cyclic;
+        }
+        private AnimationData(string code, Entity entity, bool cyclic = false)
+        {
+            if (entity == null) throw new ArgumentNullException("entity", "Entity for entity animation data cannot be null");
+
+            AnimationMetaData metaData;
+            entity.Properties.Client.AnimationsByMetaCode.TryGetValue(Code, out metaData);
+
+            Code = code;
+            Shape = entity.Properties.Client.LoadedShapeForEntity;
+            ElementWeight = metaData.ElementWeight;
+            ElementBlendMode = metaData.ElementBlendMode;
+            Cyclic = cyclic;
+        }
+        private AnimationData(string code, Shape shape, bool cyclic = false, Dictionary<string, EnumAnimationBlendMode> elementBlendMode = null, Dictionary<string, float> elementWeight = null)
+        {
+            if (shape == null) throw new ArgumentNullException("shape", "Item shape for held item animation cannot be null");
+            
+            Code = code;
+            Shape = shape;
+            Cyclic = cyclic;
+            ElementBlendMode = elementBlendMode;
+            ElementWeight = elementWeight;
         }
     }
 
@@ -292,16 +333,16 @@ namespace AnimationManagerLib.API
         /// <summary>
         /// Lerps to <paramref name="frame"/> from last played frame
         /// </summary>
-        /// <param name="duration">Ease-in duration in seconds</param>
+        /// <param name="duration_s">Ease-in duration in seconds</param>
         /// <param name="frame">Frame to ease-in to, can be fractional</param>
         /// <param name="modifier">Modifies speed of animation based on its progress</param>
         /// <returns></returns>
-        public static RunParameters EaseIn(float duration, float frame, ProgressModifierType modifier = ProgressModifierType.Linear)
+        public static RunParameters EaseIn(float duration_s, float frame, ProgressModifierType modifier = ProgressModifierType.Linear)
         {
             return new()
             {
                 Action = AnimationPlayerAction.EaseIn,
-                Duration = TimeSpan.FromSeconds(duration),
+                Duration = TimeSpan.FromSeconds(duration_s),
                 TargetFrame = frame,
                 Modifier = modifier,
                 StartFrame = frame
@@ -328,15 +369,15 @@ namespace AnimationManagerLib.API
         /// <summary>
         /// Lerps from last played frame to an empty frame
         /// </summary>
-        /// <param name="duration">Total ease-out duration in seconds, will be multiplied by previous animation progress to get actual ease-out duration. It keeps movement speed of model elements more consistent.</param>
+        /// <param name="duration_s">Total ease-out duration in seconds, will be multiplied by previous animation progress to get actual ease-out duration. It keeps movement speed of model elements more consistent.</param>
         /// <param name="modifier">Modifies speed of animation based on its progress</param>
         /// <returns></returns>
-        public static RunParameters EaseOut(float duration, ProgressModifierType modifier = ProgressModifierType.Linear)
+        public static RunParameters EaseOut(float duration_s, ProgressModifierType modifier = ProgressModifierType.Linear)
         {
             return new()
             {
                 Action = AnimationPlayerAction.EaseOut,
-                Duration = TimeSpan.FromSeconds(duration),
+                Duration = TimeSpan.FromSeconds(duration_s),
                 TargetFrame = null,
                 Modifier = modifier,
                 StartFrame = null
@@ -346,17 +387,17 @@ namespace AnimationManagerLib.API
         /// <summary>
         /// Plays animation from <paramref name="startFrame"/> to <paramref name="targetFrame"/>
         /// </summary>
-        /// <param name="duration">Animation duration in seconds</param>
+        /// <param name="duration_s">Animation duration in seconds</param>
         /// <param name="startFrame">Start frame of an animation, can be fractional</param>
         /// <param name="targetFrame">Last frame of an animation, can be fractional</param>
         /// <param name="modifier">Modifies speed of animation based on its progress</param>
         /// <returns></returns>
-        public static RunParameters Play(float duration, float startFrame, float targetFrame, ProgressModifierType modifier = ProgressModifierType.Linear)
+        public static RunParameters Play(float duration_s, float startFrame, float targetFrame, ProgressModifierType modifier = ProgressModifierType.Linear)
         {
             return new()
             {
                 Action = AnimationPlayerAction.Play,
-                Duration = TimeSpan.FromSeconds(duration),
+                Duration = TimeSpan.FromSeconds(duration_s),
                 TargetFrame = targetFrame,
                 Modifier = modifier,
                 StartFrame = startFrame
@@ -405,17 +446,17 @@ namespace AnimationManagerLib.API
         /// Meant to be used only after <see cref="AnimationPlayerAction.Play"/> action or it but followed by <see cref="AnimationPlayerAction.Stop"/>.<br/>
         /// Requires both <see cref="RunParameters.StartFrame"/> and <see cref="RunParameters.TargetFrame"/> that were used with <see cref="AnimationPlayerAction.Play"/>
         /// </summary>
-        /// <param name="duration">Total rewind duration in seconds, will be multiplied by previous animation progress to get actual rewind duration. It keeps movement speed of model elements more consistent.</param>
+        /// <param name="duration_s">Total rewind duration in seconds, will be multiplied by previous animation progress to get actual rewind duration. It keeps movement speed of model elements more consistent.</param>
         /// <param name="startFrame">Animation will be reminded to this frame. Meant to be equal to <see cref="RunParameters.StartFrame"/> of previous <see cref="AnimationPlayerAction.Play"/> animation</param>
         /// <param name="targetFrame">Is used to determine first frame of rewind animation. Meant to be equal to <see cref="RunParameters.TargetFrame"/> of previous  <see cref="AnimationPlayerAction.Play"/> animation. </param>
         /// <param name="modifier">Modifies speed of animation based on its progress</param>
         /// <returns></returns>
-        public static RunParameters Rewind(float duration, float startFrame, float targetFrame, ProgressModifierType modifier = ProgressModifierType.Linear)
+        public static RunParameters Rewind(float duration_s, float startFrame, float targetFrame, ProgressModifierType modifier = ProgressModifierType.Linear)
         {
             return new()
             {
                 Action = AnimationPlayerAction.Rewind,
-                Duration = TimeSpan.FromSeconds(duration),
+                Duration = TimeSpan.FromSeconds(duration_s),
                 TargetFrame = targetFrame,
                 Modifier = modifier,
                 StartFrame = startFrame
@@ -447,14 +488,14 @@ namespace AnimationManagerLib.API
     public struct AnimationId
     {
         public uint Hash { get; private set; }
-        public CategoryId Category { get; private set; }
+        public Category Category { get; private set; }
 
-        public AnimationId(CategoryId category, string name)
+        public AnimationId(Category category, string name)
         {
             Hash = Utils.ToCrc32(name);
             Category = category;
         }
-        public AnimationId(CategoryId category, uint hash)
+        public AnimationId(Category category, uint hash)
         {
             Hash = hash;
             Category = category;
@@ -462,7 +503,7 @@ namespace AnimationManagerLib.API
         public AnimationId(string category, string animation, EnumAnimationBlendMode blendingType = EnumAnimationBlendMode.Add, float? weight = null)
         {
             Hash = Utils.ToCrc32(animation);
-            Category = new CategoryId(category, blendingType, weight);
+            Category = new Category(category, blendingType, weight);
         }
 
         public static implicit operator AnimationId(AnimationRequest request) => request.Animation;
@@ -471,26 +512,26 @@ namespace AnimationManagerLib.API
     }
 
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
-    public struct CategoryId
+    public struct Category
     {
         public uint Hash { get; set; }
         public EnumAnimationBlendMode Blending { get; set; }
         public float? Weight { get; set; }
 
-        public CategoryId(string name, EnumAnimationBlendMode blending = EnumAnimationBlendMode.Add, float? weight = null)
+        public Category(string name, EnumAnimationBlendMode blending = EnumAnimationBlendMode.Add, float? weight = null)
         {
             Blending = blending;
             Hash = Utils.ToCrc32(name);
             Weight = weight;
         }
-        public CategoryId(uint hash, EnumAnimationBlendMode blending = EnumAnimationBlendMode.Add, float? weight = null)
+        public Category(uint hash, EnumAnimationBlendMode blending = EnumAnimationBlendMode.Add, float? weight = null)
         {
             Blending = blending;
             Hash = hash;
             Weight = weight;
         }
 
-        public static implicit operator CategoryId(AnimationRequest request) => request.Animation.Category;
+        public static implicit operator Category(AnimationRequest request) => request.Animation.Category;
 
         public override string ToString() => string.Format("CategoryId: {0} ({1}: {2})", Hash, Blending, Weight == null ? "null" : Weight);
     }

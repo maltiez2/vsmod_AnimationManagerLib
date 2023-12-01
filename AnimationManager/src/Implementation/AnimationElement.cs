@@ -33,12 +33,19 @@ namespace AnimationManagerLib
     {
         public WeightedValue? Value { get; set; }
         public ElementId Id { get; set; }
+        public bool ShortestAngularDistance { get; set; } = false;
 
         public AnimationElement(ElementId id) => Id = id;
         public AnimationElement(ElementId id, WeightedValue value)
         {
             Id = id;
             Value = value;
+        }
+        public AnimationElement(ElementId id, WeightedValue value, bool shortestAngularDistance)
+        {
+            Id = id;
+            Value = value;
+            ShortestAngularDistance = shortestAngularDistance;
         }
 
         public void Add(ElementPose pose)
@@ -148,6 +155,15 @@ namespace AnimationManagerLib
         {
             Debug.Assert(from.Id.ElementNameHash == to.Id.ElementNameHash && from.Id.ElementType == to.Id.ElementType);
 
+            if (from.ShortestAngularDistance || to.ShortestAngularDistance)
+            {
+                return new()
+                {
+                    Value = WeightedValue.CircularLerp(from.Value, to.Value, progress, 360, weighted),
+                    Id = from.Id
+                };
+            }
+
             return new()
             {
                 Value = WeightedValue.Lerp(from.Value, to.Value, progress, weighted),
@@ -210,6 +226,45 @@ namespace AnimationManagerLib
                 Value = from.Value.Value * (1 - progress) + to.Value.Value * progress,
                 Weight = from.Value.Weight * (1 - progress) + to.Value.Weight * progress
             };
+        }
+        static public WeightedValue? CircularLerp(WeightedValue? from, WeightedValue? to, float progress, float max, bool weighted = true)
+        {
+            if (from == null) return new()
+            {
+                Value = to.Value.Value * progress,
+                Weight = to.Value.Weight * (weighted ? progress : 1)
+            };
+
+            if (to == null) return new()
+            {
+                Value = CalcResultValue(from, to, progress, max),
+                Weight = from.Value.Weight * (1 - (weighted ? progress : 0))
+            };
+
+            return new()
+            {
+                Value = CalcResultValue(from, to, progress, max),
+                Weight = from.Value.Weight * (1 - progress) + to.Value.Weight * progress
+            };
+        }
+
+        static private float CalcResultValue(WeightedValue? from, WeightedValue? to, float progress, float max)
+        {
+            float fromValue = from.Value.Value % max;
+            float toValue = (to?.Value ?? 0) % max;
+            
+            if (fromValue < toValue) return fromValue + (toValue - fromValue) * progress;
+
+            float distance = (toValue + max - fromValue) * progress;
+
+            if (distance < max - fromValue)
+            {
+                return fromValue + distance;
+            }
+            else
+            {
+                return toValue + distance - fromValue;
+            }
         }
 
         public override string ToString() => string.Format("{0} (weight: {1})", Value, Weight);

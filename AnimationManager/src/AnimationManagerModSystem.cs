@@ -2,6 +2,7 @@
 using Vintagestory.API.Common;
 using Vintagestory.API.Server;
 using Vintagestory.Client.NoObf;
+using VSImGui;
 
 namespace AnimationManagerLib
 {
@@ -45,7 +46,6 @@ namespace AnimationManagerLib
                 (packet) => mManager.Stop(packet.RunId),
                 ChannelName
             );
-
         }
         public override void StartServerSide(ICoreServerAPI api)
         {

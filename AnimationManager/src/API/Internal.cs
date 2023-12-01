@@ -37,6 +37,11 @@ namespace AnimationManagerLib.API
         public static implicit operator AnimationRunMetadata(AnimationRequest request) => new AnimationRunMetadata(request);
     }
 
+    public interface IHasDebugWindow
+    {
+        void SetUpDebugWindow();
+    }
+
     public interface IAnimation
     {
         public AnimationFrame Play(float progress, float? startFrame = null, float? endFrame = null);
@@ -44,7 +49,7 @@ namespace AnimationManagerLib.API
         public AnimationFrame Blend(float progress, AnimationFrame startFrame, AnimationFrame endFrame);
     }
 
-    public interface IAnimator
+    public interface IAnimator : IHasDebugWindow
     {
         enum Status
         {
@@ -53,12 +58,12 @@ namespace AnimationManagerLib.API
             Finished
         }
         
-        public void Init(CategoryId category);
+        public void Init(Category category);
         public void Run(AnimationRunMetadata parameters, IAnimation animation);
         public AnimationFrame Calculate(TimeSpan timeElapsed, out Status status);
     }
 
-    public interface IComposer
+    public interface IComposer : IHasDebugWindow
     {
         delegate bool IfRemoveAnimator();
 

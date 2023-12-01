@@ -1,6 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using AnimationManagerLib.API;
+using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using IAnimator = AnimationManagerLib.API.IAnimator;
 
@@ -20,7 +23,7 @@ namespace AnimationManagerLib
         private float mCurrentProgress = 1;
         private float mPreviousProgress = 1;
 
-        public void Init(CategoryId category)
+        public void Init(Category category)
         {
             mDefaultFrame = AnimationFrame.Default(category);
             mStartFrame = AnimationFrame.Default(category);
@@ -146,6 +149,30 @@ namespace AnimationManagerLib
             }
 
             return mLastFrame;
+        }
+
+        private sealed class FixedSizedQueue<T>
+        {
+            public readonly Queue<T> q = new Queue<T>();
+            public int Limit { get; set; }
+            public void Enqueue(T obj)
+            {
+                q.Enqueue(obj);
+                T overflow;
+                while (q.Count > Limit && q.TryDequeue(out overflow)) ;
+            }
+        }
+        private FixedSizedQueue<float> mProgressPlot = new();
+
+        public void SetUpDebugWindow()
+        {
+#if DEBUG
+            mProgressPlot.Limit = 120;
+            mProgressPlot.Enqueue(mCurrentProgress);
+            ImGuiNET.ImGui.Begin("Animators status");
+            ImGuiNET.ImGui.PlotLines(string.Format("{0}", mCurrentParameters.Action), ref mProgressPlot.q.ToArray()[0], mProgressPlot.q.Count, 0, "", 0, 1.1f, new(0, 100f));
+            ImGuiNET.ImGui.End();
+#endif
         }
     }
 }

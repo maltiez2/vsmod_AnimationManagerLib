@@ -13,7 +13,7 @@ namespace AnimationManagerLib
 
         public AnimationFrame() { }
 
-        public AnimationFrame(CategoryId category)
+        public AnimationFrame(Category category)
         {
             mDefaultElementWeight = category.Weight ?? 1;
             mDefaultBlendMode = category.Blending;
@@ -25,7 +25,7 @@ namespace AnimationManagerLib
             mDefaultElementWeight = weight;
         }
 
-        public AnimationFrame(Dictionary<string, AnimationKeyFrameElement> elements, AnimationMetaData metaData, CategoryId category)
+        public AnimationFrame(Dictionary<string, AnimationKeyFrameElement> elements, AnimationData metaData, Category category)
         {
             mDefaultElementWeight = category.Weight ?? 1;
             mDefaultBlendMode = category.Blending;
@@ -38,9 +38,9 @@ namespace AnimationManagerLib
                 AddElement(ElementType.translateX, element, keyFrameElement.OffsetX / 16, elementWeight, GetBlendMode(mDefaultBlendMode, blendMode));
                 AddElement(ElementType.translateY, element, keyFrameElement.OffsetY / 16, elementWeight, GetBlendMode(mDefaultBlendMode, blendMode));
                 AddElement(ElementType.translateZ, element, keyFrameElement.OffsetZ / 16, elementWeight, GetBlendMode(mDefaultBlendMode, blendMode));
-                AddElement(ElementType.degX, element, keyFrameElement.RotationX, elementWeight, GetBlendMode(mDefaultBlendMode, blendMode));
-                AddElement(ElementType.degY, element, keyFrameElement.RotationY, elementWeight, GetBlendMode(mDefaultBlendMode, blendMode));
-                AddElement(ElementType.degZ, element, keyFrameElement.RotationZ, elementWeight, GetBlendMode(mDefaultBlendMode, blendMode));
+                AddElement(ElementType.degX, element, keyFrameElement.RotationX, elementWeight, GetBlendMode(mDefaultBlendMode, blendMode), keyFrameElement.RotShortestDistanceX);
+                AddElement(ElementType.degY, element, keyFrameElement.RotationY, elementWeight, GetBlendMode(mDefaultBlendMode, blendMode), keyFrameElement.RotShortestDistanceY);
+                AddElement(ElementType.degZ, element, keyFrameElement.RotationZ, elementWeight, GetBlendMode(mDefaultBlendMode, blendMode), keyFrameElement.RotShortestDistanceZ);
             }
         }
 
@@ -99,7 +99,7 @@ namespace AnimationManagerLib
                 }
             }
         }
-        static public AnimationFrame Default(CategoryId category)
+        static public AnimationFrame Default(Category category)
         {
             return new AnimationFrame(category);
         }
@@ -124,11 +124,11 @@ namespace AnimationManagerLib
             return toString;
         }
 
-        protected void AddElement(ElementType elementType, string name, double? value, float weight, EnumAnimationBlendMode blendMode)
+        protected void AddElement(ElementType elementType, string name, double? value, float weight, EnumAnimationBlendMode blendMode, bool shortestAngularDistance = false)
         {
             if (value == null) return;
             ElementId id = new(name, elementType);
-            AnimationElement element = new(id, new((float)value, weight));
+            AnimationElement element = new(id, new((float)value, weight), shortestAngularDistance);
             Elements.Add(id, (element, blendMode));
         }
         static protected EnumAnimationBlendMode GetBlendMode(EnumAnimationBlendMode categoryMode, EnumAnimationBlendMode? elementMode)

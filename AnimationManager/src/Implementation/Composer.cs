@@ -12,12 +12,15 @@ namespace AnimationManagerLib
         private readonly Dictionary<AnimationId, IAnimation> mAnimations = new();
         private readonly Dictionary<uint, IAnimator> mAnimators = new();
         private readonly Dictionary<uint, IComposer.IfRemoveAnimator> mCallbacks = new();
-        private readonly Dictionary<uint, CategoryId> mCategories = new();
+        private readonly Dictionary<uint, Category> mCategories = new();
         private readonly AnimationFrame mDefaultFrame;
+
+        private Guid mId;
 
         public Composer()
         {
             mDefaultFrame = AnimationFrame.Default(new(0, EnumAnimationBlendMode.Average, 0));
+            mId = Guid.NewGuid();
         }
 
         public void SetAnimatorType<TAnimator>()
@@ -54,13 +57,13 @@ namespace AnimationManagerLib
             return animator;
         }
 
-        private void RemoveAnimator(CategoryId category)
+        private void RemoveAnimator(Category category)
         {
             if (!mAnimators.ContainsKey(category.Hash)) return;
             mAnimators.Remove(category.Hash);
         }
 
-        private void ProcessStatus(CategoryId category, IAnimator.Status status)
+        private void ProcessStatus(Category category, IAnimator.Status status)
         {
             switch (status)
             {
@@ -75,6 +78,24 @@ namespace AnimationManagerLib
                 default:
                     break;
             }
+        }
+
+        public void SetUpDebugWindow()
+        {
+#if DEBUG
+            ImGuiNET.ImGui.Begin("Composer status");
+            ImGuiNET.ImGui.Text(string.Format("Composer id: {0}", mId));
+            ImGuiNET.ImGui.Text(string.Format("Registered animations: {0}", mAnimations.Count));
+            ImGuiNET.ImGui.Text(string.Format("Active categories: {0}", mCategories.Count));
+            ImGuiNET.ImGui.Text(string.Format("Active animators: {0}", mAnimators.Count));
+            ImGuiNET.ImGui.NewLine();
+            ImGuiNET.ImGui.End();
+
+            foreach ((_, IAnimator animator) in mAnimators)
+            {
+                animator.SetUpDebugWindow();
+            }
+#endif
         }
     }
 }

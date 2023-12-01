@@ -13,17 +13,17 @@ namespace AnimationManagerLib.API
 
         public static AnimationRequest AnimationRequestFromJson(JsonObject definition)
         {
-            CategoryId category = definition.KeyExists("category") ? CategoryIdFromJson(definition["category"]) : new CategoryId();
+            Category category = definition.KeyExists("category") ? CategoryIdFromJson(definition["category"]) : new Category();
             return AnimationRequestFromJson(definition, category);
         }
 
         public static AnimationRequest AnimationRequestFromJson(JsonObject definition, bool noCategory)
         {
-            CategoryId category = !noCategory && definition.KeyExists("category") ? CategoryIdFromJson(definition["category"]) : new CategoryId();
+            Category category = !noCategory && definition.KeyExists("category") ? CategoryIdFromJson(definition["category"]) : new Category();
             return AnimationRequestFromJson(definition, category);
         }
 
-        public static AnimationRequest AnimationRequestFromJson(JsonObject definition, CategoryId category)
+        public static AnimationRequest AnimationRequestFromJson(JsonObject definition, Category category)
         {
             float? startFrame = definition.KeyExists("startFrame") ? definition["startFrame"].AsFloat() : null;
             float? endFrame = definition.KeyExists("endFrame") ? definition["endFrame"].AsFloat() : null;
@@ -50,13 +50,13 @@ namespace AnimationManagerLib.API
             };
         }
 
-        public static CategoryId CategoryIdFromJson(JsonObject definition)
+        public static Category CategoryIdFromJson(JsonObject definition)
         {
             string code = definition["code"].AsString();
             EnumAnimationBlendMode blending = (EnumAnimationBlendMode)Enum.Parse(typeof(EnumAnimationBlendMode), definition["blending"].AsString("Add"));
             float? weight = definition.KeyExists("weight") ? definition["weight"].AsFloat() : null;
 
-            return new CategoryId() { Blending = blending, Hash = ToCrc32(code), Weight = weight };
+            return new Category() { Blending = blending, Hash = ToCrc32(code), Weight = weight };
         }
 
         public static AnimationMetaData GenerateMetaData(Dictionary<string, EnumAnimationBlendMode> elementsBlendModes = null, Dictionary<string, float> elementsWeights = null)
