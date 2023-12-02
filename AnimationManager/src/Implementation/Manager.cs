@@ -69,6 +69,21 @@ namespace AnimationManagerLib
         {
             Debug.Assert(requests.Length > 0);
 
+            mRequests.Add(id, new(animationTarget, synchronize, requests));
+
+            var composer = TryAddComposer(id, animationTarget);
+
+            foreach (AnimationId animationId in requests.Select(request => request.Animation))
+            {
+                IAnimation animation = mAnimationProvider.Get(animationId, animationTarget);
+                if (animation == null)
+                {
+                    mClientApi.Logger.Error("Failed to get animation '{0}' for '{1}' while trying to run request, will skip it", animationId, animationTarget);
+                    return Guid.Empty;
+                }
+                composer.Register(animationId, animation);
+            }
+
             if (synchronize && animationTarget.TargetType != AnimationTargetType.HeldItemFp)
             {
                 AnimationRunPacket packet = new()
@@ -80,15 +95,6 @@ namespace AnimationManagerLib
 
                 mSynchronizedPackets.Add(id);
                 mSynchronizer.Sync(packet);
-            }
-
-            mRequests.Add(id, new(animationTarget, synchronize, requests));
-
-            var composer = TryAddComposer(id, animationTarget);
-
-            foreach (AnimationId animationId in requests.Select(request => request.Animation))
-            {
-                composer.Register(animationId, mAnimationProvider.Get(animationId, animationTarget));
             }
 
             composer.Run(mRequests[id].Next().Value, () => ComposerCallback(id));
@@ -297,6 +303,7 @@ namespace AnimationManagerLib
         {
             if (mAnimations.ContainsKey(id)) return mAnimations[id];
             if (mConstructedAnimations.ContainsKey((id, target))) return mConstructedAnimations[(id, target)];
+            if (!mAnimationsToConstruct.ContainsKey(id)) return null;
 
             if (target.EntityId == null) return null;
             Entity entity = mApi.World.GetEntityById(target.EntityId.Value);

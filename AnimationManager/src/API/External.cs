@@ -58,6 +58,22 @@ namespace AnimationManagerLib.API
         ISynchronizer GetSynchronizer();
     }
 
+    public interface IAnimatableBehavior
+    {
+        int RegisterAnimation(
+            string code,
+            string category,
+            bool cyclic = false,
+            EnumAnimationBlendMode categoryBlendMode = EnumAnimationBlendMode.Add,
+            float? categoryWeight = null,
+            Dictionary<string, EnumAnimationBlendMode> elementBlendMode = null,
+            Dictionary<string, float> elementWeight = null
+            );
+
+        Guid RunAnimation(int id, params RunParameters[] parameters);
+        void StopAnimation(Guid runId);
+    }
+
     public enum AnimationPlayerAction : byte
     {
         /// <summary>

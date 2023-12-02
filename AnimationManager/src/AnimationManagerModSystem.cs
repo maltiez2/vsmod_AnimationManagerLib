@@ -29,6 +29,7 @@ namespace AnimationManagerLib
             api.RegisterCollectibleBehaviorClass("ItemAnimationBehavior", typeof(CollectibleBehaviors.PlayerAnimation));
             api.RegisterCollectibleBehaviorClass("Animatable", typeof(CollectibleBehaviors.Animatable));
             api.RegisterCollectibleBehaviorClass("AnimatableAttachable", typeof(CollectibleBehaviors.AnimatableAttachable));
+            api.RegisterCollectibleBehaviorClass("AnimatableProcedural", typeof(CollectibleBehaviors.AnimatableProcedural));
             mSynchronizer = new Synchronizer();
         }
         public override void StartClientSide(ICoreClientAPI api)

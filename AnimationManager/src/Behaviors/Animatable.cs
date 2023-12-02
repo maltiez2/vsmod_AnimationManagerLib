@@ -68,6 +68,7 @@ namespace AnimationManagerLib.CollectibleBehaviors
         public bool RenderAnyway { get; set; }
 
         protected ICoreClientAPI capi;
+        protected ICoreAPI mApi;
         
         protected MeshRef currentMeshRef;
 
@@ -86,6 +87,7 @@ namespace AnimationManagerLib.CollectibleBehaviors
 
         public override void OnLoaded(ICoreAPI api)
         {
+            mApi = api;
             modsystem = api.ModLoader.GetModSystem<AnimationManagerLibSystem>();
 
             if (api.Side == EnumAppSide.Client)
