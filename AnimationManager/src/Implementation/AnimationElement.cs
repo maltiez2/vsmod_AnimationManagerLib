@@ -275,19 +275,8 @@ namespace AnimationManagerLib
         {
             float fromValue = from.Value.Value % max;
             float toValue = (to?.Value ?? 0) % max;
-            
-            if (MathF.Abs(fromValue - toValue) < max / 2) return fromValue + (toValue - fromValue) * progress;
-
             float distance = GameMath.AngleDegDistance(fromValue, toValue) * progress;
-
-            if (distance < max - fromValue)
-            {
-                return fromValue + distance;
-            }
-            else
-            {
-                return toValue + distance - fromValue;
-            }
+            return fromValue + distance;
         }
 
         static public WeightedValue? CircularLerp(WeightedValue? from, WeightedValue? to, float progress, float max, bool weighted = true)
@@ -329,8 +318,6 @@ namespace AnimationManagerLib
                 return fromValue + distance;
             }
         }
-
-
 
         public override string ToString() => string.Format("{0} (weight: {1})", Value, Weight);
     }
