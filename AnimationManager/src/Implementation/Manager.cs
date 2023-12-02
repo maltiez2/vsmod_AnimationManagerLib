@@ -284,7 +284,8 @@ namespace AnimationManagerLib
             foreach ((var id, _) in composition.Elements)
             {
                 string name = PosesNames[id.ElementNameHash];
-                Poses[animator.GetPosebyName(name)] = (name, composition);
+                ElementPose pose = animator.GetPosebyName(name);
+                if (pose != null) Poses[pose] = (name, composition);
             }
         }
 

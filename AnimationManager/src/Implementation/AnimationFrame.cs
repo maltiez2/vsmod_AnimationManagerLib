@@ -8,8 +8,8 @@ namespace AnimationManagerLib
     public class AnimationFrame
     {
         public Dictionary<ElementId, (AnimationElement element, EnumAnimationBlendMode blendMode)> Elements { get; set; } = new();
-        private readonly EnumAnimationBlendMode mDefaultBlendMode = EnumAnimationBlendMode.Average;
-        private readonly float mDefaultElementWeight = 1;
+        public EnumAnimationBlendMode mDefaultBlendMode { get; set; } = EnumAnimationBlendMode.Average;
+        public float mDefaultElementWeight { get; set; } = 1;
 
         public AnimationFrame() { }
 

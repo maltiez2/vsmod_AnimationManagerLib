@@ -168,7 +168,7 @@ namespace AnimationManagerLib
             {
                 return new()
                 {
-                    Value = WeightedValue.CircularLerp(from.Value, to.Value, progress, 360, weighted),
+                    Value = WeightedValue.ShortestLerp(from.Value, to.Value, progress, 360, weighted),
                     Id = from.Id,
                     ShortestAngularDistance = from.ShortestAngularDistance || to.ShortestAngularDistance
                 };
@@ -177,6 +177,18 @@ namespace AnimationManagerLib
             return new()
             {
                 Value = WeightedValue.Lerp(from.Value, to.Value, progress, weighted),
+                Id = from.Id,
+                ShortestAngularDistance = from.ShortestAngularDistance || to.ShortestAngularDistance
+            };
+        }
+
+        static public AnimationElement CircularLerp(AnimationElement from, AnimationElement to, float progress, bool weighted = true)
+        {
+            Debug.Assert(from.Id.ElementNameHash == to.Id.ElementNameHash && from.Id.ElementType == to.Id.ElementType);
+
+            return new()
+            {
+                Value = WeightedValue.CircularLerp(from.Value, to.Value, progress, 360, weighted),
                 Id = from.Id,
                 ShortestAngularDistance = from.ShortestAngularDistance || to.ShortestAngularDistance
             };
@@ -238,7 +250,7 @@ namespace AnimationManagerLib
                 Weight = from.Value.Weight * (1 - progress) + to.Value.Weight * progress
             };
         }
-        static public WeightedValue? CircularLerp(WeightedValue? from, WeightedValue? to, float progress, float max, bool weighted = true)
+        static public WeightedValue? ShortestLerp(WeightedValue? from, WeightedValue? to, float progress, float max, bool weighted = true)
         {
             if (from == null) return new()
             {
@@ -268,7 +280,45 @@ namespace AnimationManagerLib
 
             float distance = GameMath.AngleDegDistance(fromValue, toValue) * progress;
 
-            Console.WriteLine("CalcResultValue - toValue: {0}, fromValue: {1}, progress: {2}, distance: {3}", toValue, fromValue, progress, distance);
+            if (distance < max - fromValue)
+            {
+                return fromValue + distance;
+            }
+            else
+            {
+                return toValue + distance - fromValue;
+            }
+        }
+
+        static public WeightedValue? CircularLerp(WeightedValue? from, WeightedValue? to, float progress, float max, bool weighted = true)
+        {
+            if (from == null) return new()
+            {
+                Value = to.Value.Value * progress,
+                Weight = to.Value.Weight * (weighted ? progress : 1)
+            };
+
+            if (to == null) return new()
+            {
+                Value = CircCalcResultValue(from, to, progress, max),
+                Weight = from.Value.Weight * (1 - (weighted ? progress : 0))
+            };
+
+            return new()
+            {
+                Value = CircCalcResultValue(from, to, progress, max),
+                Weight = from.Value.Weight * (1 - progress) + to.Value.Weight * progress
+            };
+        }
+
+        static private float CircCalcResultValue(WeightedValue? from, WeightedValue? to, float progress, float max)
+        {
+            float fromValue = from.Value.Value % max;
+            float toValue = (to?.Value ?? 0) % max;
+
+            if (fromValue <= toValue + 1E-5) return fromValue + (toValue - fromValue) * progress;
+
+            float distance = toValue + max - fromValue;
 
             if (distance < max - fromValue)
             {
@@ -279,6 +329,8 @@ namespace AnimationManagerLib
                 return toValue + distance - fromValue;
             }
         }
+
+
 
         public override string ToString() => string.Format("{0} (weight: {1})", Value, Weight);
     }

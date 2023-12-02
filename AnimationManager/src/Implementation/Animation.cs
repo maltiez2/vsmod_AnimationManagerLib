@@ -1,6 +1,12 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Reflection;
 using AnimationManagerLib.API;
+using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace AnimationManagerLib
 {
@@ -17,6 +23,22 @@ namespace AnimationManagerLib
             mFrames = keyFramesPosition;
             mCyclic = cyclic;
             mTotalFrames = totalFrames;
+
+            if (mFrames.Length > 0 &&  mFrames[0] != 0)
+            {
+                AnimationFrame firstFrame = new(mKeyFrames[0].mDefaultBlendMode, mKeyFrames[0].mDefaultElementWeight);
+                mFrames = mFrames.Prepend((ushort)0).ToArray();
+                mKeyFrames = mKeyFrames.Prepend(firstFrame).ToArray();
+            }
+
+            if (mFrames.Length > 0 && MathF.Abs(mFrames.Last() - mTotalFrames) > 1E-3)
+            {
+                AnimationFrame lastFrame = new(mKeyFrames[^1].mDefaultBlendMode, mKeyFrames[^1].mDefaultElementWeight);
+                mFrames = mFrames.Append((ushort)((ushort)mTotalFrames - (ushort)1));
+                mKeyFrames = mKeyFrames.Append(lastFrame);
+            }
+
+            PreprocessKeyframes();
         }
 
         public AnimationFrame Blend(float progress, float? targetFrame, AnimationFrame endFrame)
@@ -100,6 +122,126 @@ namespace AnimationManagerLib
             if (mCyclic && startKeyFrame == endKeyFrame) endKeyFrame = 0;
 
             return (startKeyFrame, endKeyFrame);
+        }
+
+        private void PreprocessKeyframes()
+        {            
+            HashSet<ElementId> elements = new();
+            Dictionary<ElementId, (AnimationElement element, EnumAnimationBlendMode blendMode)> singleElements = new();
+            foreach (AnimationFrame keyFrame in mKeyFrames)
+            {
+                foreach ((ElementId id, var entry) in keyFrame.Elements)
+                {
+                    if (!singleElements.ContainsKey(id))
+                    {
+                        singleElements.Add(id, entry);
+                    }
+                    else if (!elements.Contains(id))
+                    {
+                        elements.Add(id);
+                    }
+                }
+            }
+
+            foreach ((ElementId element, var entry) in singleElements.Where((entry, _) => !elements.Contains(entry.Key)))
+            {
+                foreach (var frameElements in mKeyFrames.Select(frame => frame.Elements).Where(frameElements => !frameElements.ContainsKey(element)))
+                {
+                    frameElements.Add(element, entry);
+                }
+            }
+
+            foreach (ElementId element in elements)
+            {
+                ProcessElement(element);
+            }
+        }
+
+        private void ProcessElement(ElementId id)
+        {
+            List<(int frame, int start, int end, float progress)> tasks = new();
+            
+            for (int index = 0; index < mKeyFrames.Length; index++)
+            {
+                if (mKeyFrames[index].Elements.ContainsKey(id)) continue;
+                
+                (int startKeyFrame, int endKeyFrame, float progress) = GetKeyFramesAndProgressToLerp(id, index);
+
+                tasks.Add((index, startKeyFrame, endKeyFrame, progress));
+            }
+
+            foreach ((int frame, int start, int end, float progress) in tasks)
+            {
+                var blendMode = mKeyFrames[start].Elements[id].blendMode;
+                AnimationElement startElement = mKeyFrames[start].Elements[id].element;
+                AnimationElement endElement = mKeyFrames[end].Elements[id].element;
+
+                AnimationElement element = AnimationElement.CircularLerp(startElement, endElement, progress, false);
+                mKeyFrames[frame].Elements.Add(id, (element, blendMode));
+            }
+        }
+
+        private (int startKeyFrame, int endKeyFrame, float progress) GetKeyFramesAndProgressToLerp(ElementId id, int keyFrameIndex)
+        {
+            (int startKeyFrame, int endKeyFrame) = GetKeyFramesToLerp(id, keyFrameIndex);
+
+            float frame = mFrames[keyFrameIndex];
+            float start = mFrames[startKeyFrame];
+            float end = mFrames[endKeyFrame];
+
+            float startDistance = frame > start ? frame - start : frame + mTotalFrames - start;
+            float endDistance = frame < end ? end - frame : end + mTotalFrames - frame;
+            float progress = startDistance / (startDistance + endDistance);
+
+            return (startKeyFrame, endKeyFrame, progress);
+        }
+
+        private (int startKeyFrame, int endKeyFrame) GetKeyFramesToLerp(ElementId id, int keyFrameIndex)
+        {
+            int startKeyFrame = -1;
+            int endKeyFrame = mKeyFrames.Length;
+
+            for (int index = 0; index < mKeyFrames.Length; index++)
+            {
+                if (index == keyFrameIndex || !mKeyFrames[index].Elements.ContainsKey(id)) continue;
+
+                if (index < keyFrameIndex)
+                {
+                    startKeyFrame = index;
+                }
+
+                if (index < endKeyFrame && index > keyFrameIndex)
+                {
+                    endKeyFrame = index;
+                }
+            }
+
+            if (startKeyFrame == -1)
+            {
+                for (int index = mKeyFrames.Length - 1; index >= 0; index--)
+                {
+                    if (index == keyFrameIndex || !mKeyFrames[index].Elements.ContainsKey(id)) continue;
+                    startKeyFrame = index;
+                    break;
+                }
+            }
+
+            if (endKeyFrame == mKeyFrames.Length)
+            {
+                for (int index = 0; index < mKeyFrames.Length; index++)
+                {
+                    if (index == keyFrameIndex || !mKeyFrames[index].Elements.ContainsKey(id)) continue;
+                    endKeyFrame = index;
+                    break;
+                }
+            }
+
+            return (startKeyFrame, endKeyFrame);
+        }
+
+        public static float ShortestDistance(float start, float end, float max = 360f)
+        {
+            return ((end - start) % max + max * 1.5f) % max - max * 0.5f;
         }
     }
 }
