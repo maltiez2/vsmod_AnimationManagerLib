@@ -48,6 +48,7 @@ namespace AnimationManagerLib
 
         private IAnimator TryAddAnimator(AnimationRequest request, IComposer.IfRemoveAnimator finishCallback)
         {
+            if (mCallbacks.ContainsKey(request.Animation.Category.Hash)) mCallbacks[request.Animation.Category.Hash]();
             mCallbacks[request.Animation.Category.Hash] = finishCallback;
             mCategories[request.Animation.Category.Hash] = request;
             if (mAnimators.ContainsKey(request.Animation.Category.Hash)) return mAnimators[request.Animation.Category.Hash];

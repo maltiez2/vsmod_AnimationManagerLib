@@ -318,15 +318,15 @@ namespace AnimationManagerLib
 
             if (fromValue <= toValue + 1E-5) return fromValue + (toValue - fromValue) * progress;
 
-            float distance = toValue + max - fromValue;
+            float distance = (toValue + max - fromValue) * progress;
 
-            if (distance < max - fromValue)
+            if (distance > max - fromValue)
             {
-                return fromValue + distance;
+                return toValue + distance - fromValue;
             }
             else
             {
-                return toValue + distance - fromValue;
+                return fromValue + distance;
             }
         }
 

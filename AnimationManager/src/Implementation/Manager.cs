@@ -64,6 +64,37 @@ namespace AnimationManagerLib
             mRequests.Remove(runId);
         }
 
+        private Guid Run(Guid id, AnimationTarget animationTarget, bool synchronize, params AnimationRequest[] requests)
+        {
+            Debug.Assert(requests.Length > 0);
+
+            if (synchronize && animationTarget.TargetType != AnimationTargetType.HeldItemFp)
+            {
+                AnimationRunPacket packet = new()
+                {
+                    RunId = id,
+                    AnimationTarget = animationTarget,
+                    Requests = requests
+                };
+
+                mSynchronizedPackets.Add(id);
+                mSynchronizer.Sync(packet);
+            }
+
+            mRequests.Add(id, new(animationTarget, synchronize, requests));
+
+            var composer = TryAddComposer(id, animationTarget);
+
+            foreach (AnimationId animationId in requests.Select(request => request.Animation))
+            {
+                composer.Register(animationId, mAnimations[animationId]);
+            }
+
+            composer.Run(mRequests[id].Next().Value, () => ComposerCallback(id));
+
+            return id;
+        }
+
         public void OnFrameHandler(Entity entity, float dt)
         {
             AnimationTarget animationTarget = new(entity.EntityId);
@@ -112,42 +143,15 @@ namespace AnimationManagerLib
                 if (mClientApi.World.GetEntityById(entityId) == null) OnNullEntity(entityId);
             }
         }
-        
-        private Guid Run(Guid id, AnimationTarget animationTarget, bool synchronize, params AnimationRequest[] requests)
-        {
-            Debug.Assert(requests.Length > 0);
-
-            if (synchronize && animationTarget.TargetType != AnimationTargetType.HeldItemFp)
-            {
-                AnimationRunPacket packet = new()
-                {
-                    RunId = id,
-                    AnimationTarget = animationTarget,
-                    Requests = requests
-                };
-
-                mSynchronizedPackets.Add(id);
-                mSynchronizer.Sync(packet);
-            }
-
-            mRequests.Add(id, new(animationTarget, synchronize, requests));
-
-            var composer = TryAddComposer(id, animationTarget);
-
-            foreach (AnimationId animationId in requests.Select(request => request.Animation))
-            {
-                composer.Register(animationId, mAnimations[animationId]);
-            }
-
-            composer.Run((AnimationRequest)mRequests[id].Next(), () => ComposerCallback(id));
-
-            return id;
-        }
 
         private bool ComposerCallback(Guid id)
         {
             if (!mRequests.ContainsKey(id)) return true;
-            if (mRequests[id].Finished()) return true;
+            if (mRequests[id].Finished())
+            {
+                mRequests.Remove(id);
+                return true;
+            }
 
             AnimationRequest? request = mRequests[id].Next();
             
