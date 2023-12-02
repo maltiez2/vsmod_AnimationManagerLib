@@ -139,7 +139,7 @@ namespace AnimationManagerLib.API
         public Dictionary<string, float> ElementWeight { get; set; }
         public Dictionary<string, EnumAnimationBlendMode> ElementBlendMode { get; set; }
 
-        static public AnimationData Player(string code, ICoreClientAPI api, bool cyclic = false) => new (code, api, cyclic);
+        static public AnimationData Player(string code, ICoreClientAPI api, bool cyclic = false) => new (code, cyclic);
         static public AnimationData Entity(string code, Entity entity, bool cyclic = false) => new(code, entity, cyclic);
         static public AnimationData HeldItem(
             string code,
@@ -150,16 +150,12 @@ namespace AnimationManagerLib.API
             ) => new(code, shape, cyclic, elementBlendMode, elementWeight);
 
         
-        private AnimationData(string code, ICoreClientAPI api, bool cyclic = false)
+        private AnimationData(string code, bool cyclic = false)
         {
-            Entity entity = api.World.Player.Entity;
-            AnimationMetaData metaData;
-            entity.Properties.Client.AnimationsByMetaCode.TryGetValue(Code, out metaData);
-
             Code = code;
-            Shape = entity.Properties.Client.LoadedShapeForEntity;
-            ElementWeight = metaData.ElementWeight;
-            ElementBlendMode = metaData.ElementBlendMode;
+            Shape = null;
+            ElementWeight = null;
+            ElementBlendMode = null;
             Cyclic = cyclic;
         }
         private AnimationData(string code, Entity entity, bool cyclic = false)
@@ -182,7 +178,7 @@ namespace AnimationManagerLib.API
             Code = code;
             Shape = shape;
             Cyclic = cyclic;
-            ElementBlendMode = elementBlendMode ?? new();
+            ElementBlendMode = elementBlendMode ?? new(); 
             ElementWeight = elementWeight ?? new();
         }
     }
