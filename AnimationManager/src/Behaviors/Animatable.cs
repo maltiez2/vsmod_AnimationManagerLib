@@ -62,13 +62,12 @@ namespace AnimationManagerLib.CollectibleBehaviors
 
         protected string cacheKey => "animatedCollectibleMeshes-" + collObj.Code.ToShortString();
 
-        protected AnimationManagerLibSystem modsystem;
+        protected AnimationManagerLibSystem modSystem;
 
         public Shape CurrentShape { get; private set; }
-        public bool RenderAnyway { get; set; }
+        public bool RenderProceduralAnimations { get; set; }
 
         protected ICoreClientAPI capi;
-        protected ICoreAPI mApi;
         
         protected MeshRef currentMeshRef;
 
@@ -87,8 +86,7 @@ namespace AnimationManagerLib.CollectibleBehaviors
 
         public override void OnLoaded(ICoreAPI api)
         {
-            mApi = api;
-            modsystem = api.ModLoader.GetModSystem<AnimationManagerLibSystem>();
+            modSystem = api.ModLoader.GetModSystem<AnimationManagerLibSystem>();
 
             if (api.Side == EnumAppSide.Client)
             {
@@ -250,16 +248,16 @@ namespace AnimationManagerLib.CollectibleBehaviors
         {
             if (Animator == null || capi.IsGamePaused || target != EnumItemRenderTarget.HandFp) return; // We don't get entity here, so only do it for the FP target
 
-            if (ActiveAnimationsByAnimCode.Count > 0 || Animator.ActiveAnimationCount > 0 || RenderAnyway)
+            if (ActiveAnimationsByAnimCode.Count > 0 || Animator.ActiveAnimationCount > 0 || RenderProceduralAnimations)
             {
-                modsystem.OnBeforeRender(Animator, renderinfo.dt);
+                if (RenderProceduralAnimations) modSystem.OnBeforeRender(Animator, renderinfo.dt);
                 Animator.OnFrame(ActiveAnimationsByAnimCode, renderinfo.dt);
             }
         }
 
         public virtual void RenderHandFp(ItemSlot inSlot, ItemRenderInfo renderInfo, Matrixf modelMat, double posX, double posY, double posZ, float size, int color, bool rotate = false, bool showStackSize = true)
         {
-            if (onlyWhenAnimating && ActiveAnimationsByAnimCode.Count == 0 && !RenderAnyway)
+            if (onlyWhenAnimating && ActiveAnimationsByAnimCode.Count == 0 && !RenderProceduralAnimations)
             {
                 capi.Render.RenderMesh(renderInfo.ModelRef);
             }
@@ -271,7 +269,7 @@ namespace AnimationManagerLib.CollectibleBehaviors
                 IRenderAPI rpi = capi.Render;
                 prevProg?.Stop();
 
-                prog = modsystem.AnimatedItemShaderProgram;
+                prog = modSystem.AnimatedItemShaderProgram;
                 prog.Use();
                 prog.Uniform("alphaTest", collObj.RenderAlphaTest);
                 prog.UniformMatrix("modelViewMatrix", modelMat.Values);

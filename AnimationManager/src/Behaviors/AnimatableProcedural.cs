@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Vintagestory.API.Common;
 using AnimationManagerLib.API;
+using Vintagestory.API.Client;
 
 namespace AnimationManagerLib.CollectibleBehaviors
 {
@@ -9,10 +10,21 @@ namespace AnimationManagerLib.CollectibleBehaviors
     {
         private API.IAnimationManager mAnimationManager;
         private readonly List<AnimationId> mRegisteredAnimations = new();
+        private readonly HashSet<Guid> mRunningAnimations = new();
+        protected ICoreAPI mApi;
+        protected AnimationManagerLibSystem mModSystem;
 
         public AnimatableProcedural(CollectibleObject collObj) : base(collObj)
         {
-            if (mApi.Side == EnumAppSide.Client)  RenderAnyway = true;
+
+        }
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            mModSystem = api.ModLoader.GetModSystem<AnimationManagerLibSystem>();
+            mApi = api;
+
+            base.OnLoaded(api);
         }
 
         public int RegisterAnimation(string code, string category, bool cyclic = false, EnumAnimationBlendMode categoryBlendMode = EnumAnimationBlendMode.Add, float? categoryWeight = null, Dictionary<string, EnumAnimationBlendMode> elementBlendMode = null, Dictionary<string, float> elementWeight = null)
@@ -50,7 +62,9 @@ namespace AnimationManagerLib.CollectibleBehaviors
                 requests[index] = new AnimationRequest(mRegisteredAnimations[id], parameters[index]);
             }
 
-            return mAnimationManager.Run(new(AnimationTargetType.HeldItemFp), requests);
+            Guid runId = mAnimationManager.Run(new(AnimationTargetType.HeldItemFp), requests);
+            mRunningAnimations.Add(runId);
+            return runId;
         }
 
         public void StopAnimation(Guid runId)
@@ -60,7 +74,15 @@ namespace AnimationManagerLib.CollectibleBehaviors
                 mApi.Logger.Warning("Trying to stop animation with run id '{0}' on server side. Animations can be stopped only from client side, skipping", runId);
                 return;
             }
+            if (mRunningAnimations.Contains(runId)) mRunningAnimations.Remove(runId);
             mAnimationManager.Stop(runId);
+        }
+
+        public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
+        {
+            RenderProceduralAnimations = mRunningAnimations.Count > 0 || !onlyWhenAnimating;
+
+            base.OnBeforeRender(capi, itemstack, target, ref renderinfo);
         }
     }
 }

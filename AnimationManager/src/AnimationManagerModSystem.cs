@@ -26,7 +26,6 @@ namespace AnimationManagerLib
         public override void Start(ICoreAPI api)
         {
             mApi = api;
-            api.RegisterCollectibleBehaviorClass("ItemAnimationBehavior", typeof(CollectibleBehaviors.PlayerAnimation));
             api.RegisterCollectibleBehaviorClass("Animatable", typeof(CollectibleBehaviors.Animatable));
             api.RegisterCollectibleBehaviorClass("AnimatableAttachable", typeof(CollectibleBehaviors.AnimatableAttachable));
             api.RegisterCollectibleBehaviorClass("AnimatableProcedural", typeof(CollectibleBehaviors.AnimatableProcedural));
