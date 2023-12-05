@@ -1,4 +1,6 @@
-﻿using System.Diagnostics;
+﻿using AnimationManagerLib.API;
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
@@ -12,21 +14,23 @@ namespace AnimationManagerLib
 
     public struct ElementId
     {
-        public uint ElementNameHash { get; set; }
+        public uint Hash { get; set; }
         public ElementType ElementType { get; set; }
+        
+        private readonly string mDebugName;
 
         public ElementId(string name, ElementType elementType)
         {
-            ElementNameHash = Utils.ToCrc32(name);
-            ElementType = elementType;
-        }
-        public ElementId(uint nameHash, ElementType elementType)
-        {
-            ElementNameHash = nameHash;
+            Hash = Utils.ToCrc32($"{name}{elementType}");
+            mDebugName = name;
             ElementType = elementType;
         }
 
-        public readonly override string ToString() => string.Format("({0}){1}", ElementNameHash, ElementType);
+        public readonly override string ToString() => $"{mDebugName}, type: {ElementType}";
+        public readonly override int GetHashCode() => (int)Hash;
+        public readonly override bool Equals([NotNullWhen(true)] object? obj) => obj?.GetHashCode() == (int)Hash;
+        public static bool operator ==(ElementId left, ElementId right) => left.Equals(right);
+        public static bool operator !=(ElementId left, ElementId right) => !(left == right);
     }
 
     public struct AnimationElement
@@ -107,7 +111,7 @@ namespace AnimationManagerLib
 
         static public AnimationElement Sum(AnimationElement first, AnimationElement second)
         {
-            Debug.Assert(first.Id.ElementNameHash == second.Id.ElementNameHash && second.Id.ElementType == first.Id.ElementType);
+            Debug.Assert(first.Id.Hash == second.Id.Hash && second.Id.ElementType == first.Id.ElementType);
 
             return new()
             {
@@ -151,7 +155,7 @@ namespace AnimationManagerLib
         }
         static public AnimationElement Average(AnimationElement first, AnimationElement second)
         {
-            Debug.Assert(first.Id.ElementNameHash == second.Id.ElementNameHash && second.Id.ElementType == first.Id.ElementType);
+            Debug.Assert(first.Id.Hash == second.Id.Hash && second.Id.ElementType == first.Id.ElementType);
 
             return new()
             {
@@ -162,7 +166,7 @@ namespace AnimationManagerLib
         }
         static public AnimationElement Lerp(AnimationElement from, AnimationElement to, float progress, bool weighted = true)
         {
-            Debug.Assert(from.Id.ElementNameHash == to.Id.ElementNameHash && from.Id.ElementType == to.Id.ElementType);
+            Debug.Assert(from.Id.Hash == to.Id.Hash && from.Id.ElementType == to.Id.ElementType);
 
             if (from.ShortestAngularDistance || to.ShortestAngularDistance)
             {
@@ -184,7 +188,7 @@ namespace AnimationManagerLib
 
         static public AnimationElement CircularLerp(AnimationElement from, AnimationElement to, float progress, bool weighted = true)
         {
-            Debug.Assert(from.Id.ElementNameHash == to.Id.ElementNameHash && from.Id.ElementType == to.Id.ElementType);
+            Debug.Assert(from.Id.Hash == to.Id.Hash && from.Id.ElementType == to.Id.ElementType);
 
             return new()
             {
@@ -194,7 +198,7 @@ namespace AnimationManagerLib
             };
         }
 
-        public readonly override string ToString() => string.Format("(id: {0}, value: {1})", Value, Value);
+        public readonly override string ToString() => $"id: {Id}, value: {Value}";
     }
 
     public struct WeightedValue
@@ -325,6 +329,6 @@ namespace AnimationManagerLib
             }
         }
 
-        public readonly override string ToString() => string.Format("{0} (weight: {1})", Value, Weight);
+        public readonly override string ToString() => string.Format("{0}, weight: {1}", Value, Weight);
     }
 }

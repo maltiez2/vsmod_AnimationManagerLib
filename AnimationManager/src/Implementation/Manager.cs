@@ -70,7 +70,7 @@ namespace AnimationManagerLib
 
             foreach (AnimationId animationId in requests.Select(request => request.Animation))
             {
-                IAnimation animation = mProvider.Get(animationId, animationTarget);
+                IAnimation? animation = mProvider.Get(animationId, animationTarget);
                 if (animation == null)
                 {
                     mClientApi.Logger.Error("Failed to get animation '{0}' for '{1}' while trying to run request, will skip it", animationId, animationTarget);
@@ -92,7 +92,9 @@ namespace AnimationManagerLib
                 mSynchronizer.Sync(packet);
             }
 
-            composer.Run(mRequests[id].Next().Value, (complete) => ComposerCallback(id, complete));
+            AnimationRequest? request = mRequests[id].Next();
+            Debug.Assert(request != null);
+            composer.Run(request.Value, (complete) => ComposerCallback(id, complete));
 
             return id;
         }
@@ -110,6 +112,7 @@ namespace AnimationManagerLib
             mAnimationFrames.Clear();
             TimeSpan timeSpan = TimeSpan.FromSeconds(dt);
             AnimationFrame composition = mComposers[animationTarget].Compose(timeSpan);
+            Debug.Assert(animationTarget.EntityId != null);
             mApplier.AddAnimation(animationTarget.EntityId.Value, composition);
         }
         public void OnFrameHandler(Vintagestory.API.Common.IAnimator animator, float dt)
@@ -130,7 +133,7 @@ namespace AnimationManagerLib
             mApplier.ApplyAnimation(pose);
         }
 
-        private AnimationRequest[] ToRequests(AnimationId animationId, params RunParameters[] parameters)
+        private static AnimationRequest[] ToRequests(AnimationId animationId, params RunParameters[] parameters)
         {
             List<AnimationRequest> requests = new(parameters.Length);
             foreach (RunParameters item in parameters)
@@ -150,9 +153,9 @@ namespace AnimationManagerLib
 
         private void ValidateEntities()
         {
-            foreach (long entityId in mComposers.Keys.Where( (id, _) => id.EntityId != null && mClientApi.World.GetEntityById(id.EntityId.Value) == null).Select(id => id.EntityId.Value))
+            foreach (long? entityId in mComposers.Keys.Where( (id, _) => id.EntityId != null && mClientApi.World.GetEntityById(id.EntityId.Value) == null).Select(id => id.EntityId))
             {
-                if (mClientApi.World.GetEntityById(entityId) == null) OnNullEntity(entityId);
+                if (entityId != null && mClientApi.World.GetEntityById(entityId.Value) == null) OnNullEntity(entityId.Value);
             }
         }
 
@@ -191,7 +194,8 @@ namespace AnimationManagerLib
 
             if (mComposers.ContainsKey(animationTarget)) return mComposers[animationTarget];
 
-            IComposer composer = Activator.CreateInstance(typeof(TAnimationComposer)) as IComposer;
+            IComposer? composer = Activator.CreateInstance(typeof(TAnimationComposer)) as IComposer;
+            Debug.Assert(composer != null);
             composer.SetAnimatorType<Animator>();
             mComposers.Add(animationTarget, composer);
             return composer;
@@ -243,17 +247,12 @@ namespace AnimationManagerLib
 
     public class AnimationApplier
     {
-        public Dictionary<ElementPose, (string name, AnimationFrame composition)> Poses { get; private set; }
-        static public Dictionary<uint, string> PosesNames { get; set; }
+        public Dictionary<ElementPose, (string name, AnimationFrame composition)> Poses { get; private set; } = new();
+        static public Dictionary<uint, string> PosesNames { get; set; } = new();
 
         private readonly ICoreAPI mApi;
 
-        public AnimationApplier(ICoreAPI api)
-        {
-            Poses = new();
-            PosesNames = new();
-            mApi = api;
-        }
+        public AnimationApplier(ICoreAPI api) => mApi = api;
 
         public bool ApplyAnimation(ElementPose pose)
         {
@@ -279,7 +278,7 @@ namespace AnimationManagerLib
         {
             foreach ((var id, _) in composition.Elements)
             {
-                string name = PosesNames[id.ElementNameHash];
+                string name = PosesNames[id.Hash];
                 ElementPose pose = animator.GetPosebyName(name);
                 if (pose != null) Poses[pose] = (name, composition);
             }
@@ -315,7 +314,7 @@ namespace AnimationManagerLib
             }
         }
 
-        public IAnimation Get(AnimationId id, AnimationTarget target)
+        public IAnimation? Get(AnimationId id, AnimationTarget target)
         {
             if (mAnimations.ContainsKey(id)) return mAnimations[id];
             if (mConstructedAnimations.ContainsKey((id, target))) return mConstructedAnimations[(id, target)];
@@ -331,6 +330,7 @@ namespace AnimationManagerLib
 
         static private IAnimation ConstructAnimation(AnimationId id, AnimationData data)
         {
+            Debug.Assert(data.Shape != null);
             Dictionary<uint, Vintagestory.API.Common.Animation> animations = data.Shape.AnimationsByCrc32;
             uint crc32 = Utils.ToCrc32(data.Code);
             float totalFrames = animations[crc32].QuantityFrames;

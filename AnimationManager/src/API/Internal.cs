@@ -36,7 +36,7 @@ namespace AnimationManagerLib.API
             TargetFrame = request.Parameters.TargetFrame;
             Modifier = request.Parameters.Modifier;
         }
-        public static implicit operator AnimationRunMetadata(AnimationRequest request) => new AnimationRunMetadata(request);
+        public static implicit operator AnimationRunMetadata(AnimationRequest request) => new(request);
     }
 
     public interface IHasDebugWindow

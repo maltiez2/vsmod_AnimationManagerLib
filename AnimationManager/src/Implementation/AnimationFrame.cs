@@ -81,7 +81,7 @@ namespace AnimationManagerLib
         {
             foreach ((var id, (var element, var blendMode)) in Elements)
             {
-                if (id.ElementNameHash != nameHash) continue;
+                if (id.Hash != nameHash) continue;
                 switch (blendMode)
                 {
                     case EnumAnimationBlendMode.Add:
