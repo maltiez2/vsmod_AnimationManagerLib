@@ -10,8 +10,8 @@ namespace AnimationManagerLib.CollectibleBehaviors
 {
     public class Animatable : CollectibleBehavior, ITexPositionSource // Based on code from TeacupAngel (https://github.com/TeacupAngel)
     {
-        public AnimatorBase Animator;
-        public Dictionary<string, AnimationMetaData> ActiveAnimationsByAnimCode = new Dictionary<string, AnimationMetaData>();
+        public AnimatorBase Animator { get; set; }
+        public Dictionary<string, AnimationMetaData> ActiveAnimationsByAnimCode { get; set; } = new Dictionary<string, AnimationMetaData>();
 
         // ITexPositionSource
         ITextureAtlasAPI curAtlas;
@@ -22,10 +22,7 @@ namespace AnimationManagerLib.CollectibleBehaviors
             get
             {
                 AssetLocation texturePath = null;
-                if (texturePath == null)
-                {
-                    CurrentShape?.Textures.TryGetValue(textureCode, out texturePath);
-                }
+                CurrentShape?.Textures.TryGetValue(textureCode, out texturePath);
 
                 if (texturePath == null)
                 {
@@ -60,7 +57,7 @@ namespace AnimationManagerLib.CollectibleBehaviors
         {
         }
 
-        protected string cacheKey => "animatedCollectibleMeshes-" + collObj.Code.ToShortString();
+        protected string CacheKey => "animatedCollectibleMeshes-" + collObj.Code.ToShortString();
 
         protected AnimationManagerLibSystem modSystem;
 
@@ -90,7 +87,7 @@ namespace AnimationManagerLib.CollectibleBehaviors
 
             if (api.Side == EnumAppSide.Client)
             {
-                if (!(collObj is Item))
+                if (collObj is not Item)
                 {
                     throw new InvalidOperationException("CollectibleBehaviorAnimatable can only be used on Items, not Blocks!");
                 }
@@ -118,27 +115,21 @@ namespace AnimationManagerLib.CollectibleBehaviors
 
             if (CurrentShape == null) return;
 
-            Vec3f rendererRot = new Vec3f(0f, 1f, 0f);
-
-            MeshData meshData = InitializeMeshData(cacheKey, CurrentShape, this);
+            MeshData meshData = InitializeMeshData(CacheKey, CurrentShape, this);
             currentMeshRef = InitializeMeshRef(meshData);
 
-            Animator = GetAnimator(capi, cacheKey, CurrentShape);
+            Animator = GetAnimator(capi, CacheKey, CurrentShape);
         }
 
         public MeshData InitializeMeshData(string cacheDictKey, Shape shape, ITexPositionSource texSource)
         {
             if (capi.Side != EnumAppSide.Client) throw new NotImplementedException("Server side animation system not implemented yet.");
 
-            Item item = (collObj as Item);
-
-            MeshData meshdata;
-
             shape.ResolveReferences(capi.World.Logger, cacheDictKey);
             CacheInvTransforms(shape.Elements);
             shape.ResolveAndLoadJoints();
 
-            capi.Tesselator.TesselateShapeWithJointIds("collectible", shape, out meshdata, texSource, null);
+            capi.Tesselator.TesselateShapeWithJointIds("collectible", shape, out MeshData meshdata, texSource, null);
 
             return meshdata;
         }
@@ -168,9 +159,8 @@ namespace AnimationManagerLib.CollectibleBehaviors
                 return null;
             }
 
-            object animCacheObj;
-            Dictionary<string, AnimCacheEntry> animCache = null;
-            capi.ObjectCache.TryGetValue("coAnimCache", out animCacheObj);
+            Dictionary<string, AnimCacheEntry> animCache;
+            capi.ObjectCache.TryGetValue("coAnimCache", out object animCacheObj);
             animCache = animCacheObj as Dictionary<string, AnimCacheEntry>;
             if (animCache == null)
             {
@@ -179,8 +169,7 @@ namespace AnimationManagerLib.CollectibleBehaviors
 
             AnimatorBase animator;
 
-            AnimCacheEntry cacheObj = null;
-            if (animCache.TryGetValue(cacheDictKey, out cacheObj))
+            if (animCache.TryGetValue(cacheDictKey, out AnimCacheEntry cacheObj))
             {
                 animator = capi.Side == EnumAppSide.Client ?
                     new ClientAnimator(() => 1, cacheObj.RootPoses, cacheObj.Animations, cacheObj.RootElems, blockShape.JointsById) :
@@ -264,7 +253,7 @@ namespace AnimationManagerLib.CollectibleBehaviors
             else
             {
                 IShaderProgram prevProg = capi.Render.CurrentActiveShader;
-                IShaderProgram prog = null;
+                IShaderProgram prog;
 
                 IRenderAPI rpi = capi.Render;
                 prevProg?.Stop();
@@ -289,14 +278,14 @@ namespace AnimationManagerLib.CollectibleBehaviors
                 int num16 = (int)inSlot.Itemstack.Collectible.GetTemperature(capi.World, inSlot.Itemstack);
                 float[] incandescenceColorAsColor4f = ColorUtil.GetIncandescenceColorAsColor4f(num16);
                 int num17 = GameMath.Clamp((num16 - 550) / 2, 0, 255);
-                Vec4f rgbaGlowIn = new Vec4f(incandescenceColorAsColor4f[0], incandescenceColorAsColor4f[1], incandescenceColorAsColor4f[2], (float)num17 / 255f);
+                Vec4f rgbaGlowIn = new(incandescenceColorAsColor4f[0], incandescenceColorAsColor4f[1], incandescenceColorAsColor4f[2], (float)num17 / 255f);
                 prog.Uniform("extraGlow", num17);
                 prog.Uniform("rgbaAmbientIn", capi.Ambient.BlendedAmbientColor);
                 prog.Uniform("rgbaLightIn", lightRGBSVec4f);
                 prog.Uniform("rgbaGlowIn", rgbaGlowIn);
 
                 float[] tmpVals = new float[4];
-                Vec4f outPos = new Vec4f();
+                Vec4f outPos = new();
                 float[] array = Mat4f.Create();
                 Mat4f.RotateY(array, array, capi.World.Player.Entity.SidedPos.Yaw);
                 Mat4f.RotateX(array, array, capi.World.Player.Entity.SidedPos.Pitch);

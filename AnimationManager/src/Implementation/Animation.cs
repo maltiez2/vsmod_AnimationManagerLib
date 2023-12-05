@@ -2,10 +2,8 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Reflection;
 using AnimationManagerLib.API;
 using Vintagestory.API.Common;
-using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
 namespace AnimationManagerLib
@@ -29,14 +27,14 @@ namespace AnimationManagerLib
 
             if (mFrames.Length > 0 &&  mFrames[0] != 0)
             {
-                AnimationFrame firstFrame = new(mKeyFrames[0].mDefaultBlendMode, mKeyFrames[0].mDefaultElementWeight);
+                AnimationFrame firstFrame = new(mKeyFrames[0].DefaultBlendMode, mKeyFrames[0].DefaultElementWeight);
                 mFrames = mFrames.Prepend((ushort)0).ToArray();
                 mKeyFrames = mKeyFrames.Prepend(firstFrame).ToArray();
             }
 
-            if (mFrames.Length > 0 && MathF.Abs(mFrames.Last() - mTotalFrames) > 1E-3)
+            if (mFrames.Length > 0 && MathF.Abs(mFrames[^1] - mTotalFrames) > 1E-3)
             {
-                AnimationFrame lastFrame = new(mKeyFrames[^1].mDefaultBlendMode, mKeyFrames[^1].mDefaultElementWeight);
+                AnimationFrame lastFrame = new(mKeyFrames[^1].DefaultBlendMode, mKeyFrames[^1].DefaultElementWeight);
                 mFrames = mFrames.Append((ushort)((ushort)mTotalFrames - (ushort)1));
                 mKeyFrames = mKeyFrames.Append(lastFrame);
             }
@@ -62,7 +60,7 @@ namespace AnimationManagerLib
         public AnimationFrame Play(float progress, float? startFrame = null, float? endFrame = null)
         {
             float startFrameIndex = startFrame == null ? 0 : (float)startFrame;
-            float endFrameIndex = endFrame == null ? mFrames[mFrames.Length - 1] : (float)endFrame;
+            float endFrameIndex = endFrame == null ? mFrames[^1] : (float)endFrame;
 
             return CalcFrame(progress, startFrameIndex, endFrameIndex);
         }
@@ -72,7 +70,7 @@ namespace AnimationManagerLib
             (int prevKeyFrame, int nextKeyFrame, float keyFrameProgress) = ToKeyFrames(progress, startFrame, endFrame);
             Debug.Assert(mKeyFrames.Length > prevKeyFrame && mKeyFrames.Length > nextKeyFrame);
             
-            if (prevKeyFrame == nextKeyFrame) return mKeyFrames[nextKeyFrame].Clone(); // @TODO need more testing
+            if (prevKeyFrame == nextKeyFrame) return mKeyFrames[nextKeyFrame].Clone();
             
             AnimationFrame resultFrame = mKeyFrames[nextKeyFrame].Clone();
             mKeyFrames[prevKeyFrame].LerpInto(resultFrame, keyFrameProgress);
@@ -112,7 +110,7 @@ namespace AnimationManagerLib
 
         private (int startKeyFrame, int endKeyFrame) FindKeyFrames(float currentFrame)
         {
-            int endKeyFrame = 0;
+            int endKeyFrame;
             int startKeyFrame = 0;
 
             for (endKeyFrame = 0; endKeyFrame < mKeyFrames.Length && mFrames[endKeyFrame] < currentFrame; endKeyFrame++)

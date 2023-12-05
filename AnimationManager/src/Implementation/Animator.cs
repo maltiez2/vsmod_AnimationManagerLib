@@ -93,18 +93,12 @@ namespace AnimationManagerLib
         }
         private void ModifyProgress()
         {
-            switch (mCurrentParameters.Action)
+            mCurrentProgress = mCurrentParameters.Action switch
             {
-                case AnimationPlayerAction.EaseOut:
-                    mCurrentProgress = 1 - mProgressModifier(1 - mCurrentProgress);
-                    break;
-                case AnimationPlayerAction.Rewind:
-                    mCurrentProgress = 1 - mProgressModifier(1 - mCurrentProgress);
-                    break;
-                default:
-                    mCurrentProgress = mProgressModifier(mCurrentProgress);
-                    break;
-            }
+                AnimationPlayerAction.EaseOut => 1 - mProgressModifier(1 - mCurrentProgress),
+                AnimationPlayerAction.Rewind => 1 - mProgressModifier(1 - mCurrentProgress),
+                _ => mProgressModifier(mCurrentProgress),
+            };
         }
         private void CalculateFrame()
         {

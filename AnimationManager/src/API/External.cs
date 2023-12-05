@@ -1,10 +1,8 @@
 ﻿using ProtoBuf;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Xml.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -148,10 +146,10 @@ namespace AnimationManagerLib.API
             EntityId = entityId;
         }
 
-        static public AnimationTarget HeldItem() => new AnimationTarget(AnimationTargetType.HeldItemFp);
-        static public AnimationTarget Entity(long entityId) => new AnimationTarget(entityId);
+        static public AnimationTarget HeldItem() => new(AnimationTargetType.HeldItemFp);
+        static public AnimationTarget Entity(long entityId) => new(entityId);
 
-        public override string ToString()
+        public readonly override string ToString()
         {
             return TargetType switch
             {
@@ -170,7 +168,7 @@ namespace AnimationManagerLib.API
         public Dictionary<string, float> ElementWeight { get; set; }
         public Dictionary<string, EnumAnimationBlendMode> ElementBlendMode { get; set; }
 
-        static public AnimationData Player(string code, ICoreClientAPI api, bool cyclic = false) => new (code, cyclic);
+        static public AnimationData Player(string code, bool cyclic = false) => new (code, cyclic);
         static public AnimationData Entity(string code, Entity entity, bool cyclic = false) => new(code, entity, cyclic);
         static public AnimationData HeldItem(
             string code,
@@ -191,10 +189,9 @@ namespace AnimationManagerLib.API
         }
         private AnimationData(string code, Entity entity, bool cyclic = false)
         {
-            if (entity == null) throw new ArgumentNullException("entity", "Entity for entity animation data cannot be null");
+            if (entity == null) throw new ArgumentNullException(nameof(entity), "Entity for entity animation data cannot be null");
 
-            AnimationMetaData metaData;
-            entity.Properties.Client.AnimationsByMetaCode.TryGetValue(Code, out metaData);
+            entity.Properties.Client.AnimationsByMetaCode.TryGetValue(Code, out AnimationMetaData metaData);
 
             Code = code;
             Shape = entity.Properties.Client.LoadedShapeForEntity;
@@ -204,10 +201,8 @@ namespace AnimationManagerLib.API
         }
         private AnimationData(string code, Shape shape, bool cyclic = false, Dictionary<string, EnumAnimationBlendMode> elementBlendMode = null, Dictionary<string, float> elementWeight = null)
         {
-            if (shape == null) throw new ArgumentNullException("shape", "Item shape for held item animation cannot be null");
-            
             Code = code;
-            Shape = shape;
+            Shape = shape ?? throw new ArgumentNullException(nameof(shape), "Item shape for held item animation cannot be null");
             Cyclic = cyclic;
             ElementBlendMode = elementBlendMode ?? new(); 
             ElementWeight = elementWeight ?? new();
@@ -226,7 +221,7 @@ namespace AnimationManagerLib.API
             Parameters = parameters;
         }
 
-        public override string ToString() => $"animation: {Animation}, parameters: {Parameters}";
+        public readonly override string ToString() => $"animation: {Animation}, parameters: {Parameters}";
     }
 
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
@@ -527,7 +522,7 @@ namespace AnimationManagerLib.API
 
         public static implicit operator RunParameters(AnimationRequest request) => request.Parameters;
 
-        public override string ToString()
+        public readonly override string ToString()
         {
             if (Modifier == ProgressModifierType.Linear)
             {
@@ -539,7 +534,7 @@ namespace AnimationManagerLib.API
             }
         }
 
-        private string PrintParameters()
+        private readonly string PrintParameters()
         {
             return Action switch
             {
@@ -594,9 +589,11 @@ namespace AnimationManagerLib.API
 
         public static implicit operator AnimationId(AnimationRequest request) => request.Animation;
 
-        public override string ToString() => $"{DebugName}, category: {Category}";
-        public override int GetHashCode() => Hash;
-        public override bool Equals([NotNullWhen(true)] object obj) => obj.GetHashCode() == Hash;
+        public readonly override string ToString() => $"{DebugName}, category: {Category}";
+        public readonly override int GetHashCode() => Hash;
+        public readonly override bool Equals([NotNullWhen(true)] object obj) => obj.GetHashCode() == Hash;
+        public static bool operator ==(AnimationId left, AnimationId right) => left.Equals(right);
+        public static bool operator !=(AnimationId left, AnimationId right) => !(left == right);
     }
 
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
@@ -630,7 +627,9 @@ namespace AnimationManagerLib.API
             }
         }
 
-        public override int GetHashCode() => Hash;
-        public override bool Equals([NotNullWhen(true)] object obj) => obj.GetHashCode() == Hash;
+        public readonly override int GetHashCode() => Hash;
+        public readonly override bool Equals([NotNullWhen(true)] object obj) => obj.GetHashCode() == Hash;
+        public static bool operator ==(Category left, Category right) => left.Equals(right);
+        public static bool operator !=(Category left, Category right) => !(left == right);
     }
 }

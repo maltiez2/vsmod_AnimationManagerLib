@@ -8,39 +8,37 @@ namespace AnimationManagerLib
     public class AnimationFrame
     {
         public Dictionary<ElementId, (AnimationElement element, EnumAnimationBlendMode blendMode)> Elements { get; set; } = new();
-        public EnumAnimationBlendMode mDefaultBlendMode { get; set; } = EnumAnimationBlendMode.Average;
-        public float mDefaultElementWeight { get; set; } = 1;
-
-        public AnimationFrame() { }
+        public EnumAnimationBlendMode DefaultBlendMode { get; set; }
+        public float DefaultElementWeight { get; set; } = 1;
 
         public AnimationFrame(Category category)
         {
-            mDefaultElementWeight = category.Weight ?? 1;
-            mDefaultBlendMode = category.Blending;
+            DefaultElementWeight = category.Weight ?? 1;
+            DefaultBlendMode = category.Blending;
         }
 
         public AnimationFrame(EnumAnimationBlendMode blendMode, float weight)
         {
-            mDefaultBlendMode = blendMode;
-            mDefaultElementWeight = weight;
+            DefaultBlendMode = blendMode;
+            DefaultElementWeight = weight;
         }
 
         public AnimationFrame(Dictionary<string, AnimationKeyFrameElement> elements, AnimationData metaData, Category category)
         {
-            mDefaultElementWeight = category.Weight ?? 1;
-            mDefaultBlendMode = category.Blending;
+            DefaultElementWeight = category.Weight ?? 1;
+            DefaultBlendMode = category.Blending;
             foreach ((string element, AnimationKeyFrameElement keyFrameElement) in elements)
             {
                 EnumAnimationBlendMode? blendMode = metaData.ElementBlendMode.ContainsKey(element) ? metaData.ElementBlendMode[element] : null;
-                float elementWeight = metaData.ElementWeight.ContainsKey(element) ? metaData.ElementWeight[element] * mDefaultElementWeight : mDefaultElementWeight;
+                float elementWeight = metaData.ElementWeight.ContainsKey(element) ? metaData.ElementWeight[element] * DefaultElementWeight : DefaultElementWeight;
 
 
-                AddElement(ElementType.translateX, element, keyFrameElement.OffsetX / 16, elementWeight, GetBlendMode(mDefaultBlendMode, blendMode));
-                AddElement(ElementType.translateY, element, keyFrameElement.OffsetY / 16, elementWeight, GetBlendMode(mDefaultBlendMode, blendMode));
-                AddElement(ElementType.translateZ, element, keyFrameElement.OffsetZ / 16, elementWeight, GetBlendMode(mDefaultBlendMode, blendMode));
-                AddElement(ElementType.degX, element, keyFrameElement.RotationX, elementWeight, GetBlendMode(mDefaultBlendMode, blendMode), keyFrameElement.RotShortestDistanceX);
-                AddElement(ElementType.degY, element, keyFrameElement.RotationY, elementWeight, GetBlendMode(mDefaultBlendMode, blendMode), keyFrameElement.RotShortestDistanceY);
-                AddElement(ElementType.degZ, element, keyFrameElement.RotationZ, elementWeight, GetBlendMode(mDefaultBlendMode, blendMode), keyFrameElement.RotShortestDistanceZ);
+                AddElement(ElementType.translateX, element, keyFrameElement.OffsetX / 16, elementWeight, GetBlendMode(DefaultBlendMode, blendMode));
+                AddElement(ElementType.translateY, element, keyFrameElement.OffsetY / 16, elementWeight, GetBlendMode(DefaultBlendMode, blendMode));
+                AddElement(ElementType.translateZ, element, keyFrameElement.OffsetZ / 16, elementWeight, GetBlendMode(DefaultBlendMode, blendMode));
+                AddElement(ElementType.degX, element, keyFrameElement.RotationX, elementWeight, GetBlendMode(DefaultBlendMode, blendMode), keyFrameElement.RotShortestDistanceX);
+                AddElement(ElementType.degY, element, keyFrameElement.RotationY, elementWeight, GetBlendMode(DefaultBlendMode, blendMode), keyFrameElement.RotShortestDistanceY);
+                AddElement(ElementType.degZ, element, keyFrameElement.RotationZ, elementWeight, GetBlendMode(DefaultBlendMode, blendMode), keyFrameElement.RotShortestDistanceZ);
             }
         }
 
@@ -50,11 +48,11 @@ namespace AnimationManagerLib
             {
                 if (frame.Elements.ContainsKey(id))
                 {
-                    frame.Elements[id] = (CombineElements(element, frame.Elements[id].element, blendMode, mDefaultElementWeight), mDefaultBlendMode);
+                    frame.Elements[id] = (CombineElements(element, frame.Elements[id].element, blendMode, DefaultElementWeight), DefaultBlendMode);
                 }
                 else
                 {
-                    frame.Elements[id] = (CombineElements(element, new(id), blendMode, mDefaultElementWeight), mDefaultBlendMode);
+                    frame.Elements[id] = (CombineElements(element, new(id), blendMode, DefaultElementWeight), DefaultBlendMode);
                 }
             }
         }
@@ -106,7 +104,7 @@ namespace AnimationManagerLib
 
         public virtual AnimationFrame Clone()
         {
-            AnimationFrame clone = new(mDefaultBlendMode, mDefaultElementWeight);
+            AnimationFrame clone = new(DefaultBlendMode, DefaultElementWeight);
             foreach ((var key, var value) in Elements)
             {
                 clone.Elements[key] = value;
@@ -135,13 +133,13 @@ namespace AnimationManagerLib
         {
             if (elementMode == null) return categoryMode;
 
-            return categoryMode switch
+            return categoryMode switch // @TODO refactor or come out with more sensical mapping
             {
                 EnumAnimationBlendMode.Add => elementMode switch
                 {
                     EnumAnimationBlendMode.Add => EnumAnimationBlendMode.Add,
-                    EnumAnimationBlendMode.Average => EnumAnimationBlendMode.Add,
-                    EnumAnimationBlendMode.AddAverage => EnumAnimationBlendMode.Add,
+                    EnumAnimationBlendMode.Average => EnumAnimationBlendMode.Average,
+                    EnumAnimationBlendMode.AddAverage => EnumAnimationBlendMode.AddAverage,
                     _ => throw new NotImplementedException()
                 },
                 EnumAnimationBlendMode.Average => elementMode switch
@@ -165,7 +163,7 @@ namespace AnimationManagerLib
         {
             return blendMode switch
             {
-                EnumAnimationBlendMode.Add => AnimationElement.Sum(to, from.Value != null ? from.Value.Value.Value : null, defaultWeight),
+                EnumAnimationBlendMode.Add => AnimationElement.Sum(to, from.Value?.Value, defaultWeight),
                 EnumAnimationBlendMode.Average => AnimationElement.Average(from, to),
                 EnumAnimationBlendMode.AddAverage => AnimationElement.Sum(from, to),
                 _ => throw new NotImplementedException()

@@ -26,7 +26,7 @@ namespace AnimationManagerLib
             ElementType = elementType;
         }
 
-        public override string ToString() => string.Format("({0}){1}", ElementNameHash, ElementType);
+        public readonly override string ToString() => string.Format("({0}){1}", ElementNameHash, ElementType);
     }
 
     public struct AnimationElement
@@ -48,7 +48,7 @@ namespace AnimationManagerLib
             ShortestAngularDistance = shortestAngularDistance;
         }
 
-        public void Add(ElementPose pose)
+        public readonly void Add(ElementPose pose)
         {
             if (Value == null) return;
 
@@ -74,7 +74,7 @@ namespace AnimationManagerLib
                     break;
             }
         }
-        public void Average(ElementPose pose, float poseWeight = 1)
+        public readonly void Average(ElementPose pose, float poseWeight = 1)
         {
             if (Value == null) return;
 
@@ -100,7 +100,7 @@ namespace AnimationManagerLib
                     break;
             }
         }
-        private float Average(float value, float weight)
+        private readonly float Average(float value, float weight)
         {
             return (Value.Value.Value * Value.Value.Weight + value * weight) / (Value.Value.Weight + weight);
         }
@@ -190,7 +190,7 @@ namespace AnimationManagerLib
             };
         }
 
-        public override string ToString() => string.Format("(id: {0}, value: {1})", Value, Value);
+        public readonly override string ToString() => string.Format("(id: {0}, value: {1})", Value, Value);
     }
 
     public struct WeightedValue
@@ -315,6 +315,6 @@ namespace AnimationManagerLib
             }
         }
 
-        public override string ToString() => string.Format("{0} (weight: {1})", Value, Weight);
+        public readonly override string ToString() => string.Format("{0} (weight: {1})", Value, Weight);
     }
 }

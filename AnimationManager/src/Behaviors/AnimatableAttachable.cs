@@ -58,7 +58,7 @@ namespace AnimationManagerLib.CollectibleBehaviors
         private readonly ItemStack mItemStack;
         private readonly string mAttachmentPointCode;
 
-        private Matrixf mAttachedMeshMatrix = new Matrixf();
+        private Matrixf mAttachedMeshMatrix = new();
 
         public Attachment(ICoreClientAPI api, string attachmentPointCode, ItemStack attachment, ModelTransform transform)
         {
@@ -72,7 +72,7 @@ namespace AnimationManagerLib.CollectibleBehaviors
         {
             if (mApi == null) return;
 
-            ItemRenderInfo attachedRenderInfo = GetAttachmentRenderInfo(renderInfo.dt);
+            ItemRenderInfo attachedRenderInfo = GetAttachmentRenderInfo(); // @TODO @1.19 GetAttachmentRenderInfo(renderInfo.dt)
             if (attachedRenderInfo == null) return;
 
 
@@ -102,10 +102,10 @@ namespace AnimationManagerLib.CollectibleBehaviors
             ;
         }
 
-        private ItemRenderInfo GetAttachmentRenderInfo(float dt)
+        private ItemRenderInfo GetAttachmentRenderInfo() // @TODO @1.19 GetAttachmentRenderInfo(float dt)
         {
-            DummySlot dummySlot = new DummySlot(mItemStack);
-            ItemRenderInfo renderInfo = null; // mApi.Render.GetItemStackRenderInfo(dummySlot, EnumItemRenderTarget.Ground); // mApi.Render.GetItemStackRenderInfo(dummySlot, EnumItemRenderTarget.Ground, dt)
+            DummySlot dummySlot = new(mItemStack);
+            ItemRenderInfo renderInfo = mApi.Render.GetItemStackRenderInfo(dummySlot, EnumItemRenderTarget.Ground); // @TODO @1.19 mApi.Render.GetItemStackRenderInfo(dummySlot, EnumItemRenderTarget.Ground, dt)
             renderInfo.Transform = mAttachedTransform;
             return renderInfo;
         }
