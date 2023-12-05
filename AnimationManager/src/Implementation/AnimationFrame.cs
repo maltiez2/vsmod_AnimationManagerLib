@@ -29,9 +29,8 @@ namespace AnimationManagerLib
             DefaultBlendMode = category.Blending;
             foreach ((string element, AnimationKeyFrameElement keyFrameElement) in elements)
             {
-                EnumAnimationBlendMode? blendMode = metaData.ElementBlendMode.ContainsKey(element) ? metaData.ElementBlendMode[element] : null;
-                float elementWeight = metaData.ElementWeight.ContainsKey(element) ? metaData.ElementWeight[element] * DefaultElementWeight : DefaultElementWeight;
-
+                EnumAnimationBlendMode? blendMode = metaData.ElementBlendMode?.ContainsKey(element) == true ? metaData.ElementBlendMode[element] : null;
+                float elementWeight = metaData.ElementWeight?.ContainsKey(element) == true ? metaData.ElementWeight[element] * DefaultElementWeight : DefaultElementWeight;
 
                 AddElement(ElementType.translateX, element, keyFrameElement.OffsetX / 16, elementWeight, GetBlendMode(DefaultBlendMode, blendMode));
                 AddElement(ElementType.translateY, element, keyFrameElement.OffsetY / 16, elementWeight, GetBlendMode(DefaultBlendMode, blendMode));

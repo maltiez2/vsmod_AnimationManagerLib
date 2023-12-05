@@ -66,8 +66,8 @@ namespace AnimationManagerLib.API
             bool cyclic = false,
             EnumAnimationBlendMode categoryBlendMode = EnumAnimationBlendMode.Add,
             float? categoryWeight = null,
-            Dictionary<string, EnumAnimationBlendMode> elementBlendMode = null,
-            Dictionary<string, float> elementWeight = null
+            Dictionary<string, EnumAnimationBlendMode>? elementBlendMode = null,
+            Dictionary<string, float>? elementWeight = null
             );
 
         Guid RunAnimation(int id, params RunParameters[] parameters);
@@ -164,9 +164,9 @@ namespace AnimationManagerLib.API
     {
         public string Code { get; set; }
         public bool Cyclic { get; set; }
-        public Shape Shape { get; set; }
-        public Dictionary<string, float> ElementWeight { get; set; }
-        public Dictionary<string, EnumAnimationBlendMode> ElementBlendMode { get; set; }
+        public Shape? Shape { get; set; }
+        public Dictionary<string, float>? ElementWeight { get; set; }
+        public Dictionary<string, EnumAnimationBlendMode>? ElementBlendMode { get; set; }
 
         static public AnimationData Player(string code, bool cyclic = false) => new (code, cyclic);
         static public AnimationData Entity(string code, Entity entity, bool cyclic = false) => new(code, entity, cyclic);
@@ -174,8 +174,8 @@ namespace AnimationManagerLib.API
             string code,
             Shape shape,
             bool cyclic = false,
-            Dictionary<string, EnumAnimationBlendMode> elementBlendMode = null,
-            Dictionary<string, float> elementWeight = null
+            Dictionary<string, EnumAnimationBlendMode>? elementBlendMode = null,
+            Dictionary<string, float>? elementWeight = null
             ) => new(code, shape, cyclic, elementBlendMode, elementWeight);
 
         
@@ -191,15 +191,15 @@ namespace AnimationManagerLib.API
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity), "Entity for entity animation data cannot be null");
 
-            entity.Properties.Client.AnimationsByMetaCode.TryGetValue(Code, out AnimationMetaData metaData);
+            entity.Properties.Client.AnimationsByMetaCode.TryGetValue(Code, out AnimationMetaData? metaData);
 
             Code = code;
             Shape = entity.Properties.Client.LoadedShapeForEntity;
-            ElementWeight = metaData.ElementWeight;
-            ElementBlendMode = metaData.ElementBlendMode;
+            ElementWeight = metaData?.ElementWeight;
+            ElementBlendMode = metaData?.ElementBlendMode;
             Cyclic = cyclic;
         }
-        private AnimationData(string code, Shape shape, bool cyclic = false, Dictionary<string, EnumAnimationBlendMode> elementBlendMode = null, Dictionary<string, float> elementWeight = null)
+        private AnimationData(string code, Shape shape, bool cyclic = false, Dictionary<string, EnumAnimationBlendMode>? elementBlendMode = null, Dictionary<string, float>? elementWeight = null)
         {
             Code = code;
             Shape = shape ?? throw new ArgumentNullException(nameof(shape), "Item shape for held item animation cannot be null");
@@ -538,25 +538,25 @@ namespace AnimationManagerLib.API
         {
             return Action switch
             {
-                AnimationPlayerAction.Set => string.Format(", frame: {0}", TargetFrame == null ? "null" : TargetFrame.Value.ToString("0.##")),
+                AnimationPlayerAction.Set => string.Format(", frame: {0}", TargetFrame == null ? "null" : TargetFrame?.ToString("0.##")),
                 AnimationPlayerAction.EaseIn => string.Format(
                         ", frame: {0}, duration: {1}",
-                        TargetFrame == null ? "null" : TargetFrame.Value.ToString("0.##"),
+                        TargetFrame == null ? "null" : TargetFrame?.ToString("0.##"),
                         Duration.TotalSeconds.ToString("0.000")
                     ),
                 AnimationPlayerAction.EaseOut => string.Format(", duration: {0}", Duration.TotalSeconds.ToString("0.000")),
                 AnimationPlayerAction.Play => string.Format(
                         ", start: {0}, end: {1}, duration: {2}",
-                        StartFrame == null ? "null" : TargetFrame.Value.ToString("0.##"),
-                        TargetFrame == null ? "null" : TargetFrame.Value.ToString("0.##"),
+                        StartFrame == null ? "null" : TargetFrame?.ToString("0.##"),
+                        TargetFrame == null ? "null" : TargetFrame?.ToString("0.##"),
                         Duration.TotalSeconds.ToString("0.000")
                     ),
                 AnimationPlayerAction.Stop => "",
                 AnimationPlayerAction.Clear => "",
                 AnimationPlayerAction.Rewind => string.Format(
                         ", start: {0}, end: {1}, duration: {2}",
-                        StartFrame == null ? "null" : TargetFrame.Value.ToString("0.##"),
-                        TargetFrame == null ? "null" : TargetFrame.Value.ToString("0.##"),
+                        StartFrame == null ? "null" : TargetFrame?.ToString("0.##"),
+                        TargetFrame == null ? "null" : TargetFrame?.ToString("0.##"),
                         Duration.TotalSeconds.ToString("0.000")
                     ),
                 _ => ""
@@ -591,7 +591,7 @@ namespace AnimationManagerLib.API
 
         public readonly override string ToString() => $"{DebugName}, category: {Category}";
         public readonly override int GetHashCode() => Hash;
-        public readonly override bool Equals([NotNullWhen(true)] object obj) => obj.GetHashCode() == Hash;
+        public readonly override bool Equals([NotNullWhen(true)] object? obj) => obj?.GetHashCode() == Hash;
         public static bool operator ==(AnimationId left, AnimationId right) => left.Equals(right);
         public static bool operator !=(AnimationId left, AnimationId right) => !(left == right);
     }
@@ -628,7 +628,7 @@ namespace AnimationManagerLib.API
         }
 
         public readonly override int GetHashCode() => Hash;
-        public readonly override bool Equals([NotNullWhen(true)] object obj) => obj.GetHashCode() == Hash;
+        public readonly override bool Equals([NotNullWhen(true)] object? obj) => obj?.GetHashCode() == Hash;
         public static bool operator ==(Category left, Category right) => left.Equals(right);
         public static bool operator !=(Category left, Category right) => !(left == right);
     }

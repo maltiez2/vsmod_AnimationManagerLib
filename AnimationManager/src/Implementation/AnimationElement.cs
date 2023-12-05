@@ -81,28 +81,28 @@ namespace AnimationManagerLib
             switch (Id.ElementType)
             {
                 case ElementType.translateX:
-                    pose.translateX = Average(pose.translateX, poseWeight);
+                    pose.translateX = Average(Value.Value, pose.translateX, poseWeight);
                     break;
                 case ElementType.translateY:
-                    pose.translateY = Average(pose.translateY, poseWeight);
+                    pose.translateY = Average(Value.Value, pose.translateY, poseWeight);
                     break;
                 case ElementType.translateZ:
-                    pose.translateZ = Average(pose.translateZ, poseWeight);
+                    pose.translateZ = Average(Value.Value, pose.translateZ, poseWeight);
                     break;
                 case ElementType.degX:
-                    pose.degX = Average(pose.degX, poseWeight);
+                    pose.degX = Average(Value.Value, pose.degX, poseWeight);
                     break;
                 case ElementType.degY:
-                    pose.degY = Average(pose.degY, poseWeight);
+                    pose.degY = Average(Value.Value, pose.degY, poseWeight);
                     break;
                 case ElementType.degZ:
-                    pose.degZ = Average(pose.degZ, poseWeight);
+                    pose.degZ = Average(Value.Value, pose.degZ, poseWeight);
                     break;
             }
         }
-        private readonly float Average(float value, float weight)
+        private static float Average(WeightedValue thisValue, float value, float weight)
         {
-            return (Value.Value.Value * Value.Value.Weight + value * weight) / (Value.Value.Weight + weight);
+            return (thisValue.Value * thisValue.Weight + value * weight) / (thisValue.Weight + weight);
         }
 
         static public AnimationElement Sum(AnimationElement first, AnimationElement second)
@@ -118,32 +118,36 @@ namespace AnimationManagerLib
         }
         static public AnimationElement Sum(AnimationElement element, float? value, float defaultWeight = 1)
         {
-            if (element.Value == null && value == null)
+            if (element.Value == null)
+            {
+                if (value == null)
+                {
+                    return new()
+                    {
+                        Value = null,
+                        Id = element.Id,
+                        ShortestAngularDistance = element.ShortestAngularDistance
+                    };
+                }
+                else
+                {
+                    return new()
+                    {
+                        Value = new(value.Value, defaultWeight),
+                        Id = element.Id,
+                        ShortestAngularDistance = element.ShortestAngularDistance
+                    };
+                }
+            }
+            else
             {
                 return new()
                 {
-                    Value = null,
+                    Value = new(element.Value.Value.Value + value ?? 0, element.Value.Value.Weight),
                     Id = element.Id,
                     ShortestAngularDistance = element.ShortestAngularDistance
                 };
             }
-
-            if (element.Value == null && value != null)
-            {
-                return new()
-                {
-                    Value = new(value.Value, defaultWeight),
-                    Id = element.Id,
-                    ShortestAngularDistance = element.ShortestAngularDistance
-                };
-            }
-
-            return new()
-            {
-                Value = new(element.Value.Value.Value + value ?? 0, element.Value.Value.Weight),
-                Id = element.Id,
-                ShortestAngularDistance = element.ShortestAngularDistance
-            };
         }
         static public AnimationElement Average(AnimationElement first, AnimationElement second)
         {
@@ -228,48 +232,52 @@ namespace AnimationManagerLib
         }
         static public WeightedValue? Lerp(WeightedValue? from, WeightedValue? to, float progress, bool weighted = true)
         {
-            if (from == null) return new()
+            return (from, to) switch
             {
-                Value = to.Value.Value * progress,
-                Weight = to.Value.Weight * (weighted ? progress : 1)
-            };
-
-            if (to == null) return new()
-            {
-                Value = from.Value.Value * (1 - progress),
-                Weight = from.Value.Weight * (1 - (weighted ? progress : 0))
-            };
-
-            return new()
-            {
-                Value = from.Value.Value * (1 - progress) + to.Value.Value * progress,
-                Weight = from.Value.Weight * (1 - progress) + to.Value.Weight * progress
+                (null, null) => null,
+                (null, _) => new()
+                {
+                    Value = to.Value.Value * progress,
+                    Weight = to.Value.Weight * (weighted ? progress : 1)
+                },
+                (_, null) => new()
+                {
+                    Value = from.Value.Value * (1 - progress),
+                    Weight = from.Value.Weight * (1 - (weighted ? progress : 0))
+                },
+                _ => new()
+                {
+                    Value = from.Value.Value * (1 - progress) + to.Value.Value * progress,
+                    Weight = from.Value.Weight * (1 - progress) + to.Value.Weight * progress
+                }
             };
         }
         static public WeightedValue? ShortestLerp(WeightedValue? from, WeightedValue? to, float progress, float max, bool weighted = true)
         {
-            if (from == null) return new()
+            return (from, to) switch
             {
-                Value = to.Value.Value * progress,
-                Weight = to.Value.Weight * (weighted ? progress : 1)
-            };
-
-            if (to == null) return new()
-            {
-                Value = CalcResultValue(from, to, progress, max),
-                Weight = from.Value.Weight * (1 - (weighted ? progress : 0))
-            };
-
-            return new()
-            {
-                Value = CalcResultValue(from, to, progress, max),
-                Weight = from.Value.Weight * (1 - progress) + to.Value.Weight * progress
+                (null, null) => null,
+                (null, _) => new()
+                {
+                    Value = to.Value.Value * progress,
+                    Weight = to.Value.Weight * (weighted ? progress : 1)
+                },
+                (_, null) => new()
+                {
+                    Value = CalcResultValue(from, to, progress, max),
+                    Weight = from.Value.Weight * (1 - (weighted ? progress : 0))
+                },
+                _ => new()
+                {
+                    Value = CalcResultValue(from, to, progress, max),
+                    Weight = from.Value.Weight * (1 - progress) + to.Value.Weight * progress
+                }
             };
         }
 
         static private float CalcResultValue(WeightedValue? from, WeightedValue? to, float progress, float max)
         {
-            float fromValue = from.Value.Value % max;
+            float fromValue = (from?.Value ?? 0) % max;
             float toValue = (to?.Value ?? 0) % max;
             float distance = GameMath.AngleDegDistance(fromValue, toValue) * progress;
             return fromValue + distance;
@@ -277,28 +285,30 @@ namespace AnimationManagerLib
 
         static public WeightedValue? CircularLerp(WeightedValue? from, WeightedValue? to, float progress, float max, bool weighted = true)
         {
-            if (from == null) return new()
+            return (from, to) switch
             {
-                Value = to.Value.Value * progress,
-                Weight = to.Value.Weight * (weighted ? progress : 1)
-            };
-
-            if (to == null) return new()
-            {
-                Value = CircCalcResultValue(from, to, progress, max),
-                Weight = from.Value.Weight * (1 - (weighted ? progress : 0))
-            };
-
-            return new()
-            {
-                Value = CircCalcResultValue(from, to, progress, max),
-                Weight = from.Value.Weight * (1 - progress) + to.Value.Weight * progress
+                (null, null) => null,
+                (null, _) => new()
+                {
+                    Value = to.Value.Value * progress,
+                    Weight = to.Value.Weight * (weighted ? progress : 1)
+                },
+                (_, null) => new()
+                {
+                    Value = CircCalcResultValue(from, to, progress, max),
+                    Weight = from.Value.Weight * (1 - (weighted ? progress : 0))
+                },
+                _ => new()
+                {
+                    Value = CircCalcResultValue(from, to, progress, max),
+                    Weight = from.Value.Weight * (1 - progress) + to.Value.Weight * progress
+                }
             };
         }
 
         static private float CircCalcResultValue(WeightedValue? from, WeightedValue? to, float progress, float max)
         {
-            float fromValue = from.Value.Value % max;
+            float fromValue = (from?.Value ?? 0) % max;
             float toValue = (to?.Value ?? 0) % max;
 
             if (fromValue <= toValue + 1E-5) return fromValue + (toValue - fromValue) * progress;
