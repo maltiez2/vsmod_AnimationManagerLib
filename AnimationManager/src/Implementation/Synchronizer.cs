@@ -7,7 +7,7 @@ namespace AnimationManagerLib
 {
     public class Synchronizer : ISynchronizer
     {
-        private EnumAppSide mSide;
+        private EnumAppSide? mSide;
 
         public void Init(ICoreAPI api, ISynchronizer.AnimationRunHandler? runHandler, ISynchronizer.AnimationStopHandler? stopHandler, string channelName)
         {
@@ -16,13 +16,13 @@ namespace AnimationManagerLib
             mRunHandler = runHandler;
             mStopHandler = stopHandler;
 
-            if (api.Side == EnumAppSide.Server)
+            if (api is ICoreServerAPI serverApi)
             {
-                StartServerSide(api as ICoreServerAPI, channelName);
+                StartServerSide(serverApi, channelName);
             }
-            else if (api.Side == EnumAppSide.Client)
+            else if (api is ICoreClientAPI clientApi)
             {
-                StartClientSide(api as ICoreClientAPI, channelName);
+                StartClientSide(clientApi, channelName);
             }
         }
         public void Sync(AnimationRunPacket request)
@@ -51,7 +51,7 @@ namespace AnimationManagerLib
 
         // SERVER SIDE
 
-        IServerNetworkChannel mServerNetworkChannel;
+        IServerNetworkChannel? mServerNetworkChannel;
         private void StartServerSide(ICoreServerAPI api, string channelName)
         {
             mServerNetworkChannel = api.Network.RegisterChannel(channelName)
@@ -66,14 +66,14 @@ namespace AnimationManagerLib
         }
         private void BroadcastPacket<TPacket>(TPacket packet, params IServerPlayer[] exceptFor)
         {
-            mServerNetworkChannel.BroadcastPacket(packet, exceptFor);
+            mServerNetworkChannel?.BroadcastPacket(packet, exceptFor);
         }
 
         // CLIENT SIDE
 
-        IClientNetworkChannel mClientNetworkChannel;
-        private ISynchronizer.AnimationRunHandler mRunHandler;
-        private ISynchronizer.AnimationStopHandler mStopHandler;
+        IClientNetworkChannel? mClientNetworkChannel;
+        private ISynchronizer.AnimationRunHandler? mRunHandler;
+        private ISynchronizer.AnimationStopHandler? mStopHandler;
         
 
         private void StartClientSide(ICoreClientAPI api, string channelName)
@@ -86,15 +86,15 @@ namespace AnimationManagerLib
         }
         private void SendPacket<TPacket>(TPacket packet)
         {
-            mClientNetworkChannel.SendPacket(packet);
+            mClientNetworkChannel?.SendPacket(packet);
         }
         private void OnClientPacket(AnimationRunPacket packet)
         {
-            mRunHandler(packet);
+            mRunHandler?.Invoke(packet);
         }
         private void OnClientPacket(AnimationStopPacket packet)
         {
-            mStopHandler(packet);
+            mStopHandler?.Invoke(packet);
         }
     }
 }

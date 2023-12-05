@@ -59,7 +59,6 @@ namespace AnimationManagerLib.API
             Finished
         }
         
-        public void Init(Category category);
         public void Run(AnimationRunMetadata parameters, IAnimation animation);
         public AnimationFrame Calculate(TimeSpan timeElapsed, out Status status);
     }
@@ -68,11 +67,9 @@ namespace AnimationManagerLib.API
     {
         delegate bool IfRemoveAnimator(bool complete);
 
-        void SetAnimatorType<TAnimator>()
-            where TAnimator : IAnimator;
         bool Register(AnimationId id, IAnimation animation);
         void Run(AnimationRequest request, IfRemoveAnimator finishCallback);
-        void Stop(AnimationRequest request);
+        void Stop(Category request);
         AnimationFrame Compose(TimeSpan timeElapsed);
     }
 

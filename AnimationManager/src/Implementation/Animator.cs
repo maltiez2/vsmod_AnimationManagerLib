@@ -11,21 +11,24 @@ namespace AnimationManagerLib
     {
         private AnimationFrame mLastFrame;
         private AnimationFrame mStartFrame;
-        private AnimationFrame mDefaultFrame;
+        private readonly AnimationFrame mDefaultFrame;
         private IAnimation mCurrentAnimation;
-
-        private TimeSpan mCurrentTime;
+        private TimeSpan mCurrentTime = TimeSpan.Zero;
         private AnimationRunMetadata mCurrentParameters;
         private ProgressModifiers.ProgressModifier mProgressModifier;
-        private bool mStopped;
+        private bool mStopped = false;
         private float mCurrentProgress = 1;
         private float mPreviousProgress = 1;
 
-        public void Init(Category category)
+        public Animator(Category category, AnimationRunMetadata parameters, IAnimation animation)
         {
             mDefaultFrame = AnimationFrame.Default(category);
             mStartFrame = AnimationFrame.Default(category);
             mLastFrame = AnimationFrame.Default(category);
+            
+            mCurrentAnimation = animation;
+            mCurrentParameters = parameters;
+            mProgressModifier = ProgressModifiers.Get(parameters.Modifier);
         }
 
         public void Run(AnimationRunMetadata parameters, IAnimation animation)
@@ -153,7 +156,6 @@ namespace AnimationManagerLib
 #if DEBUG
         private readonly FixedSizedQueue<float> mProgressPlot = new(120);
 #endif
-
         public void SetUpDebugWindow()
         {
 #if DEBUG

@@ -12,13 +12,12 @@ namespace AnimationManagerLib
         public const string HarmonyID = "animationmanagerlib";
         public const string ChannelName = "animationmanagerlib";
 
-        public delegate void OnBeforeRenderCallback(IAnimator animator, float dt);
-
-        public IShaderProgram? AnimatedItemShaderProgram => mShaderProgram;
-        public event OnBeforeRenderCallback? OnHeldItemBeforeRender;
+        internal delegate void OnBeforeRenderCallback(IAnimator animator, float dt);
+        internal IShaderProgram? AnimatedItemShaderProgram => mShaderProgram;
+        internal event OnBeforeRenderCallback? OnHeldItemBeforeRender;
 
         private ICoreAPI? mApi;
-        private PlayerModelAnimationManager<Composer>? mManager;
+        private PlayerModelAnimationManager? mManager;
         private Synchronizer? mSynchronizer;
         private ShaderProgram? mShaderProgram;
 
@@ -31,7 +30,6 @@ namespace AnimationManagerLib
             api.RegisterCollectibleBehaviorClass("Animatable", typeof(CollectibleBehaviors.Animatable));
             api.RegisterCollectibleBehaviorClass("AnimatableAttachable", typeof(CollectibleBehaviors.AnimatableAttachable));
             api.RegisterCollectibleBehaviorClass("AnimatableProcedural", typeof(CollectibleBehaviors.AnimatableProcedural));
-            
         }
         public override void StartClientSide(ICoreClientAPI api)
         {
@@ -41,7 +39,7 @@ namespace AnimationManagerLib
             LoadAnimatedItemShaders();
 
             mSynchronizer = new Synchronizer();
-            mManager = new PlayerModelAnimationManager<Composer>(api, mSynchronizer);
+            mManager = new PlayerModelAnimationManager(api, mSynchronizer);
             RegisterHandlers(mManager);
             mSynchronizer.Init(
                 api,
@@ -79,13 +77,13 @@ namespace AnimationManagerLib
             OnHeldItemBeforeRender?.Invoke(animator, dt);
         }
 
-        private void RegisterHandlers(PlayerModelAnimationManager<Composer> manager)
+        private void RegisterHandlers(PlayerModelAnimationManager manager)
         {
             Patches.AnimatorBasePatch.OnElementPoseUsedCallback += manager.OnApplyAnimation;
             Patches.AnimatorBasePatch.OnFrameCallback += manager.OnFrameHandler;
             OnHeldItemBeforeRender += manager.OnFrameHandler;
         }
-        private void UnregisterHandlers(PlayerModelAnimationManager<Composer>? manager)
+        private void UnregisterHandlers(PlayerModelAnimationManager? manager)
         {
             if (manager == null) return;
             Patches.AnimatorBasePatch.OnElementPoseUsedCallback -= manager.OnApplyAnimation;
@@ -94,8 +92,9 @@ namespace AnimationManagerLib
         }
         public override void Dispose()
         {
-            if (mApi?.Side == EnumAppSide.Client)
+            if (mApi is ICoreClientAPI clientApi)
             {
+                clientApi.Event.ReloadShader -= LoadAnimatedItemShaders;
                 UnregisterHandlers(mManager);
                 Patches.AnimatorBasePatch.Unpatch(HarmonyID);
             }

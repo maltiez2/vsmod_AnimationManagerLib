@@ -9,10 +9,10 @@ namespace AnimationManagerLib.Patches
     static class AnimatorBasePatch
     {
         public delegate void OnFrameHandler(Entity entity, float dt);
-        public static event OnFrameHandler OnFrameCallback;
+        public static event OnFrameHandler? OnFrameCallback;
 
         public delegate void OnElementPoseUsedHandler(ElementPose pose);
-        public static event OnElementPoseUsedHandler OnElementPoseUsedCallback;
+        public static event OnElementPoseUsedHandler? OnElementPoseUsedCallback;
 
         public static void Patch(string harmonyId)
         {

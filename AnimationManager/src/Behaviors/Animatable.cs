@@ -7,18 +7,19 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Config;
 using System.Diagnostics;
 
+#pragma warning disable CS8602
 namespace AnimationManagerLib.CollectibleBehaviors
 {
     public class Animatable : CollectibleBehavior, ITexPositionSource // Based on code from TeacupAngel (https://github.com/TeacupAngel)
     {
-        public AnimatorBase Animator { get; set; }
+        public AnimatorBase? Animator { get; set; }
         public Dictionary<string, AnimationMetaData> ActiveAnimationsByAnimCode { get; set; } = new Dictionary<string, AnimationMetaData>();
 
         // ITexPositionSource
-        ITextureAtlasAPI curAtlas;
-        public Size2i AtlasSize => curAtlas.Size;
+        ITextureAtlasAPI? curAtlas;
+        public Size2i? AtlasSize => curAtlas?.Size;
 
-        public virtual TextureAtlasPosition this[string textureCode]
+        public virtual TextureAtlasPosition? this[string textureCode]
         {
             get
             {
@@ -34,8 +35,9 @@ namespace AnimationManagerLib.CollectibleBehaviors
             }
         }
 
-        protected TextureAtlasPosition GetOrCreateTexPos(AssetLocation texturePath)
+        protected TextureAtlasPosition? GetOrCreateTexPos(AssetLocation texturePath)
         {
+
             TextureAtlasPosition texpos = curAtlas[texturePath];
 
             if (texpos == null)
@@ -59,19 +61,15 @@ namespace AnimationManagerLib.CollectibleBehaviors
         }
 
         protected string CacheKey => "animatedCollectibleMeshes-" + collObj.Code.ToShortString();
+        protected AnimationManagerLibSystem? modSystem;
 
-        protected AnimationManagerLibSystem modSystem;
-
-        public Shape CurrentShape { get; private set; }
+        public Shape? CurrentShape { get; private set; }
         public bool RenderProceduralAnimations { get; set; }
 
-        protected ICoreClientAPI mClientApi;
-        
-        protected MeshRef currentMeshRef;
-
-        protected string animatedShapePath;
+        protected ICoreClientAPI? mClientApi;
+        protected MeshRef? currentMeshRef;
+        protected string? animatedShapePath;
         protected bool onlyWhenAnimating;
-
         protected float[] tmpMvMat = Mat4f.Create();
 
         public override void Initialize(JsonObject properties)
@@ -155,7 +153,7 @@ namespace AnimationManagerLib.CollectibleBehaviors
             return meshRef;
         }
 
-        public static AnimatorBase GetAnimator(ICoreClientAPI capi, string cacheDictKey, Shape blockShape)
+        public static AnimatorBase? GetAnimator(ICoreClientAPI capi, string cacheDictKey, Shape blockShape)
         {
             if (blockShape == null)
             {
@@ -227,7 +225,8 @@ namespace AnimationManagerLib.CollectibleBehaviors
         public void StopAnimation(string code, bool forceImmediate = false)
         {
             if (mClientApi.Side != EnumAppSide.Client) throw new NotImplementedException("Server side animation system not implemented.");
-
+            if (Animator == null) return;
+            
             if (ActiveAnimationsByAnimCode.ContainsKey(code) && forceImmediate)
             {
                 RunningAnimation? anim = Array.Find(Animator.anims, (anim) => { return anim.Animation.Code == code; });
@@ -263,6 +262,7 @@ namespace AnimationManagerLib.CollectibleBehaviors
                 IRenderAPI rpi = mClientApi.Render;
                 prevProg?.Stop();
 
+                Debug.Assert(modSystem.AnimatedItemShaderProgram != null);
                 prog = modSystem.AnimatedItemShaderProgram;
                 prog.Use();
                 prog.Uniform("alphaTest", collObj.RenderAlphaTest);
@@ -309,7 +309,7 @@ namespace AnimationManagerLib.CollectibleBehaviors
                 prog.UniformMatrices4x3(
                     "elementTransforms",
                     GlobalConstants.MaxAnimatedElements,
-                    Animator.TransformationMatrices4x3
+                    Animator?.TransformationMatrices4x3
                 );
 
                 mClientApi.Render.RenderMesh(currentMeshRef);
@@ -319,4 +319,5 @@ namespace AnimationManagerLib.CollectibleBehaviors
             }
         }
     }
+#pragma warning restore CS8602
 }

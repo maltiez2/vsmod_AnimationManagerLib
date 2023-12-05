@@ -16,13 +16,11 @@ namespace AnimationManagerLib
             DefaultElementWeight = category.Weight ?? 1;
             DefaultBlendMode = category.Blending;
         }
-
         public AnimationFrame(EnumAnimationBlendMode blendMode, float weight)
         {
             DefaultBlendMode = blendMode;
             DefaultElementWeight = weight;
         }
-
         public AnimationFrame(Dictionary<string, AnimationKeyFrameElement> elements, AnimationData metaData, Category category)
         {
             DefaultElementWeight = category.Weight ?? 1;

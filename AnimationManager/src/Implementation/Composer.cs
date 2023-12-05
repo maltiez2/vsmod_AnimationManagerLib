@@ -4,14 +4,11 @@ using System.Collections.Generic;
 using Vintagestory.API.Common;
 using IAnimator = AnimationManagerLib.API.IAnimator;
 using System.Linq;
-using Vintagestory.API.Util;
-using System.Diagnostics;
 
 namespace AnimationManagerLib
 {
     public class Composer : IComposer
     { 
-        private Type mAnimatorType;
         private readonly Dictionary<AnimationId, IAnimation> mAnimations = new();
         private readonly Dictionary<Category, IAnimator> mAnimators = new();
         private readonly Dictionary<Category, bool> mCategories = new();
@@ -20,43 +17,41 @@ namespace AnimationManagerLib
 
         public Composer() => mDefaultFrame = AnimationFrame.Default(new("", EnumAnimationBlendMode.Average, 0));
 
-        public void SetAnimatorType<TAnimator>() where TAnimator : IAnimator => mAnimatorType = typeof(TAnimator);
         public bool Register(AnimationId id, IAnimation animation) => mAnimations.TryAdd(id, animation);
-        public void Run(AnimationRequest request, IComposer.IfRemoveAnimator finishCallback) => TryAddAnimator(request, finishCallback).Run(request, mAnimations[request]);
-        public void Stop(AnimationRequest request) => RemoveAnimator(request);
-        
+        public void Run(AnimationRequest request, IComposer.IfRemoveAnimator finishCallback)
+        {
+            if (mCallbacks.ContainsKey(request.Animation.Category)) mCallbacks[request.Animation.Category](false);
+            
+            mCallbacks[request.Animation.Category] = finishCallback;
+            
+            if (mAnimators.ContainsKey(request.Animation.Category))
+            {
+                mAnimators[request.Animation.Category].Run(request, mAnimations[request]);
+                return;
+            }
+            
+            IAnimator animator = new Animator(request.Animation.Category, request, mAnimations[request]);
+            mAnimators.Add(request.Animation.Category, animator);
+            mCategories[request.Animation.Category] = true;
+        }
+        public void Stop(Category request)
+        {
+            if (!mAnimators.ContainsKey(request)) return;
+            mAnimators.Remove(request);
+        }
         public AnimationFrame Compose(TimeSpan timeElapsed)
         {
             AnimationFrame composition = mDefaultFrame.Clone();
 
-            IAnimator.Status animatorStatus;
-
             foreach ((var category, var animator) in mAnimators.Where((entry, _) => mCategories[entry.Key]))
             {
-                animator.Calculate(timeElapsed, out animatorStatus).BlendInto(composition);
+                animator.Calculate(timeElapsed, out IAnimator.Status animatorStatus).BlendInto(composition);
                 ProcessStatus(category, animatorStatus);
             }
 
             return composition;
         }
-
-        private IAnimator TryAddAnimator(AnimationRequest request, IComposer.IfRemoveAnimator finishCallback)
-        {
-            if (mCallbacks.ContainsKey(request.Animation.Category)) mCallbacks[request.Animation.Category](false);
-            mCallbacks[request.Animation.Category] = finishCallback;
-            if (mAnimators.ContainsKey(request.Animation.Category)) return mAnimators[request.Animation.Category];
-            IAnimator? animator = Activator.CreateInstance(mAnimatorType) as IAnimator;
-            Debug.Assert(animator != null);
-            animator.Init(request.Animation.Category);
-            mAnimators.Add(request.Animation.Category, animator);
-            mCategories[request.Animation.Category] = true;
-            return animator;
-        }
-        private void RemoveAnimator(Category category)
-        {
-            if (!mAnimators.ContainsKey(category)) return;
-            mAnimators.Remove(category);
-        }
+        
         private void ProcessStatus(Category category, IAnimator.Status status)
         {
             switch (status)
@@ -66,7 +61,7 @@ namespace AnimationManagerLib
                     {
                         var callback = mCallbacks[category];
                         mCallbacks.Remove(category);
-                        if (callback(true)) RemoveAnimator(category);
+                        if (callback(true)) Stop(category);
                     }
                     
                     break;

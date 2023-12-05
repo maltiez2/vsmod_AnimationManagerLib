@@ -9,8 +9,7 @@ using Vintagestory.API.Common.Entities;
 
 namespace AnimationManagerLib
 {
-    public class PlayerModelAnimationManager<TAnimationComposer> : API.IAnimationManager
-        where TAnimationComposer : IComposer, new()
+    public class PlayerModelAnimationManager : API.IAnimationManager
     {
         private readonly ICoreClientAPI mClientApi;
         private readonly ISynchronizer mSynchronizer;
@@ -192,9 +191,8 @@ namespace AnimationManagerLib
 
             if (mComposers.ContainsKey(animationTarget)) return mComposers[animationTarget];
 
-            IComposer? composer = Activator.CreateInstance(typeof(TAnimationComposer)) as IComposer;
+            IComposer composer = new Composer();
             Debug.Assert(composer != null);
-            composer.SetAnimatorType<Animator>();
             mComposers.Add(animationTarget, composer);
             return composer;
         }

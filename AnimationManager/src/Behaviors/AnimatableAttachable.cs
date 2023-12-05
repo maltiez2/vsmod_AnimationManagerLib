@@ -17,6 +17,7 @@ namespace AnimationManagerLib.CollectibleBehaviors
 
         public void AddAttachment(string attachmentCode, ItemStack attachmentItem, ModelTransform transform)
         {
+            if (mClientApi == null) return;
             mAttachments.Add(attachmentCode, new(mClientApi, attachmentCode, attachmentItem, transform));
             mActiveAttachments.Add(attachmentCode, true);
         }
@@ -43,6 +44,7 @@ namespace AnimationManagerLib.CollectibleBehaviors
             base.RenderHandFp(inSlot, renderInfo, modelMat, posX, posY, posZ, size, color, rotate, showStackSize);
 
             if (onlyWhenAnimating && ActiveAnimationsByAnimCode.Count == 0) return;
+            if (Animator == null) return;
 
             foreach ((string code, bool active) in mActiveAttachments.Where(x => x.Value))
             {
