@@ -62,10 +62,15 @@ namespace AnimationManagerLib
         }
         public bool LoadAnimatedItemShaders()
         {
-            mShaderProgram = (mApi as ICoreClientAPI)?.Shader.NewShaderProgram() as ShaderProgram;
+            if (mApi is not ICoreClientAPI clientApi) return false;
+            
+            mShaderProgram = clientApi.Shader.NewShaderProgram() as ShaderProgram;
+            
+            if (mShaderProgram == null) return false;
+            
             mShaderProgram.AssetDomain = Mod.Info.ModID;
-            (mApi as ICoreClientAPI)?.Shader.RegisterFileShaderProgram("helditemanimated", AnimatedItemShaderProgram);
-            AnimatedItemShaderProgram?.Compile();
+            clientApi.Shader.RegisterFileShaderProgram("helditemanimated", AnimatedItemShaderProgram);
+            mShaderProgram.Compile();
 
             return true;
         }
