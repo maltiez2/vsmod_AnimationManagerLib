@@ -3,6 +3,8 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
+using System.Xml.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -26,7 +28,6 @@ namespace AnimationManagerLib.API
         /// <param name="requests">Sequence of animations bonded to run parameters. Will be played one after another.</param>
         /// <returns>Unique identifier that is used to stop animation sequence with <see cref="Stop"/></returns>
         Guid Run(AnimationTarget animationTarget, params AnimationRequest[] requests);
-
         /// <summary>
         /// Starts the animation sequence
         /// </summary>
@@ -35,7 +36,6 @@ namespace AnimationManagerLib.API
         /// <param name="requests">Sequence of animations bonded to run parameters. Will be played one after another.</param>
         /// <returns>Unique identifier that is used to stop animation sequence with <see cref="Stop"/></returns>
         Guid Run(AnimationTarget animationTarget, bool synchronize, params AnimationRequest[] requests);
-
         /// <summary>
         /// Used by synchronizer, not synchronized.
         /// </summary>
@@ -44,6 +44,8 @@ namespace AnimationManagerLib.API
         /// <param name="requests">Sequence of animations bonded to run parameters. Will be played one after another.</param>
         /// <returns>Unique identifier that is used to stop animation sequence with <see cref="Stop"/></returns>
         Guid Run(AnimationTarget animationTarget, Guid runId, params AnimationRequest[] requests);
+        Guid Run(AnimationTarget animationTarget, AnimationId animationId, params RunParameters[] parameters);
+        Guid Run(AnimationTarget animationTarget, bool synchronize, AnimationId animationId, params RunParameters[] parameters);
 
         /// <summary>
         /// Stops animation sequence with specified id provided by <see cref="Run"/>. Synchronized.
@@ -145,6 +147,19 @@ namespace AnimationManagerLib.API
             TargetType = AnimationTargetType.Entity;
             EntityId = entityId;
         }
+
+        static public AnimationTarget HeldItem() => new AnimationTarget(AnimationTargetType.HeldItemFp);
+        static public AnimationTarget Entity(long entityId) => new AnimationTarget(entityId);
+
+        public override string ToString()
+        {
+            return TargetType switch
+            {
+                AnimationTargetType.Entity => $"{TargetType}: {EntityId}",
+                AnimationTargetType.HeldItemFp => $"{TargetType}",
+                _ => "<AnimationTarget>"
+            };
+        }
     }
 
     public class AnimationData
@@ -211,7 +226,7 @@ namespace AnimationManagerLib.API
             Parameters = parameters;
         }
 
-        public override string ToString() => string.Format("AnimationRequest: ({0}) \t|  {1}", Animation, Parameters);
+        public override string ToString() => $"animation: {Animation}, parameters: {Parameters}";
     }
 
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
@@ -399,6 +414,25 @@ namespace AnimationManagerLib.API
         /// <summary>
         /// Plays animation from <paramref name="startFrame"/> to <paramref name="targetFrame"/>
         /// </summary>
+        /// <param name="duration">Animation duration</param>
+        /// <param name="startFrame">Start frame of an animation, can be fractional</param>
+        /// <param name="targetFrame">Last frame of an animation, can be fractional</param>
+        /// <param name="modifier">Modifies speed of animation based on its progress</param>
+        /// <returns></returns>
+        public static RunParameters Play(TimeSpan duration, float startFrame, float targetFrame, ProgressModifierType modifier = ProgressModifierType.Linear)
+        {
+            return new()
+            {
+                Action = AnimationPlayerAction.Play,
+                Duration = duration,
+                TargetFrame = targetFrame,
+                Modifier = modifier,
+                StartFrame = startFrame
+            };
+        }
+        /// <summary>
+        /// Plays animation from <paramref name="startFrame"/> to <paramref name="targetFrame"/>
+        /// </summary>
         /// <param name="duration_s">Animation duration in seconds</param>
         /// <param name="startFrame">Start frame of an animation, can be fractional</param>
         /// <param name="targetFrame">Last frame of an animation, can be fractional</param>
@@ -493,58 +527,110 @@ namespace AnimationManagerLib.API
 
         public static implicit operator RunParameters(AnimationRequest request) => request.Parameters;
 
-        public override string ToString() => string.Format("RunParameters: {0} for '{1} ms' ({2}): {3} -> {4}", Action, Duration.TotalMilliseconds, Modifier, StartFrame != null ? StartFrame : "null", TargetFrame != null ? TargetFrame : "null");
+        public override string ToString()
+        {
+            if (Modifier == ProgressModifierType.Linear)
+            {
+                return $"{Action}{PrintParameters()}";
+            }
+            else
+            {
+                return $"{Action}{PrintParameters()}, modifier: {Modifier}";
+            }
+        }
+
+        private string PrintParameters()
+        {
+            return Action switch
+            {
+                AnimationPlayerAction.Set => string.Format(", frame: {0}", TargetFrame == null ? "null" : TargetFrame.Value.ToString("0.##")),
+                AnimationPlayerAction.EaseIn => string.Format(
+                        ", frame: {0}, duration: {1}",
+                        TargetFrame == null ? "null" : TargetFrame.Value.ToString("0.##"),
+                        Duration.TotalSeconds.ToString("0.000")
+                    ),
+                AnimationPlayerAction.EaseOut => string.Format(", duration: {0}", Duration.TotalSeconds.ToString("0.000")),
+                AnimationPlayerAction.Play => string.Format(
+                        ", start: {0}, end: {1}, duration: {2}",
+                        StartFrame == null ? "null" : TargetFrame.Value.ToString("0.##"),
+                        TargetFrame == null ? "null" : TargetFrame.Value.ToString("0.##"),
+                        Duration.TotalSeconds.ToString("0.000")
+                    ),
+                AnimationPlayerAction.Stop => "",
+                AnimationPlayerAction.Clear => "",
+                AnimationPlayerAction.Rewind => string.Format(
+                        ", start: {0}, end: {1}, duration: {2}",
+                        StartFrame == null ? "null" : TargetFrame.Value.ToString("0.##"),
+                        TargetFrame == null ? "null" : TargetFrame.Value.ToString("0.##"),
+                        Duration.TotalSeconds.ToString("0.000")
+                    ),
+                _ => ""
+            };
+        }
     }
 
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
     public struct AnimationId
     {
-        public uint Hash { get; private set; }
+        public int Hash { get; private set; }
         public Category Category { get; private set; }
+
+        private readonly string DebugName;
 
         public AnimationId(Category category, string name)
         {
-            Hash = Utils.ToCrc32(name);
             Category = category;
-        }
-        public AnimationId(Category category, uint hash)
-        {
-            Hash = hash;
-            Category = category;
+            DebugName = name;
+            Hash = (int)Utils.ToCrc32(name);
+            Hash = (int)Utils.ToCrc32($"{Hash}{Category.Hash}");
         }
         public AnimationId(string category, string animation, EnumAnimationBlendMode blendingType = EnumAnimationBlendMode.Add, float? weight = null)
         {
-            Hash = Utils.ToCrc32(animation);
             Category = new Category(category, blendingType, weight);
+            DebugName = animation;
+            Hash = (int)Utils.ToCrc32(animation);
+            Hash = (int)Utils.ToCrc32($"{Hash}{Category.Hash}");
         }
 
         public static implicit operator AnimationId(AnimationRequest request) => request.Animation;
 
-        public override string ToString() => string.Format("AnimationId: {0} {1}", Hash, Category);
+        public override string ToString() => $"{DebugName}, category: {Category}";
+        public override int GetHashCode() => Hash;
+        public override bool Equals([NotNullWhen(true)] object obj) => obj.GetHashCode() == Hash;
     }
 
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
     public struct Category
     {
-        public uint Hash { get; set; }
-        public EnumAnimationBlendMode Blending { get; set; }
-        public float? Weight { get; set; }
+        public int Hash { get; private set; }
+        public EnumAnimationBlendMode Blending { get; private set; }
+        public float? Weight { get; private set; }
+        
+        private readonly string mDebugName;
 
         public Category(string name, EnumAnimationBlendMode blending = EnumAnimationBlendMode.Add, float? weight = null)
         {
             Blending = blending;
-            Hash = Utils.ToCrc32(name);
+            Hash = (int)Utils.ToCrc32($"{name}{blending}{weight}");
             Weight = weight;
-        }
-        public Category(uint hash, EnumAnimationBlendMode blending = EnumAnimationBlendMode.Add, float? weight = null)
-        {
-            Blending = blending;
-            Hash = hash;
-            Weight = weight;
+            mDebugName = name;
         }
 
         public static implicit operator Category(AnimationRequest request) => request.Animation.Category;
 
-        public override string ToString() => string.Format("CategoryId: {0} ({1}: {2})", Hash, Blending, Weight == null ? "null" : Weight);
+        public override readonly string ToString()
+        {
+            if (Blending == EnumAnimationBlendMode.Add)
+            {
+                return $"{mDebugName} ({Blending})";
+            }
+            else
+            {
+                return string.Format("{0} ({1}: {2})", mDebugName, Blending, Weight == null ? "null" : Weight.Value.ToString("#.###"));
+            }
+        }
+
+        public override int GetHashCode() => Hash;
+        public override bool Equals([NotNullWhen(true)] object obj) => obj.GetHashCode() == Hash;
     }
 }

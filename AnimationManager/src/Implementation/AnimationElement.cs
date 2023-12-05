@@ -1,9 +1,5 @@
-﻿using AnimationManagerLib.API;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using Vintagestory.API.Common;
-using static System.Net.Mime.MediaTypeNames;
 using Vintagestory.API.MathTools;
 
 namespace AnimationManagerLib

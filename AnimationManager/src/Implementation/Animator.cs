@@ -1,10 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using AnimationManagerLib.API;
-using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using VSImGui;
 using IAnimator = AnimationManagerLib.API.IAnimator;
 
 namespace AnimationManagerLib
@@ -45,7 +43,42 @@ namespace AnimationManagerLib
         {
             mCurrentTime += timeElapsed;
 
+            status = mStopped ? IAnimator.Status.Stopped : IAnimator.Status.Running;
+            if (mStopped) return mLastFrame;
+
             float duration = (float)mCurrentParameters.Duration.TotalSeconds;
+
+            AdjustDuration(ref duration);
+            CalculateProgress(duration);
+
+            if (mStopped)
+            {
+                OnStopped(ref status);
+                return mLastFrame;
+            }
+
+            ModifyProgress();
+            CalculateFrame();
+
+            return mLastFrame;
+        }
+
+        private void AdjustDuration(ref float duration)
+        {
+            switch (mCurrentParameters.Action)
+            {
+                case AnimationPlayerAction.EaseOut:
+                    duration *= mPreviousProgress;
+                    break;
+                case AnimationPlayerAction.Rewind:
+                    duration *= mPreviousProgress;
+                    break;
+                default:
+                    break;
+            }
+        }
+        private void CalculateProgress(float duration)
+        {
             bool instant = mCurrentParameters.Duration == TimeSpan.Zero;
 
             Debug.Assert(!instant ||
@@ -55,43 +88,11 @@ namespace AnimationManagerLib
                     "Only 'Set', 'Stop' and 'Clear' actions can have zero duration"
                 );
 
-            switch (mCurrentParameters.Action)
-            {
-                case AnimationPlayerAction.EaseOut:
-                    duration = duration * mPreviousProgress;
-                    break;
-                case AnimationPlayerAction.Rewind:
-                    duration = duration * mPreviousProgress;
-                    break;
-                default:
-                    break;
-            }
-
-            status = mStopped ? IAnimator.Status.Stopped : IAnimator.Status.Running;
-            if (mStopped) return mLastFrame;
-
             mCurrentProgress = instant ? 1 : GameMath.Clamp((float)mCurrentTime.TotalSeconds / duration, 0, 1);
-            if (mCurrentProgress >= 1)
-            {
-                mStopped = true;
-
-                switch (mCurrentParameters.Action)
-                {
-                    case AnimationPlayerAction.Set:
-                        mLastFrame = mCurrentAnimation.Play(1, null, mCurrentParameters.TargetFrame);
-                        mStopped = true;
-                        break;
-                    case AnimationPlayerAction.Stop:
-                        mStopped = true;
-                        break;
-                    case AnimationPlayerAction.Clear:
-                        mLastFrame = mDefaultFrame.Clone();
-                        mStopped = true;
-                        break;
-                }
-            }
-            
-
+            mStopped = mCurrentProgress >= 1;
+        }
+        private void ModifyProgress()
+        {
             switch (mCurrentParameters.Action)
             {
                 case AnimationPlayerAction.EaseOut:
@@ -104,21 +105,9 @@ namespace AnimationManagerLib
                     mCurrentProgress = mProgressModifier(mCurrentProgress);
                     break;
             }
-
-            switch (mCurrentParameters.Action)
-            {
-                case AnimationPlayerAction.EaseOut:
-                    if (mStopped) status = IAnimator.Status.Finished;
-                    break;
-                case AnimationPlayerAction.Clear:
-                    if (mStopped) status = IAnimator.Status.Finished;
-                    break;
-                default:
-                    break;
-            }
-
-            if (mStopped) return mLastFrame;
-
+        }
+        private void CalculateFrame()
+        {
             switch (mCurrentParameters.Action)
             {
                 case AnimationPlayerAction.Set:
@@ -147,31 +136,54 @@ namespace AnimationManagerLib
                 default:
                     throw new NotImplementedException();
             }
-
-            return mLastFrame;
         }
-
-        private sealed class FixedSizedQueue<T>
+        private void OnStopped(ref IAnimator.Status status)
         {
-            public readonly Queue<T> q = new Queue<T>();
-            public int Limit { get; set; }
-            public void Enqueue(T obj)
+            switch (mCurrentParameters.Action)
             {
-                q.Enqueue(obj);
-                T overflow;
-                while (q.Count > Limit && q.TryDequeue(out overflow)) ;
+                case AnimationPlayerAction.Set:
+                    mLastFrame = mCurrentAnimation.Play(1, null, mCurrentParameters.TargetFrame);
+                    break;
+                case AnimationPlayerAction.Stop:
+                    break;
+                case AnimationPlayerAction.Clear:
+                    mLastFrame = mDefaultFrame.Clone();
+                    status = IAnimator.Status.Finished;
+                    break;
+                case AnimationPlayerAction.EaseOut:
+                    status = IAnimator.Status.Finished;
+                    break;
             }
         }
-        private FixedSizedQueue<float> mProgressPlot = new();
+
+#if DEBUG
+        private readonly FixedSizedQueue<float> mProgressPlot = new(120);
+#endif
 
         public void SetUpDebugWindow()
         {
 #if DEBUG
-            mProgressPlot.Limit = 120;
             mProgressPlot.Enqueue(mCurrentProgress);
-            ImGuiNET.ImGui.Begin("Animators status");
-            ImGuiNET.ImGui.PlotLines(string.Format("{0}", mCurrentParameters.Action), ref mProgressPlot.q.ToArray()[0], mProgressPlot.q.Count, 0, "", 0, 1.1f, new(0, 100f));
-            ImGuiNET.ImGui.End();
+            ImGuiNET.ImGui.Text($"{mCurrentAnimation}");
+            ImGuiNET.ImGui.Text($"Action: {mCurrentParameters.Action}");
+            ImGuiNET.ImGui.Text($"Duration: {mCurrentParameters.Duration}");
+
+            if (!mStopped)
+                ImGuiNET.ImGui.Text($"Modifier: {mCurrentParameters.Modifier}");
+            else
+                ImGuiNET.ImGui.Text($"Modifier: -");
+            
+            if (mStopped)
+                ImGuiNET.ImGui.SliderFloat("Prev. progress", ref mPreviousProgress, 0, 1);
+            else
+            {
+                ImGuiNET.ImGui.BeginDisabled();
+                ImGuiNET.ImGui.SliderFloat("Prev. progress", ref mPreviousProgress, 0, 1);
+                ImGuiNET.ImGui.EndDisabled();
+            }
+            
+            ImGuiNET.ImGui.PlotLines("Curr. progress", ref mProgressPlot.Queue.ToArray()[0], mProgressPlot.Count, 0, "", 0, 1.1f, new(0, 100f));
+            ImGuiNET.ImGui.NewLine();
 #endif
         }
     }

@@ -12,13 +12,16 @@ namespace AnimationManagerLib
 {
     public class Animation : IAnimation
     {
+        public AnimationId Id { get; private set; }
+        
         private readonly AnimationFrame[] mKeyFrames;
         private readonly ushort[] mFrames;
         private readonly bool mCyclic;
         private readonly float mTotalFrames;
 
-        public Animation(AnimationFrame[] keyFrames, ushort[] keyFramesPosition, float totalFrames, bool cyclic = false)
+        public Animation(AnimationId id, AnimationFrame[] keyFrames, ushort[] keyFramesPosition, float totalFrames, bool cyclic = false)
         {
+            Id = id;
             mKeyFrames = keyFrames;
             mFrames = keyFramesPosition;
             mCyclic = cyclic;
@@ -243,5 +246,7 @@ namespace AnimationManagerLib
         {
             return ((end - start) % max + max * 1.5f) % max - max * 0.5f;
         }
+
+        public override string ToString() => $"Animation: {Id}";
     }
 }

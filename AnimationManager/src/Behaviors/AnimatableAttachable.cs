@@ -105,7 +105,7 @@ namespace AnimationManagerLib.CollectibleBehaviors
         private ItemRenderInfo GetAttachmentRenderInfo(float dt)
         {
             DummySlot dummySlot = new DummySlot(mItemStack);
-            ItemRenderInfo renderInfo = mApi.Render.GetItemStackRenderInfo(dummySlot, EnumItemRenderTarget.Ground); // mApi.Render.GetItemStackRenderInfo(dummySlot, EnumItemRenderTarget.Ground, dt)
+            ItemRenderInfo renderInfo = null; // mApi.Render.GetItemStackRenderInfo(dummySlot, EnumItemRenderTarget.Ground); // mApi.Render.GetItemStackRenderInfo(dummySlot, EnumItemRenderTarget.Ground, dt)
             renderInfo.Transform = mAttachedTransform;
             return renderInfo;
         }

@@ -16,6 +16,8 @@ namespace AnimationManagerLib.API
     public struct AnimationStopPacket
     {
         public Guid RunId { get; set; }
+
+        public AnimationStopPacket(Guid runId) => RunId = runId;
     }
 
     public struct AnimationRunMetadata
@@ -65,7 +67,7 @@ namespace AnimationManagerLib.API
 
     public interface IComposer : IHasDebugWindow
     {
-        delegate bool IfRemoveAnimator();
+        delegate bool IfRemoveAnimator(bool complete);
 
         void SetAnimatorType<TAnimator>()
             where TAnimator : IAnimator;

@@ -33,10 +33,10 @@ public class BuildContext : FrostingContext
     public BuildContext(ICakeContext context)
         : base(context)
     {
-        BuildConfiguration = context.Argument("configuration", "Release");
+        BuildConfiguration = context.Argument("configuration", "Debug");
         SkipJsonValidation = context.Argument("skipJsonValidation", false);
         var modInfo = context.DeserializeJsonFromFile<ModInfo>($"../{BuildContext.ProjectName}/modinfo.json");
-        Version = modInfo.Version;
+        Version = modInfo.Version + "-dev";
         Name = modInfo.ModID;
     }
 }
@@ -94,13 +94,13 @@ public sealed class PackageTask : FrostingTask<BuildContext>
     public override void Run(BuildContext context)
     {
         context.EnsureDirectoryExists("../Releases");
-        context.CleanDirectory("../Releases");
-        context.EnsureDirectoryExists($"../Releases/{context.Name}");
-        context.CopyFiles($"../{BuildContext.ProjectName}/bin/{context.BuildConfiguration}/Mods/mod/publish/*", $"../Releases/{context.Name}");
-        context.CopyDirectory($"../{BuildContext.ProjectName}/assets", $"../Releases/{context.Name}/assets");
-        context.CopyFile($"../{BuildContext.ProjectName}/modinfo.json", $"../Releases/{context.Name}/modinfo.json");
-        context.CopyFile($"../{BuildContext.ProjectName}/modicon.png", $"../Releases/{context.Name}/modicon.png");
-        context.Zip($"../Releases/{context.Name}", $"../Releases/{context.Name}_{context.Version}.zip");
+        //context.CleanDirectory("../Releases");
+        context.EnsureDirectoryExists($"../Releases/{context.Name}_dev");
+        context.CopyFiles($"../{BuildContext.ProjectName}/bin/{context.BuildConfiguration}/Mods/mod/publish/*", $"../Releases/{context.Name}_dev");
+        context.CopyDirectory($"../{BuildContext.ProjectName}/assets", $"../Releases/{context.Name}_dev/assets");
+        context.CopyFile($"../{BuildContext.ProjectName}/modinfo.json", $"../Releases/{context.Name}_dev/modinfo.json");
+        context.CopyFile($"../{BuildContext.ProjectName}/modicon.png", $"../Releases/{context.Name}_dev/modicon.png");
+        context.Zip($"../Releases/{context.Name}_dev", $"../Releases/{context.Name}_{context.Version}.zip");
     }
 }
 

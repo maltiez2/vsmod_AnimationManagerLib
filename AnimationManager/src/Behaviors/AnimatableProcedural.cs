@@ -34,7 +34,7 @@ namespace AnimationManagerLib.CollectibleBehaviors
                 mApi.Logger.Warning("Trying to register animation '{0}' in category '{1}' on server side. Animations can be registered only on client side, skipping", code, category);
                 return -1;
             }
-            AnimationId id = new(code, category, categoryBlendMode, categoryWeight);
+            AnimationId id = new(category, code, categoryBlendMode, categoryWeight);
             mAnimationManager = capi.ModLoader.GetModSystem<AnimationManagerLibSystem>().GetAnimationManager();
             AnimationData animation = AnimationData.HeldItem(code, CurrentShape);
             mAnimationManager.Register(id, animation);

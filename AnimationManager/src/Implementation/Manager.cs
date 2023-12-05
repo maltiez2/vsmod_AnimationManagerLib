@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using AnimationManagerLib.API;
-using HarmonyLib;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -13,12 +12,10 @@ namespace AnimationManagerLib
     public class PlayerModelAnimationManager<TAnimationComposer> : API.IAnimationManager
         where TAnimationComposer : IComposer, new()
     {
-        public const float VanillaAnimationWeight = 1f;
-        
         private readonly ICoreClientAPI mClientApi;
         private readonly ISynchronizer mSynchronizer;
         private readonly AnimationApplier mApplier;
-        private readonly AnimationProvider mAnimationProvider;
+        private readonly AnimationProvider mProvider;
 
         private readonly Dictionary<AnimationTarget, IComposer> mComposers = new();
         
@@ -27,35 +24,33 @@ namespace AnimationManagerLib
         private readonly Dictionary<AnimationTarget, AnimationFrame> mAnimationFrames = new();
         private readonly HashSet<Guid> mSynchronizedPackets = new();
 
-
         public PlayerModelAnimationManager(ICoreClientAPI api, ISynchronizer synchronizer)
         {
             mClientApi = api;
             mSynchronizer = synchronizer;
             mApplier = new(api);
-            mAnimationProvider = new(api);
+            mProvider = new(api);
 #if DEBUG
+            api.ModLoader.GetModSystem<VSImGui.VSImGuiModSystem>().SetUpImGuiWindows += ImGuiNET.ImGui.ShowDemoWindow;
+            api.ModLoader.GetModSystem<VSImGui.VSImGuiModSystem>().SetUpImGuiWindows += ImGuiNET.ImGui.ShowUserGuide;
             api.ModLoader.GetModSystem<VSImGui.VSImGuiModSystem>().SetUpImGuiWindows += SetUpDebugWindow;
 #endif
         }
 
-        public bool Register(AnimationId id, AnimationData animation) => mAnimationProvider.Register(id, animation);
+        public bool Register(AnimationId id, AnimationData animation) => mProvider.Register(id, animation);
         public Guid Run(AnimationTarget animationTarget, params AnimationRequest[] requests) => Run(Guid.NewGuid(), animationTarget, true, requests);
         public Guid Run(AnimationTarget animationTarget, bool synchronize, params AnimationRequest[] requests) => Run(Guid.NewGuid(), animationTarget, synchronize, requests);
         public Guid Run(AnimationTarget animationTarget, Guid runId, params AnimationRequest[] requests) => Run(runId, animationTarget, false, requests);
+        public Guid Run(AnimationTarget animationTarget, AnimationId animationId, params RunParameters[] parameters) => Run(Guid.NewGuid(), animationTarget, true, ToRequests(animationId, parameters));
+        public Guid Run(AnimationTarget animationTarget, bool synchronize, AnimationId animationId, params RunParameters[] parameters) => Run(Guid.NewGuid(), animationTarget, synchronize, ToRequests(animationId, parameters));
         public void Stop(Guid runId)
         {
             if (!mRequests.ContainsKey(runId)) return;
 
             if (mSynchronizedPackets.Contains(runId))
             {
-                AnimationStopPacket packet = new()
-                {
-                    RunId = runId
-                };
-
                 mSynchronizedPackets.Remove(runId);
-                mSynchronizer.Sync(packet);
+                mSynchronizer.Sync(new AnimationStopPacket(runId));
             }
 
             AnimationTarget animationTarget = mEntitiesByRuns[runId];
@@ -75,7 +70,7 @@ namespace AnimationManagerLib
 
             foreach (AnimationId animationId in requests.Select(request => request.Animation))
             {
-                IAnimation animation = mAnimationProvider.Get(animationId, animationTarget);
+                IAnimation animation = mProvider.Get(animationId, animationTarget);
                 if (animation == null)
                 {
                     mClientApi.Logger.Error("Failed to get animation '{0}' for '{1}' while trying to run request, will skip it", animationId, animationTarget);
@@ -97,7 +92,7 @@ namespace AnimationManagerLib
                 mSynchronizer.Sync(packet);
             }
 
-            composer.Run(mRequests[id].Next().Value, () => ComposerCallback(id));
+            composer.Run(mRequests[id].Next().Value, (complete) => ComposerCallback(id, complete));
 
             return id;
         }
@@ -135,6 +130,16 @@ namespace AnimationManagerLib
             mApplier.ApplyAnimation(pose);
         }
 
+        private AnimationRequest[] ToRequests(AnimationId animationId, params RunParameters[] parameters)
+        {
+            List<AnimationRequest> requests = new(parameters.Length);
+            foreach (RunParameters item in parameters)
+            {
+                requests.Add(new(animationId, item));
+            }
+            return requests.ToArray();
+        }
+
         private void OnNullEntity(long entityId)
         {
             foreach ((Guid runId, _) in mEntitiesByRuns.Where((key, value) => value == entityId))
@@ -151,9 +156,14 @@ namespace AnimationManagerLib
             }
         }
 
-        private bool ComposerCallback(Guid id)
+        private bool ComposerCallback(Guid id, bool complete)
         {
             if (!mRequests.ContainsKey(id)) return true;
+            if (!complete)
+            {
+                mRequests.Remove(id);
+                return true;
+            }
             if (mRequests[id].Finished())
             {
                 mRequests.Remove(id);
@@ -168,7 +178,7 @@ namespace AnimationManagerLib
                 return true;
             }
 
-            mComposers[mEntitiesByRuns[id]].Run((AnimationRequest)request, () => ComposerCallback(id));
+            mComposers[mEntitiesByRuns[id]].Run((AnimationRequest)request, (complete) => ComposerCallback(id, complete));
 
             return false;
         }
@@ -211,16 +221,22 @@ namespace AnimationManagerLib
         public void SetUpDebugWindow()
         {
 #if DEBUG
-            ImGuiNET.ImGui.Begin("Current animations");
-            mAnimationProvider.SetUpDebugWindow();
+            ImGuiNET.ImGui.Begin("Animation manager");
+            mProvider.SetUpDebugWindow();
             ImGuiNET.ImGui.Text(string.Format("Active requests: {0}", mRequests.Count));
             ImGuiNET.ImGui.Text(string.Format("Active composers: {0}", mComposers.Count));
-            ImGuiNET.ImGui.End();
+            ImGuiNET.ImGui.NewLine();
+            ImGuiNET.ImGui.SeparatorText("Composers:");
 
-            foreach ((_, IComposer composer) in mComposers)
+            foreach ((AnimationTarget target, IComposer composer) in mComposers)
             {
-                composer.SetUpDebugWindow();
+                bool collapsed = !ImGuiNET.ImGui.CollapsingHeader($"{target}");
+                ImGuiNET.ImGui.Indent();
+                if (!collapsed) composer.SetUpDebugWindow();
+                ImGuiNET.ImGui.Unindent();
             }
+
+            ImGuiNET.ImGui.End();
 #endif
         }
     }
@@ -329,7 +345,7 @@ namespace AnimationManagerLib
                 AddPosesNames(frame);
             }
 
-            return new Animation(constructedKeyFrames.ToArray(), keyFramesToFrames.ToArray(), totalFrames, data.Cyclic);
+            return new Animation(id, constructedKeyFrames.ToArray(), keyFramesToFrames.ToArray(), totalFrames, data.Cyclic);
         }
 
         static private void AddPosesNames(AnimationKeyFrame frame)
@@ -347,7 +363,7 @@ namespace AnimationManagerLib
         public void SetUpDebugWindow()
         {
 #if DEBUG
-            ImGuiNET.ImGui.Begin("Current animations");
+            ImGuiNET.ImGui.Begin("Animation manager");
             ImGuiNET.ImGui.Text(string.Format("Registered animations: {0}", mAnimationsToConstruct.Count + mAnimations.Count));
             ImGuiNET.ImGui.Text(string.Format("Registered pre-constructed animations: {0}", mAnimations.Count));
             ImGuiNET.ImGui.Text(string.Format("Registered not pre-constructed animations: {0}", mAnimationsToConstruct.Count));
