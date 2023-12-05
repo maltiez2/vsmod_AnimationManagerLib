@@ -9,7 +9,7 @@ namespace AnimationManagerLib
     {
         private EnumAppSide mSide;
 
-        public void Init(ICoreAPI api, ISynchronizer.AnimationRunHandler runHandler, ISynchronizer.AnimationStopHandler stopHandler, string channelName)
+        public void Init(ICoreAPI api, ISynchronizer.AnimationRunHandler? runHandler, ISynchronizer.AnimationStopHandler? stopHandler, string channelName)
         {
             mSide = api.Side;
 

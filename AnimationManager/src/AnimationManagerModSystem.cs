@@ -1,4 +1,5 @@
-﻿using Vintagestory.API.Client;
+﻿using System.Diagnostics;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Server;
 using Vintagestory.Client.NoObf;
@@ -13,15 +14,16 @@ namespace AnimationManagerLib
 
         public delegate void OnBeforeRenderCallback(IAnimator animator, float dt);
 
-        public IShaderProgram AnimatedItemShaderProgram { get; private set; }
-        public event OnBeforeRenderCallback OnHeldItemBeforeRender;
+        public IShaderProgram? AnimatedItemShaderProgram => mShaderProgram;
+        public event OnBeforeRenderCallback? OnHeldItemBeforeRender;
 
-        private ICoreAPI mApi;
-        private API.IAnimationManager mManager;
-        private API.ISynchronizer mSynchronizer;
+        private ICoreAPI? mApi;
+        private PlayerModelAnimationManager<Composer>? mManager;
+        private Synchronizer? mSynchronizer;
+        private ShaderProgram? mShaderProgram;
 
-        public API.IAnimationManager GetAnimationManager() => mManager;
-        public API.ISynchronizer GetSynchronizer() => mSynchronizer;
+        public API.IAnimationManager GetAnimationManager() => mManager ?? throw new System.NullReferenceException();
+        public API.ISynchronizer GetSynchronizer() => mSynchronizer ?? throw new System.NullReferenceException();
 
         public override void Start(ICoreAPI api)
         {
@@ -29,7 +31,7 @@ namespace AnimationManagerLib
             api.RegisterCollectibleBehaviorClass("Animatable", typeof(CollectibleBehaviors.Animatable));
             api.RegisterCollectibleBehaviorClass("AnimatableAttachable", typeof(CollectibleBehaviors.AnimatableAttachable));
             api.RegisterCollectibleBehaviorClass("AnimatableProcedural", typeof(CollectibleBehaviors.AnimatableProcedural));
-            mSynchronizer = new Synchronizer();
+            
         }
         public override void StartClientSide(ICoreClientAPI api)
         {
@@ -38,8 +40,9 @@ namespace AnimationManagerLib
             api.Event.ReloadShader += LoadAnimatedItemShaders;
             LoadAnimatedItemShaders();
 
+            mSynchronizer = new Synchronizer();
             mManager = new PlayerModelAnimationManager<Composer>(api, mSynchronizer);
-            RegisterHandlers(mManager as PlayerModelAnimationManager<Composer>);
+            RegisterHandlers(mManager);
             mSynchronizer.Init(
                 api,
                 (packet) => mManager.Run(packet.AnimationTarget, packet.RunId, packet.Requests),
@@ -49,6 +52,7 @@ namespace AnimationManagerLib
         }
         public override void StartServerSide(ICoreServerAPI api)
         {
+            mSynchronizer = new Synchronizer();
             mSynchronizer.Init(
                 api,
                 null,
@@ -58,10 +62,10 @@ namespace AnimationManagerLib
         }
         public bool LoadAnimatedItemShaders()
         {
-            AnimatedItemShaderProgram = (mApi as ICoreClientAPI).Shader.NewShaderProgram();
-            (AnimatedItemShaderProgram as ShaderProgram).AssetDomain = Mod.Info.ModID;
-            (mApi as ICoreClientAPI).Shader.RegisterFileShaderProgram("helditemanimated", AnimatedItemShaderProgram);
-            AnimatedItemShaderProgram.Compile();
+            mShaderProgram = (mApi as ICoreClientAPI)?.Shader.NewShaderProgram() as ShaderProgram;
+            mShaderProgram.AssetDomain = Mod.Info.ModID;
+            (mApi as ICoreClientAPI)?.Shader.RegisterFileShaderProgram("helditemanimated", AnimatedItemShaderProgram);
+            AnimatedItemShaderProgram?.Compile();
 
             return true;
         }
@@ -76,17 +80,18 @@ namespace AnimationManagerLib
             Patches.AnimatorBasePatch.OnFrameCallback += manager.OnFrameHandler;
             OnHeldItemBeforeRender += manager.OnFrameHandler;
         }
-        private void UnregisterHandlers(PlayerModelAnimationManager<Composer> manager)
+        private void UnregisterHandlers(PlayerModelAnimationManager<Composer>? manager)
         {
+            if (manager == null) return;
             Patches.AnimatorBasePatch.OnElementPoseUsedCallback -= manager.OnApplyAnimation;
             Patches.AnimatorBasePatch.OnFrameCallback -= manager.OnFrameHandler;
             OnHeldItemBeforeRender -= manager.OnFrameHandler;
         }
         public override void Dispose()
         {
-            if (mApi.Side == EnumAppSide.Client)
+            if (mApi?.Side == EnumAppSide.Client)
             {
-                UnregisterHandlers(mManager as PlayerModelAnimationManager<Composer>);
+                UnregisterHandlers(mManager);
                 Patches.AnimatorBasePatch.Unpatch(HarmonyID);
             }
             base.Dispose();

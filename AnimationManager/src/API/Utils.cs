@@ -18,7 +18,7 @@ namespace AnimationManagerLib
             float? endFrame = definition.KeyExists("endFrame") ? definition["endFrame"].AsFloat() : null;
             float? frame = definition.KeyExists("frame") ? definition["frame"].AsFloat() : null;
             ProgressModifierType modifier = (ProgressModifierType)Enum.Parse(typeof(ProgressModifierType), definition["dynamic"].AsString("Linear"));
-            errorMessage = default;
+            errorMessage = "";
             
             switch (action)
             {

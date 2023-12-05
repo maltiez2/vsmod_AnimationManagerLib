@@ -1,4 +1,5 @@
 ﻿using AnimationManagerLib.API;
+using System;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using Vintagestory.API.Common;
@@ -14,21 +15,23 @@ namespace AnimationManagerLib
 
     public struct ElementId
     {
-        public uint Hash { get; set; }
+        public uint ElementNameHash { get; set; }
         public ElementType ElementType { get; set; }
         
         private readonly string mDebugName;
+        private readonly int mHash;
 
         public ElementId(string name, ElementType elementType)
         {
-            Hash = Utils.ToCrc32($"{name}{elementType}");
+            ElementNameHash = Utils.ToCrc32(name);
+            mHash = (int)Utils.ToCrc32($"{name}{elementType}");
             mDebugName = name;
             ElementType = elementType;
         }
 
         public readonly override string ToString() => $"{mDebugName}, type: {ElementType}";
-        public readonly override int GetHashCode() => (int)Hash;
-        public readonly override bool Equals([NotNullWhen(true)] object? obj) => obj?.GetHashCode() == (int)Hash;
+        public readonly override int GetHashCode() => mHash;
+        public readonly override bool Equals([NotNullWhen(true)] object? obj) => obj?.GetHashCode() == mHash;
         public static bool operator ==(ElementId left, ElementId right) => left.Equals(right);
         public static bool operator !=(ElementId left, ElementId right) => !(left == right);
     }
@@ -111,7 +114,7 @@ namespace AnimationManagerLib
 
         static public AnimationElement Sum(AnimationElement first, AnimationElement second)
         {
-            Debug.Assert(first.Id.Hash == second.Id.Hash && second.Id.ElementType == first.Id.ElementType);
+            Debug.Assert(first.Id.ElementNameHash == second.Id.ElementNameHash && second.Id.ElementType == first.Id.ElementType);
 
             return new()
             {
@@ -155,7 +158,7 @@ namespace AnimationManagerLib
         }
         static public AnimationElement Average(AnimationElement first, AnimationElement second)
         {
-            Debug.Assert(first.Id.Hash == second.Id.Hash && second.Id.ElementType == first.Id.ElementType);
+            Debug.Assert(first.Id.ElementNameHash == second.Id.ElementNameHash && second.Id.ElementType == first.Id.ElementType);
 
             return new()
             {
@@ -166,7 +169,7 @@ namespace AnimationManagerLib
         }
         static public AnimationElement Lerp(AnimationElement from, AnimationElement to, float progress, bool weighted = true)
         {
-            Debug.Assert(from.Id.Hash == to.Id.Hash && from.Id.ElementType == to.Id.ElementType);
+            Debug.Assert(from.Id.ElementNameHash == to.Id.ElementNameHash && from.Id.ElementType == to.Id.ElementType);
 
             if (from.ShortestAngularDistance || to.ShortestAngularDistance)
             {
@@ -188,7 +191,7 @@ namespace AnimationManagerLib
 
         static public AnimationElement CircularLerp(AnimationElement from, AnimationElement to, float progress, bool weighted = true)
         {
-            Debug.Assert(from.Id.Hash == to.Id.Hash && from.Id.ElementType == to.Id.ElementType);
+            Debug.Assert(from.Id.ElementNameHash == to.Id.ElementNameHash && from.Id.ElementType == to.Id.ElementType);
 
             return new()
             {

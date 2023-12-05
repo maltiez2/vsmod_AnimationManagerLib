@@ -5,6 +5,7 @@ using Vintagestory.API.Common;
 using IAnimator = AnimationManagerLib.API.IAnimator;
 using System.Linq;
 using Vintagestory.API.Util;
+using System.Diagnostics;
 
 namespace AnimationManagerLib
 {
@@ -44,7 +45,8 @@ namespace AnimationManagerLib
             if (mCallbacks.ContainsKey(request.Animation.Category)) mCallbacks[request.Animation.Category](false);
             mCallbacks[request.Animation.Category] = finishCallback;
             if (mAnimators.ContainsKey(request.Animation.Category)) return mAnimators[request.Animation.Category];
-            IAnimator animator = Activator.CreateInstance(mAnimatorType) as IAnimator;
+            IAnimator? animator = Activator.CreateInstance(mAnimatorType) as IAnimator;
+            Debug.Assert(animator != null);
             animator.Init(request.Animation.Category);
             mAnimators.Add(request.Animation.Category, animator);
             mCategories[request.Animation.Category] = true;

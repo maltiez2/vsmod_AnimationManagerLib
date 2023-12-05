@@ -17,7 +17,7 @@ namespace AnimationManagerLib.CollectibleBehaviors
 
         public void AddAttachment(string attachmentCode, ItemStack attachmentItem, ModelTransform transform)
         {
-            mAttachments.Add(attachmentCode, new(capi, attachmentCode, attachmentItem, transform));
+            mAttachments.Add(attachmentCode, new(mClientApi, attachmentCode, attachmentItem, transform));
             mActiveAttachments.Add(attachmentCode, true);
         }
 

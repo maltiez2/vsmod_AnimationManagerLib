@@ -5,6 +5,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Config;
+using System.Diagnostics;
 
 namespace AnimationManagerLib.CollectibleBehaviors
 {
@@ -21,7 +22,7 @@ namespace AnimationManagerLib.CollectibleBehaviors
         {
             get
             {
-                AssetLocation texturePath = null;
+                AssetLocation? texturePath = null;
                 CurrentShape?.Textures.TryGetValue(textureCode, out texturePath);
 
                 if (texturePath == null)
@@ -39,14 +40,14 @@ namespace AnimationManagerLib.CollectibleBehaviors
 
             if (texpos == null)
             {
-                IAsset texAsset = capi.Assets.TryGet(texturePath.Clone().WithPathPrefixOnce("textures/").WithPathAppendixOnce(".png"));
+                IAsset texAsset = mClientApi.Assets.TryGet(texturePath.Clone().WithPathPrefixOnce("textures/").WithPathAppendixOnce(".png"));
                 if (texAsset != null)
                 {
                     curAtlas.GetOrInsertTexture(texturePath, out _, out texpos);
                 }
                 else
                 {
-                    capi.World.Logger.Warning("Bullseye.CollectibleBehaviorAnimatable: Item {0} defined texture {1}, not no such texture found.", collObj.Code, texturePath);
+                    mClientApi.World.Logger.Warning("Bullseye.CollectibleBehaviorAnimatable: Item {0} defined texture {1}, not no such texture found.", collObj.Code, texturePath);
                 }
             }
 
@@ -64,7 +65,7 @@ namespace AnimationManagerLib.CollectibleBehaviors
         public Shape CurrentShape { get; private set; }
         public bool RenderProceduralAnimations { get; set; }
 
-        protected ICoreClientAPI capi;
+        protected ICoreClientAPI mClientApi;
         
         protected MeshRef currentMeshRef;
 
@@ -85,70 +86,72 @@ namespace AnimationManagerLib.CollectibleBehaviors
         {
             modSystem = api.ModLoader.GetModSystem<AnimationManagerLibSystem>();
 
-            if (api.Side == EnumAppSide.Client)
+            if (api is ICoreClientAPI clientApi)
             {
                 if (collObj is not Item)
                 {
                     throw new InvalidOperationException("CollectibleBehaviorAnimatable can only be used on Items, not Blocks!");
                 }
 
-                capi = api as ICoreClientAPI;
+                mClientApi = clientApi;
 
                 InitAnimatable();
 
                 // Don't bother registering a renderer if we can't get the proper data. Should hopefully save us from some crashes
                 if (Animator == null || currentMeshRef == null) return;
 
-                capi.Event.RegisterItemstackRenderer(collObj, (inSlot, renderInfo, modelMat, posX, posY, posZ, size, color, rotate, showStackSize) => RenderHandFp(inSlot, renderInfo, modelMat, posX, posY, posZ, size, color, rotate, showStackSize), EnumItemRenderTarget.HandFp);
+                mClientApi.Event.RegisterItemstackRenderer(collObj, (inSlot, renderInfo, modelMat, posX, posY, posZ, size, color, rotate, showStackSize) => RenderHandFp(inSlot, renderInfo, modelMat, posX, posY, posZ, size, color, rotate, showStackSize), EnumItemRenderTarget.HandFp);
             }
         }
 
         public virtual void InitAnimatable()
         {
-            Item item = (collObj as Item);
+            Item? item = (collObj as Item);
 
-            curAtlas = capi.ItemTextureAtlas;
+            curAtlas = mClientApi.ItemTextureAtlas;
 
-            AssetLocation loc = animatedShapePath != null ? new AssetLocation(animatedShapePath) : item.Shape.Base.Clone();
+            AssetLocation? loc = animatedShapePath != null ? new AssetLocation(animatedShapePath) : item?.Shape.Base.Clone();
+            Debug.Assert(loc != null);
             loc = loc.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/");
-            CurrentShape = Shape.TryGet(capi, loc);
+            CurrentShape = Shape.TryGet(mClientApi, loc);
 
             if (CurrentShape == null) return;
 
             MeshData meshData = InitializeMeshData(CacheKey, CurrentShape, this);
             currentMeshRef = InitializeMeshRef(meshData);
 
-            Animator = GetAnimator(capi, CacheKey, CurrentShape);
+            Animator = GetAnimator(mClientApi, CacheKey, CurrentShape);
         }
 
         public MeshData InitializeMeshData(string cacheDictKey, Shape shape, ITexPositionSource texSource)
         {
-            if (capi.Side != EnumAppSide.Client) throw new NotImplementedException("Server side animation system not implemented yet.");
+            if (mClientApi.Side != EnumAppSide.Client) throw new NotImplementedException("Server side animation system not implemented yet.");
 
-            shape.ResolveReferences(capi.World.Logger, cacheDictKey);
+            shape.ResolveReferences(mClientApi.World.Logger, cacheDictKey);
             CacheInvTransforms(shape.Elements);
             shape.ResolveAndLoadJoints();
 
-            capi.Tesselator.TesselateShapeWithJointIds("collectible", shape, out MeshData meshdata, texSource, null);
+            mClientApi.Tesselator.TesselateShapeWithJointIds("collectible", shape, out MeshData meshdata, texSource, null);
 
             return meshdata;
         }
 
         public MeshRef InitializeMeshRef(MeshData meshdata)
         {
-            MeshRef meshRef = null;
+            MeshRef? meshRef = null;
 
             if (RuntimeEnv.MainThreadId == Environment.CurrentManagedThreadId)
             {
-                meshRef = capi.Render.UploadMesh(meshdata);
+                meshRef = mClientApi.Render.UploadMesh(meshdata);
             }
             else
             {
-                capi.Event.EnqueueMainThreadTask(() => {
-                    meshRef = capi.Render.UploadMesh(meshdata);
+                mClientApi.Event.EnqueueMainThreadTask(() => {
+                    meshRef = mClientApi.Render.UploadMesh(meshdata);
                 }, "uploadmesh");
             }
 
+            Debug.Assert(meshRef != null);
             return meshRef;
         }
 
@@ -159,8 +162,9 @@ namespace AnimationManagerLib.CollectibleBehaviors
                 return null;
             }
 
-            Dictionary<string, AnimCacheEntry> animCache;
-            capi.ObjectCache.TryGetValue("coAnimCache", out object animCacheObj);
+            Dictionary<string, AnimCacheEntry>? animCache;
+            capi.ObjectCache.TryGetValue("coAnimCache", out object? animCacheObj);
+            Debug.Assert(animCacheObj is Dictionary<string, AnimCacheEntry>);
             animCache = animCacheObj as Dictionary<string, AnimCacheEntry>;
             if (animCache == null)
             {
@@ -169,7 +173,7 @@ namespace AnimationManagerLib.CollectibleBehaviors
 
             AnimatorBase animator;
 
-            if (animCache.TryGetValue(cacheDictKey, out AnimCacheEntry cacheObj))
+            if (animCache.TryGetValue(cacheDictKey, out AnimCacheEntry? cacheObj))
             {
                 animator = capi.Side == EnumAppSide.Client ?
                     new ClientAnimator(() => 1, cacheObj.RootPoses, cacheObj.Animations, cacheObj.RootElems, blockShape.JointsById) :
@@ -191,8 +195,8 @@ namespace AnimationManagerLib.CollectibleBehaviors
                 animCache[cacheDictKey] = new AnimCacheEntry()
                 {
                     Animations = blockShape.Animations,
-                    RootElems = (animator as ClientAnimator).rootElements,
-                    RootPoses = (animator as ClientAnimator).RootPoses
+                    RootElems = (animator as ClientAnimator)?.rootElements,
+                    RootPoses = (animator as ClientAnimator)?.RootPoses
                 };
             }
 
@@ -212,7 +216,7 @@ namespace AnimationManagerLib.CollectibleBehaviors
 
         public void StartAnimation(AnimationMetaData metaData)
         {
-            if (capi.Side != EnumAppSide.Client) throw new NotImplementedException("Server side animation system not implemented.");
+            if (mClientApi.Side != EnumAppSide.Client) throw new NotImplementedException("Server side animation system not implemented.");
 
             if (!ActiveAnimationsByAnimCode.ContainsKey(metaData.Code))
             {
@@ -222,11 +226,12 @@ namespace AnimationManagerLib.CollectibleBehaviors
 
         public void StopAnimation(string code, bool forceImmediate = false)
         {
-            if (capi.Side != EnumAppSide.Client) throw new NotImplementedException("Server side animation system not implemented.");
+            if (mClientApi.Side != EnumAppSide.Client) throw new NotImplementedException("Server side animation system not implemented.");
 
             if (ActiveAnimationsByAnimCode.ContainsKey(code) && forceImmediate)
             {
-                RunningAnimation anim = Array.Find(Animator.anims, (anim) => { return anim.Animation.Code == code; });
+                RunningAnimation? anim = Array.Find(Animator.anims, (anim) => { return anim.Animation.Code == code; });
+                Debug.Assert(anim != null);
                 anim.EasingFactor = 0f;
             }
 
@@ -248,14 +253,14 @@ namespace AnimationManagerLib.CollectibleBehaviors
         {
             if (onlyWhenAnimating && ActiveAnimationsByAnimCode.Count == 0 && !RenderProceduralAnimations)
             {
-                capi.Render.RenderMesh(renderInfo.ModelRef);
+                mClientApi.Render.RenderMesh(renderInfo.ModelRef);
             }
             else
             {
-                IShaderProgram prevProg = capi.Render.CurrentActiveShader;
+                IShaderProgram prevProg = mClientApi.Render.CurrentActiveShader;
                 IShaderProgram prog;
 
-                IRenderAPI rpi = capi.Render;
+                IRenderAPI rpi = mClientApi.Render;
                 prevProg?.Stop();
 
                 prog = modSystem.AnimatedItemShaderProgram;
@@ -270,34 +275,34 @@ namespace AnimationManagerLib.CollectibleBehaviors
                     prog.Uniform("tex2dOverlay", renderInfo.OverlayTexture.TextureId);
                     prog.Uniform("overlayTextureSize", new Vec2f(renderInfo.OverlayTexture.Width, renderInfo.OverlayTexture.Height));
                     prog.Uniform("baseTextureSize", new Vec2f(renderInfo.TextureSize.Width, renderInfo.TextureSize.Height));
-                    TextureAtlasPosition textureAtlasPosition = capi.Render.GetTextureAtlasPosition(inSlot.Itemstack);
+                    TextureAtlasPosition textureAtlasPosition = mClientApi.Render.GetTextureAtlasPosition(inSlot.Itemstack);
                     prog.Uniform("baseUvOrigin", new Vec2f(textureAtlasPosition.x1, textureAtlasPosition.y1));
                 }
 
-                Vec4f lightRGBSVec4f = capi.World.BlockAccessor.GetLightRGBs((int)(capi.World.Player.Entity.Pos.X + capi.World.Player.Entity.LocalEyePos.X), (int)(capi.World.Player.Entity.Pos.Y + capi.World.Player.Entity.LocalEyePos.Y), (int)(capi.World.Player.Entity.Pos.Z + capi.World.Player.Entity.LocalEyePos.Z));
-                int num16 = (int)inSlot.Itemstack.Collectible.GetTemperature(capi.World, inSlot.Itemstack);
+                Vec4f lightRGBSVec4f = mClientApi.World.BlockAccessor.GetLightRGBs((int)(mClientApi.World.Player.Entity.Pos.X + mClientApi.World.Player.Entity.LocalEyePos.X), (int)(mClientApi.World.Player.Entity.Pos.Y + mClientApi.World.Player.Entity.LocalEyePos.Y), (int)(mClientApi.World.Player.Entity.Pos.Z + mClientApi.World.Player.Entity.LocalEyePos.Z));
+                int num16 = (int)inSlot.Itemstack.Collectible.GetTemperature(mClientApi.World, inSlot.Itemstack);
                 float[] incandescenceColorAsColor4f = ColorUtil.GetIncandescenceColorAsColor4f(num16);
                 int num17 = GameMath.Clamp((num16 - 550) / 2, 0, 255);
                 Vec4f rgbaGlowIn = new(incandescenceColorAsColor4f[0], incandescenceColorAsColor4f[1], incandescenceColorAsColor4f[2], (float)num17 / 255f);
                 prog.Uniform("extraGlow", num17);
-                prog.Uniform("rgbaAmbientIn", capi.Ambient.BlendedAmbientColor);
+                prog.Uniform("rgbaAmbientIn", mClientApi.Ambient.BlendedAmbientColor);
                 prog.Uniform("rgbaLightIn", lightRGBSVec4f);
                 prog.Uniform("rgbaGlowIn", rgbaGlowIn);
 
                 float[] tmpVals = new float[4];
                 Vec4f outPos = new();
                 float[] array = Mat4f.Create();
-                Mat4f.RotateY(array, array, capi.World.Player.Entity.SidedPos.Yaw);
-                Mat4f.RotateX(array, array, capi.World.Player.Entity.SidedPos.Pitch);
+                Mat4f.RotateY(array, array, mClientApi.World.Player.Entity.SidedPos.Yaw);
+                Mat4f.RotateX(array, array, mClientApi.World.Player.Entity.SidedPos.Pitch);
                 Mat4f.Mul(array, array, modelMat.Values);
-                tmpVals[0] = capi.Render.ShaderUniforms.LightPosition3D.X;
-                tmpVals[1] = capi.Render.ShaderUniforms.LightPosition3D.Y;
-                tmpVals[2] = capi.Render.ShaderUniforms.LightPosition3D.Z;
+                tmpVals[0] = mClientApi.Render.ShaderUniforms.LightPosition3D.X;
+                tmpVals[1] = mClientApi.Render.ShaderUniforms.LightPosition3D.Y;
+                tmpVals[2] = mClientApi.Render.ShaderUniforms.LightPosition3D.Z;
                 tmpVals[3] = 0f;
                 Mat4f.MulWithVec4(array, tmpVals, outPos);
                 prog.Uniform("lightPosition", new Vec3f(outPos.X, outPos.Y, outPos.Z).Normalize());
-                prog.UniformMatrix("toShadowMapSpaceMatrixFar", capi.Render.ShaderUniforms.ToShadowMapSpaceMatrixFar);
-                prog.UniformMatrix("toShadowMapSpaceMatrixNear", capi.Render.ShaderUniforms.ToShadowMapSpaceMatrixNear);
+                prog.UniformMatrix("toShadowMapSpaceMatrixFar", mClientApi.Render.ShaderUniforms.ToShadowMapSpaceMatrixFar);
+                prog.UniformMatrix("toShadowMapSpaceMatrixNear", mClientApi.Render.ShaderUniforms.ToShadowMapSpaceMatrixNear);
                 prog.BindTexture2D("itemTex", renderInfo.TextureId, 0);
                 prog.UniformMatrix("projectionMatrix", rpi.CurrentProjectionMatrix);
 
@@ -307,7 +312,7 @@ namespace AnimationManagerLib.CollectibleBehaviors
                     Animator.TransformationMatrices4x3
                 );
 
-                capi.Render.RenderMesh(currentMeshRef);
+                mClientApi.Render.RenderMesh(currentMeshRef);
 
                 prog?.Stop();
                 prevProg?.Use();

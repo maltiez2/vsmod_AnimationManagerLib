@@ -35,7 +35,7 @@ namespace AnimationManagerLib.CollectibleBehaviors
                 return -1;
             }
             AnimationId id = new(category, code, categoryBlendMode, categoryWeight);
-            mAnimationManager = capi.ModLoader.GetModSystem<AnimationManagerLibSystem>().GetAnimationManager();
+            mAnimationManager = mClientApi.ModLoader.GetModSystem<AnimationManagerLibSystem>().GetAnimationManager();
             AnimationData? animation = AnimationData.HeldItem(code, CurrentShape);
             mAnimationManager?.Register(id, animation);
             mRegisteredAnimations.Add(id);
@@ -51,7 +51,7 @@ namespace AnimationManagerLib.CollectibleBehaviors
             }
             if (mRegisteredAnimations.Count <= id)
             {
-                capi.Logger.Error("Animation with id '{0}' is not registered. Number of registered animations: {1}", id, mRegisteredAnimations.Count);
+                mClientApi.Logger.Error("Animation with id '{0}' is not registered. Number of registered animations: {1}", id, mRegisteredAnimations.Count);
                 return Guid.Empty;
             }
             
@@ -62,7 +62,7 @@ namespace AnimationManagerLib.CollectibleBehaviors
                 requests[index] = new AnimationRequest(mRegisteredAnimations[id], parameters[index]);
             }
 
-            Guid runId = capi.ModLoader.GetModSystem<AnimationManagerLibSystem>().GetAnimationManager().Run(new(AnimationTargetType.HeldItemFp), requests);
+            Guid runId = mClientApi.ModLoader.GetModSystem<AnimationManagerLibSystem>().GetAnimationManager().Run(new(AnimationTargetType.HeldItemFp), requests);
             mRunningAnimations.Add(runId);
             return runId;
         }

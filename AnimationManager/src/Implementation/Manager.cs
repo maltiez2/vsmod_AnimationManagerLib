@@ -31,8 +31,6 @@ namespace AnimationManagerLib
             mApplier = new(api);
             mProvider = new(api);
 #if DEBUG
-            api.ModLoader.GetModSystem<VSImGui.VSImGuiModSystem>().SetUpImGuiWindows += ImGuiNET.ImGui.ShowDemoWindow;
-            api.ModLoader.GetModSystem<VSImGui.VSImGuiModSystem>().SetUpImGuiWindows += ImGuiNET.ImGui.ShowUserGuide;
             api.ModLoader.GetModSystem<VSImGui.VSImGuiModSystem>().SetUpImGuiWindows += SetUpDebugWindow;
 #endif
         }
@@ -278,7 +276,7 @@ namespace AnimationManagerLib
         {
             foreach ((var id, _) in composition.Elements)
             {
-                string name = PosesNames[id.Hash];
+                string name = PosesNames[id.ElementNameHash];
                 ElementPose pose = animator.GetPosebyName(name);
                 if (pose != null) Poses[pose] = (name, composition);
             }

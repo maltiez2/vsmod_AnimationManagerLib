@@ -36,12 +36,12 @@ namespace AnimationManagerLib.Patches
         public static void OnFrame(AnimationManager __instance, float dt)
         {
 #pragma warning disable S3011 // Reflection should not be used to increase accessibility of classes, methods, or fields
-            Entity entity = (Entity)typeof(AnimationManager)
+            Entity? entity = (Entity?)typeof(AnimationManager)
                                               .GetField("entity", BindingFlags.NonPublic | BindingFlags.Instance)
-                                              .GetValue(__instance);
+                                              ?.GetValue(__instance);
 #pragma warning restore S3011 // Reflection should not be used to increase accessibility of classes, methods, or fields
             
-            OnFrameCallback?.Invoke(entity, dt);
+            if (entity != null) OnFrameCallback?.Invoke(entity, dt);
         }
         public static void GetLocalTransformMatrix(ElementPose tf) => OnElementPoseUsedCallback?.Invoke(tf);
     }

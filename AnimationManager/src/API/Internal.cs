@@ -1,6 +1,5 @@
 ﻿using ProtoBuf;
 using System;
-using Vintagestory.API.Common;
 
 namespace AnimationManagerLib.API
 {
@@ -81,7 +80,7 @@ namespace AnimationManagerLib.API
     {
         public delegate void AnimationRunHandler(AnimationRunPacket request);
         public delegate void AnimationStopHandler(AnimationStopPacket request);
-        void Init(ICoreAPI api, AnimationRunHandler runHandler, AnimationStopHandler stopHandler, string channelName);
+        void Init(Vintagestory.API.Common.ICoreAPI api, AnimationRunHandler? runHandler, AnimationStopHandler? stopHandler, string channelName);
         void Sync(AnimationRunPacket request);
         void Sync(AnimationStopPacket request);
     }
