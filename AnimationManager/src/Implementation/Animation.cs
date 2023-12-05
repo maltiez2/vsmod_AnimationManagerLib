@@ -68,7 +68,6 @@ namespace AnimationManagerLib
         private AnimationFrame CalcFrame(float progress, float startFrame, float endFrame)
         {
             (int prevKeyFrame, int nextKeyFrame, float keyFrameProgress) = ToKeyFrames(progress, startFrame, endFrame);
-            Debug.Assert(mKeyFrames.Length > prevKeyFrame && mKeyFrames.Length > nextKeyFrame);
             
             if (prevKeyFrame == nextKeyFrame) return mKeyFrames[nextKeyFrame].Clone();
             

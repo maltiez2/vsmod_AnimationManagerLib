@@ -125,21 +125,12 @@ namespace AnimationManagerLib.API
         public AnimationTargetType TargetType { get; set; }
         public long? EntityId { get; set; }
 
-        public AnimationTarget(AnimationTargetType targetType)
+        private AnimationTarget(AnimationTargetType targetType)
         {
-            Debug.Assert(targetType != AnimationTargetType.Entity, "'Entity' target requires entity id");
-
             TargetType = targetType;
             EntityId = null;
         }
-        public AnimationTarget(AnimationTargetType targetType, long? entityId)
-        {
-            Debug.Assert(targetType != AnimationTargetType.Entity || entityId != null, "'Entity' target requires not null entity id");
-            
-            TargetType = targetType;
-            EntityId = entityId;
-        }
-        public AnimationTarget(long entityId)
+        private AnimationTarget(long entityId)
         {
             TargetType = AnimationTargetType.Entity;
             EntityId = entityId;
@@ -239,81 +230,6 @@ namespace AnimationManagerLib.API
             TargetFrame = targetFrame;
             Modifier = modifier;
             StartFrame = startFrame;
-        }
-
-        public RunParameters(AnimationPlayerAction action, TimeSpan duration, float startFrame, float targetFrame, ProgressModifierType modifier = ProgressModifierType.Linear)
-        {
-            Debug.Assert(
-                action == AnimationPlayerAction.Rewind ||
-                action == AnimationPlayerAction.Play,
-                "Only 'Play' and 'Rewind' actions need both 'StartFrame' and 'TargetFrame'"
-                );
-
-            Action = action;
-            Duration = duration;
-            TargetFrame = targetFrame;
-            Modifier = modifier;
-            StartFrame = startFrame;
-        }
-
-        public RunParameters(AnimationPlayerAction action, TimeSpan duration, float frame, ProgressModifierType modifier = ProgressModifierType.Linear)
-        {
-            Debug.Assert(
-                action == AnimationPlayerAction.Set ||
-                action == AnimationPlayerAction.EaseIn,
-                "Only 'Set' and 'EaseIn' actions need only single frame to be specified"
-                );
-
-            Action = action;
-            Duration = duration;
-            TargetFrame = frame;
-            Modifier = modifier;
-            StartFrame = frame;
-        }
-
-        public RunParameters(AnimationPlayerAction action, float frame)
-        {
-            Debug.Assert(
-                action == AnimationPlayerAction.Set,
-                "Only 'Set' action can be defined only by frame"
-                );
-
-            Action = action;
-            Duration = TimeSpan.Zero;
-            TargetFrame = frame;
-            Modifier = ProgressModifierType.Linear;
-            StartFrame = frame;
-        }
-
-        public RunParameters(AnimationPlayerAction action, TimeSpan duration, ProgressModifierType modifier = ProgressModifierType.Linear)
-        {
-            Debug.Assert(
-                action == AnimationPlayerAction.EaseOut ||
-                action == AnimationPlayerAction.Stop ||
-                action == AnimationPlayerAction.Clear,
-                "Only 'EaseOut', 'Stop' and 'Clear' actions do not need frame to be specified"
-                );
-
-            Action = action;
-            Duration = duration;
-            TargetFrame = null;
-            Modifier = modifier;
-            StartFrame = null;
-        }
-
-        public RunParameters(AnimationPlayerAction action)
-        {
-            Debug.Assert(
-                action == AnimationPlayerAction.Stop ||
-                action == AnimationPlayerAction.Clear,
-                "Only 'Stop' and 'Clear' do not need any parameters"
-                );
-
-            Action = action;
-            Duration = TimeSpan.Zero;
-            TargetFrame = null;
-            Modifier = ProgressModifierType.Linear;
-            StartFrame = null;
         }
 
         /// <summary>

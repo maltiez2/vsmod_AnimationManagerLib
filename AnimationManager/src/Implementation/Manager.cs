@@ -62,6 +62,8 @@ namespace AnimationManagerLib
             Debug.Assert(requests.Length > 0);
 
             mRequests.Add(id, new(animationTarget, synchronize, requests));
+            AnimationRequest? request = mRequests[id].Next();
+            if (request == null) return Guid.Empty;
 
             var composer = TryAddComposer(id, animationTarget);
 
@@ -88,9 +90,7 @@ namespace AnimationManagerLib
                 mSynchronizedPackets.Add(id);
                 mSynchronizer.Sync(packet);
             }
-
-            AnimationRequest? request = mRequests[id].Next();
-            Debug.Assert(request != null);
+            
             composer.Run(request.Value, (complete) => ComposerCallback(id, complete));
 
             return id;
@@ -98,7 +98,7 @@ namespace AnimationManagerLib
 
         public void OnFrameHandler(Entity entity, float dt)
         {
-            AnimationTarget animationTarget = new(entity.EntityId);
+            AnimationTarget animationTarget = AnimationTarget.Entity(entity.EntityId);
 
             ValidateEntities();
 
@@ -109,12 +109,12 @@ namespace AnimationManagerLib
             mAnimationFrames.Clear();
             TimeSpan timeSpan = TimeSpan.FromSeconds(dt);
             AnimationFrame composition = mComposers[animationTarget].Compose(timeSpan);
-            Debug.Assert(animationTarget.EntityId != null);
-            mApplier.AddAnimation(animationTarget.EntityId.Value, composition);
+
+            mApplier.AddAnimation(entity.EntityId, composition);
         }
         public void OnFrameHandler(Vintagestory.API.Common.IAnimator animator, float dt)
         {
-            AnimationTarget animationTarget = new(AnimationTargetType.HeldItemFp);
+            AnimationTarget animationTarget = AnimationTarget.HeldItem();
 
             if (!mComposers.ContainsKey(animationTarget)) return;
 
@@ -191,8 +191,7 @@ namespace AnimationManagerLib
 
             if (mComposers.ContainsKey(animationTarget)) return mComposers[animationTarget];
 
-            IComposer composer = new Composer();
-            Debug.Assert(composer != null);
+            Composer composer = new();
             mComposers.Add(animationTarget, composer);
             return composer;
         }
@@ -306,7 +305,7 @@ namespace AnimationManagerLib
             }
             else
             {
-                return mAnimations.TryAdd(id, ConstructAnimation(id, data));
+                return mAnimations.TryAdd(id, ConstructAnimation(id, data, data.Shape));
             }
         }
 
@@ -320,14 +319,14 @@ namespace AnimationManagerLib
             Entity entity = mApi.World.GetEntityById(target.EntityId.Value);
             if (entity == null) return null;
             AnimationData data = AnimationData.Entity(mAnimationsToConstruct[id].Code, entity, mAnimationsToConstruct[id].Cyclic);
-            mConstructedAnimations.Add((id, target), ConstructAnimation(id, data));
+            if (data.Shape == null) return null;
+            mConstructedAnimations.Add((id, target), ConstructAnimation(id, data, data.Shape));
             return mConstructedAnimations[(id, target)];
         }
 
-        static private IAnimation ConstructAnimation(AnimationId id, AnimationData data)
+        static private IAnimation ConstructAnimation(AnimationId id, AnimationData data, Shape shape)
         {
-            Debug.Assert(data.Shape != null);
-            Dictionary<uint, Vintagestory.API.Common.Animation> animations = data.Shape.AnimationsByCrc32;
+            Dictionary<uint, Vintagestory.API.Common.Animation> animations = shape.AnimationsByCrc32;
             uint crc32 = Utils.ToCrc32(data.Code);
             float totalFrames = animations[crc32].QuantityFrames;
             AnimationKeyFrame[] keyFrames = animations[crc32].KeyFrames;

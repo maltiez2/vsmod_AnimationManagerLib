@@ -69,7 +69,7 @@ namespace AnimationManagerLib.CollectibleBehaviors
                 requests[index] = new AnimationRequest(mRegisteredAnimations[id], parameters[index]);
             }
 
-            Guid? runId = mClientApi?.ModLoader.GetModSystem<AnimationManagerLibSystem>().GetAnimationManager().Run(new(AnimationTargetType.HeldItemFp), requests);
+            Guid? runId = mClientApi?.ModLoader.GetModSystem<AnimationManagerLibSystem>().GetAnimationManager().Run(AnimationTarget.HeldItem(), requests);
             if (runId == null) return Guid.Empty;
             mRunningAnimations.Add(runId.Value);
             return runId.Value;
