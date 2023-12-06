@@ -8,7 +8,7 @@ using Vintagestory.API.Util;
 
 namespace AnimationManagerLib
 {
-    public class Animation : IAnimation
+    internal class Animation : IAnimation
     {
         public AnimationId Id { get; private set; }
         

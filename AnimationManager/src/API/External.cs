@@ -53,7 +53,6 @@ namespace AnimationManagerLib.API
     public interface IAnimationManagerProvider
     {
         IAnimationManager GetAnimationManager();
-        ISynchronizer GetSynchronizer();
     }
 
     public interface IAnimatableBehavior
@@ -149,13 +148,13 @@ namespace AnimationManagerLib.API
         }
     }
 
-    public class AnimationData
+    public struct AnimationData
     {
-        public string Code { get; set; }
-        public bool Cyclic { get; set; }
-        public Shape? Shape { get; set; }
-        public Dictionary<string, float>? ElementWeight { get; set; }
-        public Dictionary<string, EnumAnimationBlendMode>? ElementBlendMode { get; set; }
+        public string Code { get; internal set; }
+        public bool Cyclic { get; internal set; }
+        public Shape? Shape { get; internal set; }
+        public Dictionary<string, float>? ElementWeight { get; internal set; }
+        public Dictionary<string, EnumAnimationBlendMode>? ElementBlendMode { get; internal set; }
 
         static public AnimationData Player(string code, bool cyclic = false) => new (code, cyclic);
         static public AnimationData Entity(string code, Entity entity, bool cyclic = false) => new(code, entity, cyclic);
@@ -170,7 +169,7 @@ namespace AnimationManagerLib.API
         
         private AnimationData(string code, bool cyclic = false)
         {
-            Code = code;
+            Code = code ?? throw new ArgumentException("Animation code cannot be null", nameof(code));
             Shape = null;
             ElementWeight = null;
             ElementBlendMode = null;
@@ -178,11 +177,11 @@ namespace AnimationManagerLib.API
         }
         private AnimationData(string code, Entity entity, bool cyclic = false)
         {
-            if (entity == null) throw new ArgumentNullException(nameof(entity), "Entity for entity animation data cannot be null");
-
+            if (entity == null) throw new ArgumentException("Entity cannot be null", nameof(entity));
+            
             entity.Properties.Client.AnimationsByMetaCode.TryGetValue(Code, out AnimationMetaData? metaData);
 
-            Code = code;
+            Code = code ?? throw new ArgumentException("Animation code cannot be null", nameof(code));
             Shape = entity.Properties.Client.LoadedShapeForEntity;
             ElementWeight = metaData?.ElementWeight;
             ElementBlendMode = metaData?.ElementBlendMode;
@@ -190,8 +189,8 @@ namespace AnimationManagerLib.API
         }
         private AnimationData(string code, Shape shape, bool cyclic = false, Dictionary<string, EnumAnimationBlendMode>? elementBlendMode = null, Dictionary<string, float>? elementWeight = null)
         {
-            Code = code;
-            Shape = shape ?? throw new ArgumentNullException(nameof(shape), "Item shape for held item animation cannot be null");
+            Code = code ?? throw new ArgumentException("Animation code cannot be null", nameof(code));
+            Shape = shape ?? throw new ArgumentException("Shape cannot be null", nameof(code));
             Cyclic = cyclic;
             ElementBlendMode = elementBlendMode ?? new(); 
             ElementWeight = elementWeight ?? new();
@@ -216,13 +215,13 @@ namespace AnimationManagerLib.API
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
     public struct RunParameters
     {
-        public AnimationPlayerAction Action { get; set; }
-        public TimeSpan Duration { get; set; }
-        public ProgressModifierType Modifier { get; set; }
-        public float? TargetFrame { get; set; }
-        public float? StartFrame { get; set; }
+        public AnimationPlayerAction Action { get; internal set; }
+        public TimeSpan Duration { get; internal set; }
+        public ProgressModifierType Modifier { get; internal set; }
+        public float? TargetFrame { get; internal set; }
+        public float? StartFrame { get; internal set; }
 
-        public RunParameters(AnimationPlayerAction action, TimeSpan duration, ProgressModifierType modifier, float? targetFrame, float? startFrame)
+        internal RunParameters(AnimationPlayerAction action, TimeSpan duration, ProgressModifierType modifier, float? targetFrame, float? startFrame)
         {
             Action = action;
             Duration = duration;
@@ -489,14 +488,14 @@ namespace AnimationManagerLib.API
         public AnimationId(Category category, string name)
         {
             Category = category;
-            DebugName = name;
+            DebugName = name ?? throw new ArgumentException("Animation code cannot be null", nameof(name));
             Hash = (int)Utils.ToCrc32(name);
             Hash = (int)Utils.ToCrc32($"{Hash}{Category.Hash}");
         }
         public AnimationId(string category, string animation, EnumAnimationBlendMode blendingType = EnumAnimationBlendMode.Add, float? weight = null)
         {
-            Category = new Category(category, blendingType, weight);
-            DebugName = animation;
+            Category = new Category(category ?? throw new ArgumentException("Category name cannot be null", nameof(category)), blendingType, weight);
+            DebugName = animation ?? throw new ArgumentException("Animation code cannot be null", nameof(animation));
             Hash = (int)Utils.ToCrc32(animation);
             Hash = (int)Utils.ToCrc32($"{Hash}{Category.Hash}");
         }
@@ -521,6 +520,8 @@ namespace AnimationManagerLib.API
 
         public Category(string name, EnumAnimationBlendMode blending = EnumAnimationBlendMode.Add, float? weight = null)
         {
+            if (name == null) throw new ArgumentNullException(nameof(name), "Category name cannot be null");
+            
             Blending = blending;
             Hash = (int)Utils.ToCrc32($"{name}{blending}{weight}");
             Weight = weight;

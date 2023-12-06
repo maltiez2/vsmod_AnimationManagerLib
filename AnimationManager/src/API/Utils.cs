@@ -8,7 +8,7 @@ namespace AnimationManagerLib
 {
     static public class Utils
     {
-        public static uint ToCrc32(string value) => GameMath.Crc32(value.ToLowerInvariant()) & int.MaxValue;
+        internal static uint ToCrc32(string value) => GameMath.Crc32(value.ToLowerInvariant()) & int.MaxValue;
 
         public static RunParameters? RunParametersFromJson(JsonObject definition, out string errorMessage)
         {

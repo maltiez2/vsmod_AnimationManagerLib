@@ -7,7 +7,7 @@ using System.Linq;
 
 namespace AnimationManagerLib
 {
-    public class Composer : IComposer
+    internal class Composer : IComposer
     { 
         private readonly Dictionary<AnimationId, IAnimation> mAnimations = new();
         private readonly Dictionary<Category, IAnimator> mAnimators = new();

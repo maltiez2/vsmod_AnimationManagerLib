@@ -23,7 +23,7 @@ namespace AnimationManagerLib
         private readonly Dictionary<AnimationTarget, AnimationFrame> mAnimationFrames = new();
         private readonly HashSet<Guid> mSynchronizedPackets = new();
 
-        public PlayerModelAnimationManager(ICoreClientAPI api, ISynchronizer synchronizer)
+        internal PlayerModelAnimationManager(ICoreClientAPI api, ISynchronizer synchronizer)
         {
             mClientApi = api;
             mSynchronizer = synchronizer;
@@ -240,7 +240,7 @@ namespace AnimationManagerLib
         }
     }
 
-    public class AnimationApplier
+    internal class AnimationApplier
     {
         public Dictionary<ElementPose, (string name, AnimationFrame composition)> Poses { get; private set; } = new();
         static public Dictionary<uint, string> PosesNames { get; set; } = new();
@@ -285,7 +285,7 @@ namespace AnimationManagerLib
         }
     }
 
-    public class AnimationProvider
+    internal class AnimationProvider
     {
         private readonly Dictionary<AnimationId, AnimationData> mAnimationsToConstruct = new();
         private readonly Dictionary<(AnimationId, AnimationTarget), IAnimation> mConstructedAnimations = new();

@@ -43,7 +43,7 @@ namespace AnimationManagerLib.CollectibleBehaviors
                 return -1;
             }
 
-            AnimationData? animation = AnimationData.HeldItem(code, CurrentShape);
+            AnimationData animation = AnimationData.HeldItem(code, CurrentShape);
             mAnimationManager?.Register(id, animation);
             mRegisteredAnimations.Add(id);
             return mRegisteredAnimations.Count - 1;

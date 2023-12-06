@@ -18,11 +18,9 @@ namespace AnimationManagerLib
 
         private ICoreAPI? mApi;
         private PlayerModelAnimationManager? mManager;
-        private Synchronizer? mSynchronizer;
         private ShaderProgram? mShaderProgram;
 
         public API.IAnimationManager GetAnimationManager() => mManager ?? throw new System.NullReferenceException();
-        public API.ISynchronizer GetSynchronizer() => mSynchronizer ?? throw new System.NullReferenceException();
 
         public override void Start(ICoreAPI api)
         {
@@ -38,10 +36,10 @@ namespace AnimationManagerLib
             api.Event.ReloadShader += LoadAnimatedItemShaders;
             LoadAnimatedItemShaders();
 
-            mSynchronizer = new Synchronizer();
-            mManager = new PlayerModelAnimationManager(api, mSynchronizer);
+            Synchronizer synchronizer = new();
+            mManager = new PlayerModelAnimationManager(api, synchronizer);
             RegisterHandlers(mManager);
-            mSynchronizer.Init(
+            synchronizer.Init(
                 api,
                 (packet) => mManager.Run(packet.AnimationTarget, packet.RunId, packet.Requests),
                 (packet) => mManager.Stop(packet.RunId),
@@ -50,8 +48,8 @@ namespace AnimationManagerLib
         }
         public override void StartServerSide(ICoreServerAPI api)
         {
-            mSynchronizer = new Synchronizer();
-            mSynchronizer.Init(
+            Synchronizer synchronizer = new();
+            synchronizer.Init(
                 api,
                 null,
                 null,

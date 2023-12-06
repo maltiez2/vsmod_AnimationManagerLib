@@ -4,7 +4,7 @@ using System;
 namespace AnimationManagerLib.API
 {
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
-    public struct AnimationRunPacket
+    internal struct AnimationRunPacket
     {
         public Guid RunId { get; set; }
         public AnimationTarget AnimationTarget { get; set; }
@@ -12,14 +12,14 @@ namespace AnimationManagerLib.API
     }
 
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
-    public struct AnimationStopPacket
+    internal struct AnimationStopPacket
     {
         public Guid RunId { get; set; }
 
         public AnimationStopPacket(Guid runId) => RunId = runId;
     }
 
-    public struct AnimationRunMetadata
+    internal struct AnimationRunMetadata
     {
         public AnimationPlayerAction Action { get; set; }
         public TimeSpan Duration { get; set; }
@@ -38,19 +38,19 @@ namespace AnimationManagerLib.API
         public static implicit operator AnimationRunMetadata(AnimationRequest request) => new(request);
     }
 
-    public interface IHasDebugWindow
+    internal interface IHasDebugWindow
     {
         void SetUpDebugWindow();
     }
 
-    public interface IAnimation
+    internal interface IAnimation
     {
         public AnimationFrame Play(float progress, float? startFrame = null, float? endFrame = null);
         public AnimationFrame Blend(float progress, float? targetFrame, AnimationFrame endFrame);
         public AnimationFrame Blend(float progress, AnimationFrame startFrame, AnimationFrame endFrame);
     }
 
-    public interface IAnimator : IHasDebugWindow
+    internal interface IAnimator : IHasDebugWindow
     {
         enum Status
         {
@@ -63,7 +63,7 @@ namespace AnimationManagerLib.API
         public AnimationFrame Calculate(TimeSpan timeElapsed, out Status status);
     }
 
-    public interface IComposer : IHasDebugWindow
+    internal interface IComposer : IHasDebugWindow
     {
         delegate bool IfRemoveAnimator(bool complete);
 
@@ -73,7 +73,7 @@ namespace AnimationManagerLib.API
         AnimationFrame Compose(TimeSpan timeElapsed);
     }
 
-    public interface ISynchronizer
+    internal interface ISynchronizer
     {
         public delegate void AnimationRunHandler(AnimationRunPacket request);
         public delegate void AnimationStopHandler(AnimationStopPacket request);

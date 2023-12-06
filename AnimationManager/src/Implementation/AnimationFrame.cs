@@ -5,7 +5,7 @@ using System;
 
 namespace AnimationManagerLib
 {
-    public class AnimationFrame
+    internal class AnimationFrame
     {
         public Dictionary<ElementId, (AnimationElement element, EnumAnimationBlendMode blendMode)> Elements { get; set; } = new();
         public EnumAnimationBlendMode DefaultBlendMode { get; set; }

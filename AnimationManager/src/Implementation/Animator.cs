@@ -7,7 +7,7 @@ using IAnimator = AnimationManagerLib.API.IAnimator;
 
 namespace AnimationManagerLib
 {
-    public class Animator : IAnimator
+    internal class Animator : IAnimator
     {
         private AnimationFrame mLastFrame;
         private AnimationFrame mStartFrame;

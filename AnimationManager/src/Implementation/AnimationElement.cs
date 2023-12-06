@@ -7,13 +7,13 @@ using Vintagestory.API.MathTools;
 
 namespace AnimationManagerLib
 {
-    public enum ElementType
+    internal enum ElementType
     {
         translateX, translateY, translateZ,
         degX, degY, degZ
     }
 
-    public struct ElementId
+    internal struct ElementId
     {
         public uint ElementNameHash { get; set; }
         public ElementType ElementType { get; set; }
@@ -36,7 +36,7 @@ namespace AnimationManagerLib
         public static bool operator !=(ElementId left, ElementId right) => !(left == right);
     }
 
-    public struct AnimationElement
+    internal struct AnimationElement
     {
         public WeightedValue? Value { get; set; }
         public ElementId Id { get; set; }
@@ -204,7 +204,7 @@ namespace AnimationManagerLib
         public readonly override string ToString() => $"id: {Id}, value: {Value}";
     }
 
-    public struct WeightedValue
+    internal struct WeightedValue
     {
         public float Value { get; set; }
         public float Weight { get; set; }
