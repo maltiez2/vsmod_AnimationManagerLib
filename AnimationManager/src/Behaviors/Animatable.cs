@@ -162,7 +162,6 @@ namespace AnimationManagerLib.CollectibleBehaviors
 
             Dictionary<string, AnimCacheEntry>? animCache;
             capi.ObjectCache.TryGetValue("coAnimCache", out object? animCacheObj);
-            Debug.Assert(animCacheObj is Dictionary<string, AnimCacheEntry>);
             animCache = animCacheObj as Dictionary<string, AnimCacheEntry>;
             if (animCache == null)
             {
