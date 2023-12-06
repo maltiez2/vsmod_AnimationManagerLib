@@ -7,52 +7,11 @@ using Vintagestory.API.Common.Entities;
 
 namespace AnimationManagerLib.API
 {
-    public interface IAnimationManager
+    public interface IAnimationManagerSystem
     {
-        /// <summary>
-        /// Registers animation in manager. For animation to be played it is required to register it.
-        /// </summary>
-        /// <param name="id">Used in <see cref="Run"/> in <see cref="AnimationRequest"/> to specify animation to play</param>
-        /// <param name="animation">Animation data used to construct frames</param>
-        /// <returns><c>false</c> if animation already registered</returns>
         bool Register(AnimationId id, AnimationData animation);
-
-        /// <summary>
-        /// Starts the animation sequence, synchronized between clients, unless <see cref="AnimationTarget.TargetType"/> is <see cref="AnimationTargetType.HeldItemFp"/>
-        /// </summary>
-        /// <param name="animationTarget">Specifies what would be animated</param>
-        /// <param name="requests">Sequence of animations bonded to run parameters. Will be played one after another.</param>
-        /// <returns>Unique identifier that is used to stop animation sequence with <see cref="Stop"/></returns>
-        Guid Run(AnimationTarget animationTarget, params AnimationRequest[] requests);
-        /// <summary>
-        /// Starts the animation sequence
-        /// </summary>
-        /// <param name="animationTarget">Specifies what would be animated</param>
-        /// <param name="synchronize">If <c>true</c> animations will be synchronized between clients, unless <see cref="AnimationTarget.TargetType"/> is <see cref="AnimationTargetType.HeldItemFp"/> </param>
-        /// <param name="requests">Sequence of animations bonded to run parameters. Will be played one after another.</param>
-        /// <returns>Unique identifier that is used to stop animation sequence with <see cref="Stop"/></returns>
-        Guid Run(AnimationTarget animationTarget, bool synchronize, params AnimationRequest[] requests);
-        /// <summary>
-        /// Used by synchronizer, not synchronized.
-        /// </summary>
-        /// <param name="animationTarget">Specifies what would be animated</param>
-        /// <param name="runId">Unique identifier, should be the same between clients</param>
-        /// <param name="requests">Sequence of animations bonded to run parameters. Will be played one after another.</param>
-        /// <returns>Unique identifier that is used to stop animation sequence with <see cref="Stop"/></returns>
-        Guid Run(AnimationTarget animationTarget, Guid runId, params AnimationRequest[] requests);
-        Guid Run(AnimationTarget animationTarget, AnimationId animationId, params RunParameters[] parameters);
-        Guid Run(AnimationTarget animationTarget, bool synchronize, AnimationId animationId, params RunParameters[] parameters);
-
-        /// <summary>
-        /// Stops animation sequence with specified id provided by <see cref="Run"/>. Synchronized.
-        /// </summary>
-        /// <param name="runId">Animation sequence id provided by <see cref="Run"/></param>
+        Guid Run(AnimationTarget animationTarget, AnimationSequence sequence, bool synchronize = true);
         void Stop(Guid runId);
-    }
-
-    public interface IAnimationManagerProvider
-    {
-        IAnimationManager GetAnimationManager();
     }
 
     public interface IAnimatableBehavior
@@ -69,6 +28,32 @@ namespace AnimationManagerLib.API
 
         Guid RunAnimation(int id, params RunParameters[] parameters);
         void StopAnimation(Guid runId);
+    }
+
+    public struct AnimationSequence
+    {
+        public AnimationRequest[] Requests { get; private set; }
+
+        public AnimationSequence(params AnimationRequest[] requests)
+        {
+            if (requests == null) throw new ArgumentNullException(nameof(requests));
+            if (requests.Length == 0) throw new ArgumentException("You need to pass at least one 'AnimationRequest'", nameof(requests));
+            Requests = requests;
+        }
+
+        public AnimationSequence(AnimationId animationId, params RunParameters[] parameters)
+        {
+            if (parameters == null) throw new ArgumentNullException(nameof(parameters));
+            if (parameters.Length == 0) throw new ArgumentException("You need to pass at least one 'RunParameters'", nameof(parameters));
+
+            List<AnimationRequest> requests = new();
+            foreach (RunParameters parametersSet in parameters)
+            {
+                requests.Add(new AnimationRequest(animationId, parametersSet));
+            }
+
+            Requests = requests.ToArray();
+        }
     }
 
     public enum AnimationPlayerAction : byte

@@ -8,7 +8,6 @@ namespace AnimationManagerLib.CollectibleBehaviors
 {
     public class AnimatableProcedural : AnimatableAttachable, API.IAnimatableBehavior
     {
-        private API.IAnimationManager? mAnimationManager;
         private readonly List<AnimationId> mRegisteredAnimations = new();
         private readonly HashSet<Guid> mRunningAnimations = new();
         protected ICoreAPI? mApi;
@@ -35,7 +34,6 @@ namespace AnimationManagerLib.CollectibleBehaviors
                 return -1;
             }
             AnimationId id = new(category, code, categoryBlendMode, categoryWeight);
-            mAnimationManager = mClientApi?.ModLoader.GetModSystem<AnimationManagerLibSystem>().GetAnimationManager();
 
             if (CurrentShape == null)
             {
@@ -44,7 +42,7 @@ namespace AnimationManagerLib.CollectibleBehaviors
             }
 
             AnimationData animation = AnimationData.HeldItem(code, CurrentShape);
-            mAnimationManager?.Register(id, animation);
+            mModSystem?.Register(id, animation);
             mRegisteredAnimations.Add(id);
             return mRegisteredAnimations.Count - 1;
         }
@@ -69,7 +67,7 @@ namespace AnimationManagerLib.CollectibleBehaviors
                 requests[index] = new AnimationRequest(mRegisteredAnimations[id], parameters[index]);
             }
 
-            Guid? runId = mClientApi?.ModLoader.GetModSystem<AnimationManagerLibSystem>().GetAnimationManager().Run(AnimationTarget.HeldItem(), requests);
+            Guid? runId = mModSystem?.Run(AnimationTarget.HeldItem(), new(requests));
             if (runId == null) return Guid.Empty;
             mRunningAnimations.Add(runId.Value);
             return runId.Value;
@@ -83,7 +81,7 @@ namespace AnimationManagerLib.CollectibleBehaviors
                 return;
             }
             if (mRunningAnimations.Contains(runId)) mRunningAnimations.Remove(runId);
-            mAnimationManager?.Stop(runId);
+            mModSystem?.Stop(runId);
         }
 
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)

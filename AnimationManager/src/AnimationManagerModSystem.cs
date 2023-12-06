@@ -1,18 +1,18 @@
-﻿using System.Diagnostics;
+﻿using AnimationManagerLib.API;
+using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Server;
 using Vintagestory.Client.NoObf;
-using VSImGui;
 
 namespace AnimationManagerLib
 {
-    public class AnimationManagerLibSystem : ModSystem, API.IAnimationManagerProvider
+    public class AnimationManagerLibSystem : ModSystem, API.IAnimationManagerSystem
     {
         public const string HarmonyID = "animationmanagerlib";
         public const string ChannelName = "animationmanagerlib";
 
-        internal delegate void OnBeforeRenderCallback(IAnimator animator, float dt);
+        internal delegate void OnBeforeRenderCallback(Vintagestory.API.Common.IAnimator animator, float dt);
         internal IShaderProgram? AnimatedItemShaderProgram => mShaderProgram;
         internal event OnBeforeRenderCallback? OnHeldItemBeforeRender;
 
@@ -20,7 +20,9 @@ namespace AnimationManagerLib
         private PlayerModelAnimationManager? mManager;
         private ShaderProgram? mShaderProgram;
 
-        public API.IAnimationManager GetAnimationManager() => mManager ?? throw new System.NullReferenceException();
+        public bool Register(API.AnimationId id, API.AnimationData animation) => mManager?.Register(id, animation) ?? false;
+        public Guid Run(API.AnimationTarget animationTarget, API.AnimationSequence sequence, bool synchronize = true) => mManager?.Run(animationTarget, synchronize, sequence.Requests) ?? Guid.Empty;
+        public void Stop(Guid runId) => mManager?.Stop(runId);
 
         public override void Start(ICoreAPI api)
         {
@@ -70,7 +72,7 @@ namespace AnimationManagerLib
 
             return true;
         }
-        public void OnBeforeRender(IAnimator animator, float dt)
+        public void OnBeforeRender(Vintagestory.API.Common.IAnimator animator, float dt)
         {
             OnHeldItemBeforeRender?.Invoke(animator, dt);
         }
@@ -98,5 +100,7 @@ namespace AnimationManagerLib
             }
             base.Dispose();
         }
+
+        
     }
 }

@@ -3,6 +3,19 @@ using System;
 
 namespace AnimationManagerLib.API
 {
+    internal interface IAnimationManager
+    {
+        bool Register(AnimationId id, AnimationData animation);
+
+        Guid Run(AnimationTarget animationTarget, params AnimationRequest[] requests);
+        Guid Run(AnimationTarget animationTarget, bool synchronize, params AnimationRequest[] requests);
+        Guid Run(AnimationTarget animationTarget, Guid runId, params AnimationRequest[] requests);
+        Guid Run(AnimationTarget animationTarget, AnimationId animationId, params RunParameters[] parameters);
+        Guid Run(AnimationTarget animationTarget, bool synchronize, AnimationId animationId, params RunParameters[] parameters);
+
+        void Stop(Guid runId);
+    }
+
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
     internal struct AnimationRunPacket
     {
