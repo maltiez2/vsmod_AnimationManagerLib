@@ -9,7 +9,7 @@ using Vintagestory.API.Common.Entities;
 
 namespace AnimationManagerLib
 {
-    public class PlayerModelAnimationManager : API.IAnimationManager
+    public class AnimationManager : API.IAnimationManager
     {
         private readonly ICoreClientAPI mClientApi;
         private readonly ISynchronizer mSynchronizer;
@@ -23,7 +23,7 @@ namespace AnimationManagerLib
         private readonly Dictionary<AnimationTarget, AnimationFrame> mAnimationFrames = new();
         private readonly HashSet<Guid> mSynchronizedPackets = new();
 
-        internal PlayerModelAnimationManager(ICoreClientAPI api, ISynchronizer synchronizer)
+        internal AnimationManager(ICoreClientAPI api, ISynchronizer synchronizer)
         {
             mClientApi = api;
             mSynchronizer = synchronizer;

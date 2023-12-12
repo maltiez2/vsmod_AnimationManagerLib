@@ -1,5 +1,4 @@
 ﻿using HarmonyLib;
-using System;
 using System.Reflection;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -17,7 +16,7 @@ namespace AnimationManagerLib.Patches
         public static void Patch(string harmonyId)
         {
             new Harmony(harmonyId).Patch(
-                    AccessTools.Method(typeof(AnimationManager), nameof(AnimationManager.OnClientFrame)),
+                    AccessTools.Method(typeof(Vintagestory.API.Common.AnimationManager), nameof(Vintagestory.API.Common.AnimationManager.OnClientFrame)),
                     prefix: new HarmonyMethod(AccessTools.Method(typeof(AnimatorBasePatch), nameof(OnFrame)))
                 );
 
@@ -30,13 +29,13 @@ namespace AnimationManagerLib.Patches
         public static void Unpatch(string harmonyId)
         {
             new Harmony(harmonyId).Unpatch(AccessTools.Method(typeof(ShapeElement), nameof(GetLocalTransformMatrix)), HarmonyPatchType.Prefix, harmonyId);
-            new Harmony(harmonyId).Unpatch(AccessTools.Method(typeof(AnimationManager), nameof(AnimationManager.OnClientFrame)), HarmonyPatchType.Prefix, harmonyId);
+            new Harmony(harmonyId).Unpatch(AccessTools.Method(typeof(Vintagestory.API.Common.AnimationManager), nameof(Vintagestory.API.Common.AnimationManager.OnClientFrame)), HarmonyPatchType.Prefix, harmonyId);
         }
 
-        public static void OnFrame(AnimationManager __instance, float dt)
+        public static void OnFrame(Vintagestory.API.Common.AnimationManager __instance, float dt)
         {
 #pragma warning disable S3011 // Reflection should not be used to increase accessibility of classes, methods, or fields
-            Entity? entity = (Entity?)typeof(AnimationManager)
+            Entity? entity = (Entity?)typeof(Vintagestory.API.Common.AnimationManager)
                                               .GetField("entity", BindingFlags.NonPublic | BindingFlags.Instance)
                                               ?.GetValue(__instance);
 #pragma warning restore S3011 // Reflection should not be used to increase accessibility of classes, methods, or fields

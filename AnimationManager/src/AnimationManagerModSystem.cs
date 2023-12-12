@@ -17,7 +17,7 @@ namespace AnimationManagerLib
         internal event OnBeforeRenderCallback? OnHeldItemBeforeRender;
 
         private ICoreAPI? mApi;
-        private PlayerModelAnimationManager? mManager;
+        private AnimationManager? mManager;
         private ShaderProgram? mShaderProgram;
 
         public bool Register(API.AnimationId id, API.AnimationData animation) => mManager?.Register(id, animation) ?? false;
@@ -39,7 +39,7 @@ namespace AnimationManagerLib
             LoadAnimatedItemShaders();
 
             Synchronizer synchronizer = new();
-            mManager = new PlayerModelAnimationManager(api, synchronizer);
+            mManager = new AnimationManager(api, synchronizer);
             RegisterHandlers(mManager);
             synchronizer.Init(
                 api,
@@ -77,13 +77,13 @@ namespace AnimationManagerLib
             OnHeldItemBeforeRender?.Invoke(animator, dt);
         }
 
-        private void RegisterHandlers(PlayerModelAnimationManager manager)
+        private void RegisterHandlers(AnimationManager manager)
         {
             Patches.AnimatorBasePatch.OnElementPoseUsedCallback += manager.OnApplyAnimation;
             Patches.AnimatorBasePatch.OnFrameCallback += manager.OnFrameHandler;
             OnHeldItemBeforeRender += manager.OnFrameHandler;
         }
-        private void UnregisterHandlers(PlayerModelAnimationManager? manager)
+        private void UnregisterHandlers(AnimationManager? manager)
         {
             if (manager == null) return;
             Patches.AnimatorBasePatch.OnElementPoseUsedCallback -= manager.OnApplyAnimation;

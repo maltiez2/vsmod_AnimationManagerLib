@@ -170,11 +170,11 @@ namespace AnimationManagerLib
                 ImGuiNET.ImGui.Text($"Modifier: -");
             
             if (mStopped)
-                ImGuiNET.ImGui.SliderFloat("Prev. progress", ref mPreviousProgress, 0, 1);
+                ImGuiNET.ImGui.SliderFloat($"Prev. progress ({mCurrentAnimation.GetHashCode()})", ref mPreviousProgress, 0, 1);
             else
             {
                 ImGuiNET.ImGui.BeginDisabled();
-                ImGuiNET.ImGui.SliderFloat("Prev. progress", ref mPreviousProgress, 0, 1);
+                ImGuiNET.ImGui.SliderFloat($"Prev. progress ({mCurrentAnimation.GetHashCode()})", ref mPreviousProgress, 0, 1);
                 ImGuiNET.ImGui.EndDisabled();
             }
             

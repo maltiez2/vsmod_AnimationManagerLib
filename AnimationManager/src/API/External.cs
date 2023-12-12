@@ -54,6 +54,9 @@ namespace AnimationManagerLib.API
 
             Requests = requests.ToArray();
         }
+
+        public static implicit operator AnimationSequence(AnimationRequest request) => new(request);
+        public static implicit operator AnimationSequence(AnimationRequest[] requests) => new(requests);
     }
 
     public enum AnimationPlayerAction : byte
@@ -163,10 +166,11 @@ namespace AnimationManagerLib.API
         private AnimationData(string code, Entity entity, bool cyclic = false)
         {
             if (entity == null) throw new ArgumentException("Entity cannot be null", nameof(entity));
-            
-            entity.Properties.Client.AnimationsByMetaCode.TryGetValue(Code, out AnimationMetaData? metaData);
 
             Code = code ?? throw new ArgumentException("Animation code cannot be null", nameof(code));
+
+            entity.Properties.Client.AnimationsByMetaCode.TryGetValue(Code, out AnimationMetaData? metaData);
+            
             Shape = entity.Properties.Client.LoadedShapeForEntity;
             ElementWeight = metaData?.ElementWeight;
             ElementBlendMode = metaData?.ElementBlendMode;

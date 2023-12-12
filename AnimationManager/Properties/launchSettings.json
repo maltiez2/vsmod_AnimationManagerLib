@@ -3,14 +3,14 @@
     "Client": {
       "commandName": "Executable",
       "executablePath": "dotnet",
-      "commandLineArgs": "\"$(VINTAGE_STORY)/Vintagestory.dll\" --tracelog --addModPath \"$(ProjectDir)/bin/$(Configuration)/Mods\" \"-o\" \"test_fsm_2\"",
-      "workingDirectory": "$(VINTAGE_STORY)"
+      "commandLineArgs": "\"D:/Projects/Firearms/game/Vintagestory.dll\" --tracelog --addModPath \"$(ProjectDir)/bin/$(Configuration)/Mods\" \"-o\" \"test_fsm_2\"",
+      "workingDirectory": "D:/Projects/Firearms/game"
     },
     "Server": {
       "commandName": "Executable",
       "executablePath": "dotnet",
-      "commandLineArgs": "\"$(VINTAGE_STORY)/VintagestoryServer.dll\" --tracelog --addModPath \"$(ProjectDir)/bin/$(Configuration)/Mods\" \"-o\" \"test_fsm_2\"",
-      "workingDirectory": "$(VINTAGE_STORY)"
+      "commandLineArgs": "\"D:/Projects/Firearms/game/VintagestoryServer.dll\" --tracelog --addModPath \"$(ProjectDir)/bin/$(Configuration)/Mods\" \"-o\" \"test_fsm_2\"",
+      "workingDirectory": "D:/Projects/Firearms/game"
     }
   }
 }
