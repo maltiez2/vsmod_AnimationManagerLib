@@ -39,9 +39,9 @@ namespace AnimationManagerLib.CollectibleBehaviors
             mActiveAttachments.Clear();
         }
 
-        public override void RenderHandFp(ItemSlot inSlot, ItemRenderInfo renderInfo, Matrixf modelMat, double posX, double posY, double posZ, float size, int color, bool rotate = false, bool showStackSize = true)
+        public void RenderHandFp(ItemSlot inSlot, ItemRenderInfo renderInfo, Matrixf modelMat, double posX, double posY, double posZ, float size, int color, bool rotate = false, bool showStackSize = true)
         {
-            base.RenderHandFp(inSlot, renderInfo, modelMat, posX, posY, posZ, size, color, rotate, showStackSize);
+            //base.RenderHandFp(inSlot, renderInfo, modelMat, posX, posY, posZ, size, color, rotate, showStackSize);
 
             if (onlyWhenAnimating && ActiveAnimationsByAnimCode.Count == 0) return;
             if (Animator == null) return;
@@ -74,7 +74,7 @@ namespace AnimationManagerLib.CollectibleBehaviors
         {
             if (mApi == null) return;
 
-            ItemRenderInfo attachedRenderInfo = GetAttachmentRenderInfo(); // @TODO @1.19 GetAttachmentRenderInfo(renderInfo.dt)
+            ItemRenderInfo attachedRenderInfo = GetAttachmentRenderInfo(renderInfo.dt);
             if (attachedRenderInfo == null) return;
 
 
@@ -85,7 +85,7 @@ namespace AnimationManagerLib.CollectibleBehaviors
             CalculateMeshMatrix(modelMat, renderInfo, attachedRenderInfo, attachmentPointAndPose, attachmentPoint);
             prog.UniformMatrix("modelViewMatrix", mAttachedMeshMatrix.Values);
 
-            mApi.Render.RenderMesh(attachedRenderInfo.ModelRef);
+            //mApi.Render.RenderMesh(attachedRenderInfo.ModelRef);
         }
 
         private void CalculateMeshMatrix(Matrixf modelMat, ItemRenderInfo renderInfo, ItemRenderInfo attachedRenderInfo, AttachmentPointAndPose apap, AttachmentPoint ap)
@@ -104,10 +104,10 @@ namespace AnimationManagerLib.CollectibleBehaviors
             ;
         }
 
-        private ItemRenderInfo GetAttachmentRenderInfo() // @TODO @1.19 GetAttachmentRenderInfo(float dt)
+        private ItemRenderInfo GetAttachmentRenderInfo(float dt)
         {
             DummySlot dummySlot = new(mItemStack);
-            ItemRenderInfo renderInfo = mApi.Render.GetItemStackRenderInfo(dummySlot, EnumItemRenderTarget.Ground); // @TODO @1.19 mApi.Render.GetItemStackRenderInfo(dummySlot, EnumItemRenderTarget.Ground, dt)
+            ItemRenderInfo renderInfo = mApi.Render.GetItemStackRenderInfo(dummySlot, EnumItemRenderTarget.Ground, dt);
             renderInfo.Transform = mAttachedTransform;
             return renderInfo;
         }

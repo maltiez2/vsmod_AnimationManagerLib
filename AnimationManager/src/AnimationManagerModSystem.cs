@@ -1,5 +1,6 @@
-﻿using AnimationManagerLib.API;
+﻿using AnimationManagerLib.EntityRenderers;
 using System;
+using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Server;
@@ -24,6 +25,10 @@ namespace AnimationManagerLib
         public Guid Run(API.AnimationTarget animationTarget, API.AnimationSequence sequence, bool synchronize = true) => mManager?.Run(animationTarget, synchronize, sequence.Requests) ?? Guid.Empty;
         public void Stop(Guid runId) => mManager?.Stop(runId);
 
+        public override void StartPre(ICoreAPI api)
+        {
+            (api as ICoreClientAPI)?.RegisterEntityRendererClass("EntityPlayer", typeof(EntityAnimatableShapeRenderer));
+        }
         public override void Start(ICoreAPI api)
         {
             mApi = api;
@@ -36,6 +41,8 @@ namespace AnimationManagerLib
             Patches.AnimatorBasePatch.Patch(HarmonyID);
 
             api.Event.ReloadShader += LoadAnimatedItemShaders;
+            api.Event.PlayerJoin += AddPlayerToList;
+            api.Event.PlayerEntitySpawn += RegisterEntityRenderer;
             LoadAnimatedItemShaders();
 
             Synchronizer synchronizer = new();
@@ -61,13 +68,13 @@ namespace AnimationManagerLib
         public bool LoadAnimatedItemShaders()
         {
             if (mApi is not ICoreClientAPI clientApi) return false;
-            
+
             mShaderProgram = clientApi.Shader.NewShaderProgram() as ShaderProgram;
-            
+
             if (mShaderProgram == null) return false;
-            
+
             mShaderProgram.AssetDomain = Mod.Info.ModID;
-            clientApi.Shader.RegisterFileShaderProgram("helditemanimated", AnimatedItemShaderProgram);
+            clientApi.Shader.RegisterFileShaderProgram("customstandart", AnimatedItemShaderProgram);
             mShaderProgram.Compile();
 
             return true;
@@ -75,6 +82,19 @@ namespace AnimationManagerLib
         public void OnBeforeRender(Vintagestory.API.Common.IAnimator animator, float dt)
         {
             OnHeldItemBeforeRender?.Invoke(animator, dt);
+        }
+
+        private HashSet<IClientPlayer> mPlayers = new();
+        public void AddPlayerToList(IClientPlayer byPlayer)
+        {
+            mPlayers.Add(byPlayer);
+        }
+        public void RegisterEntityRenderer(IClientPlayer byPlayer)
+        {
+            if (!mPlayers.Contains(byPlayer)) return;
+            (mApi as ICoreClientAPI)?.RegisterEntityRendererClass(byPlayer.Entity?.Class, typeof(EntityAnimatableShapeRenderer));
+            if (byPlayer.Entity != null) mPlayers.Remove(byPlayer);
+            Console.WriteLine($"Register for: {byPlayer.Entity?.Class}");
         }
 
         private void RegisterHandlers(AnimationManager manager)
@@ -100,7 +120,5 @@ namespace AnimationManagerLib
             }
             base.Dispose();
         }
-
-        
     }
 }
