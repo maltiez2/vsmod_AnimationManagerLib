@@ -35,13 +35,13 @@ namespace AnimationManagerLib.CollectibleBehaviors
             }
             AnimationId id = new(category, code, categoryBlendMode, categoryWeight);
 
-            if (CurrentShape == null)
+            if (mShape?.Shape == null)
             {
                 mApi.Logger.Warning("Trying to register animation '{0}' in category '{1}'. 'CurrentShape' is null, skipping.", code, category);
                 return -1;
             }
 
-            AnimationData animation = AnimationData.HeldItem(code, CurrentShape);
+            AnimationData animation = AnimationData.HeldItem(code, mShape?.Shape);
             mModSystem?.Register(id, animation);
             mRegisteredAnimations.Add(id);
             return mRegisteredAnimations.Count - 1;
@@ -86,9 +86,9 @@ namespace AnimationManagerLib.CollectibleBehaviors
 
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {
-            RenderProceduralAnimations = mRunningAnimations.Count > 0 || !onlyWhenAnimating;
+            RenderProceduralAnimations = mRunningAnimations.Count > 0 || !mOnlyWhenAnimating;
 
-            base.OnBeforeRender(capi, itemstack, target, ref renderinfo);
+            base.BeforeRender(capi, itemstack, target, ref renderinfo);
         }
     }
 }

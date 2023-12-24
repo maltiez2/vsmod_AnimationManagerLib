@@ -43,12 +43,12 @@ namespace AnimationManagerLib.CollectibleBehaviors
         {
             //base.RenderHandFp(inSlot, renderInfo, modelMat, posX, posY, posZ, size, color, rotate, showStackSize);
 
-            if (onlyWhenAnimating && ActiveAnimationsByAnimCode.Count == 0) return;
-            if (Animator == null) return;
+            if (mOnlyWhenAnimating && mActiveAnimationsByCode.Count == 0) return;
+            if (mShape?.Animator == null) return;
 
             foreach ((string code, bool active) in mActiveAttachments.Where(x => x.Value))
             {
-                mAttachments[code].Render(renderInfo, Animator, modelMat);
+                mAttachments[code].Render(renderInfo, mShape?.Animator, modelMat);
             }
         }
     }

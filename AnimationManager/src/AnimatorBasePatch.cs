@@ -68,7 +68,7 @@ namespace AnimationManagerLib.Patches
 
                 ItemRenderInfo renderInfo = __instance.capi.Render.GetItemStackRenderInfo(slot, EnumItemRenderTarget.HandTp, dt);
 
-                behavior.OnBeforeRender(__instance.capi, slot.Itemstack, EnumItemRenderTarget.HandFp, ref renderInfo);
+                behavior.BeforeRender(__instance.capi, slot.Itemstack, EnumItemRenderTarget.HandFp, ref renderInfo);
 
                 (string textureName, _) = slot.Itemstack.Item.Textures.First();
 
