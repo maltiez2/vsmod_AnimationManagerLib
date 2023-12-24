@@ -1,15 +1,12 @@
 ﻿using AnimationManagerLib.CollectibleBehaviors;
-using AnimationManagerLib.EntityRenderers;
 using HarmonyLib;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
-using Vintagestory.Client.NoObf;
 using Vintagestory.GameContent;
 
 namespace AnimationManagerLib.Patches
@@ -53,7 +50,7 @@ namespace AnimationManagerLib.Patches
                                               .GetField("entity", BindingFlags.NonPublic | BindingFlags.Instance)
                                               ?.GetValue(__instance);
 #pragma warning restore S3011 // Reflection should not be used to increase accessibility of classes, methods, or fields
-            
+
             if (entity != null) OnFrameCallback?.Invoke(entity, dt);
         }
         public static void GetLocalTransformMatrix(ElementPose tf) => OnElementPoseUsedCallback?.Invoke(tf);
@@ -105,14 +102,13 @@ namespace AnimationManagerLib.Patches
             itemModelMat.Values = (float[])modelMat.Clone();
             itemModelMat.Mul(attachmentPointAndPose.AnimModelMatrix).Translate(itemStackRenderInfo.Transform.Origin.X, itemStackRenderInfo.Transform.Origin.Y, itemStackRenderInfo.Transform.Origin.Z)
                 .Scale(itemStackRenderInfo.Transform.ScaleXYZ.X, itemStackRenderInfo.Transform.ScaleXYZ.Y, itemStackRenderInfo.Transform.ScaleXYZ.Z)
-                .Translate(attachPoint.PosX / 16.0 + (double)itemStackRenderInfo.Transform.Translation.X, attachPoint.PosY / 16.0 + (double)itemStackRenderInfo.Transform.Translation.Y, attachPoint.PosZ / 16.0 + (double)itemStackRenderInfo.Transform.Translation.Z)
-                .RotateX((float)(attachPoint.RotationX + (double)itemStackRenderInfo.Transform.Rotation.X) * (MathF.PI / 180f))
-                .RotateY((float)(attachPoint.RotationY + (double)itemStackRenderInfo.Transform.Rotation.Y) * (MathF.PI / 180f))
-                .RotateZ((float)(attachPoint.RotationZ + (double)itemStackRenderInfo.Transform.Rotation.Z) * (MathF.PI / 180f));
+                .Translate(attachPoint.PosX / 16.0 + itemStackRenderInfo.Transform.Translation.X, attachPoint.PosY / 16.0 + itemStackRenderInfo.Transform.Translation.Y, attachPoint.PosZ / 16.0 + itemStackRenderInfo.Transform.Translation.Z)
+                .RotateX((float)(attachPoint.RotationX + itemStackRenderInfo.Transform.Rotation.X) * (MathF.PI / 180f))
+                .RotateY((float)(attachPoint.RotationY + itemStackRenderInfo.Transform.Rotation.Y) * (MathF.PI / 180f))
+                .RotateZ((float)(attachPoint.RotationZ + itemStackRenderInfo.Transform.Rotation.Z) * (MathF.PI / 180f));
 
 
             return itemModelMat;
         }
     }
 }
- 

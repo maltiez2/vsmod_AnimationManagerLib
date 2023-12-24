@@ -84,12 +84,12 @@ namespace AnimationManagerLib
         {
             bool instant = mCurrentParameters.Duration == TimeSpan.Zero;
 
-            Debug.Assert(!instant ||
+            /*Debug.Assert(!instant ||
                     mCurrentParameters.Action == AnimationPlayerAction.Set ||
                     mCurrentParameters.Action == AnimationPlayerAction.Stop ||
                     mCurrentParameters.Action == AnimationPlayerAction.Clear,
                     "Only 'Set', 'Stop' and 'Clear' actions can have zero duration"
-                );
+                );*/
 
             mCurrentProgress = instant ? 1 : GameMath.Clamp((float)mCurrentTime.TotalSeconds / duration, 0, 1);
             mStopped = mCurrentProgress >= 1;

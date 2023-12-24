@@ -1,5 +1,4 @@
-﻿using AnimationManagerLib.EntityRenderers;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -27,7 +26,7 @@ namespace AnimationManagerLib
 
         public override void StartPre(ICoreAPI api)
         {
-            (api as ICoreClientAPI)?.RegisterEntityRendererClass("EntityPlayer", typeof(EntityAnimatableShapeRenderer));
+
         }
         public override void Start(ICoreAPI api)
         {
@@ -41,8 +40,6 @@ namespace AnimationManagerLib
             Patches.AnimatorBasePatch.Patch(HarmonyID);
 
             api.Event.ReloadShader += LoadAnimatedItemShaders;
-            api.Event.PlayerJoin += AddPlayerToList;
-            api.Event.PlayerEntitySpawn += RegisterEntityRenderer;
             LoadAnimatedItemShaders();
 
             Synchronizer synchronizer = new();
@@ -82,19 +79,6 @@ namespace AnimationManagerLib
         public void OnBeforeRender(Vintagestory.API.Common.IAnimator animator, float dt)
         {
             OnHeldItemBeforeRender?.Invoke(animator, dt);
-        }
-
-        private HashSet<IClientPlayer> mPlayers = new();
-        public void AddPlayerToList(IClientPlayer byPlayer)
-        {
-            mPlayers.Add(byPlayer);
-        }
-        public void RegisterEntityRenderer(IClientPlayer byPlayer)
-        {
-            if (!mPlayers.Contains(byPlayer)) return;
-            (mApi as ICoreClientAPI)?.RegisterEntityRendererClass(byPlayer.Entity?.Class, typeof(EntityAnimatableShapeRenderer));
-            if (byPlayer.Entity != null) mPlayers.Remove(byPlayer);
-            Console.WriteLine($"Register for: {byPlayer.Entity?.Class}");
         }
 
         private void RegisterHandlers(AnimationManager manager)
