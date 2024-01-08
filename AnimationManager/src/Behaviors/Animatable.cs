@@ -15,6 +15,7 @@ namespace AnimationManagerLib.CollectibleBehaviors
     public class Animatable : CollectibleBehavior // Based on code from TeacupAngel (https://github.com/TeacupAngel)
     {
         public bool RenderProceduralAnimations { get; set; }
+        public Shape? CurrentShape => mShape?.Shape;
 
         protected Dictionary<string, AnimationMetaData> mActiveAnimationsByCode = new();
         protected AnimationManagerLibSystem? mModSystem;

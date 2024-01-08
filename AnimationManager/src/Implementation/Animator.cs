@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Diagnostics;
 using AnimationManagerLib.API;
 using Vintagestory.API.MathTools;
 using VSImGui;
@@ -156,7 +155,7 @@ namespace AnimationManagerLib
 #if DEBUG
         private readonly FixedSizedQueue<float> mProgressPlot = new(120);
 #endif
-        public void SetUpDebugWindow()
+        public void SetUpDebugWindow(string id)
         {
 #if DEBUG
             mProgressPlot.Enqueue(mCurrentProgress);
@@ -170,15 +169,15 @@ namespace AnimationManagerLib
                 ImGuiNET.ImGui.Text($"Modifier: -");
             
             if (mStopped)
-                ImGuiNET.ImGui.SliderFloat($"Prev. progress ({mCurrentAnimation.GetHashCode()})", ref mPreviousProgress, 0, 1);
+                ImGuiNET.ImGui.SliderFloat($"Prev. progress ({mCurrentAnimation.GetHashCode()})##{id}", ref mPreviousProgress, 0, 1);
             else
             {
                 ImGuiNET.ImGui.BeginDisabled();
-                ImGuiNET.ImGui.SliderFloat($"Prev. progress ({mCurrentAnimation.GetHashCode()})", ref mPreviousProgress, 0, 1);
+                ImGuiNET.ImGui.SliderFloat($"Prev. progress ({mCurrentAnimation.GetHashCode()})##{id}", ref mPreviousProgress, 0, 1);
                 ImGuiNET.ImGui.EndDisabled();
             }
             
-            ImGuiNET.ImGui.PlotLines("Curr. progress", ref mProgressPlot.Queue.ToArray()[0], mProgressPlot.Count, 0, "", 0, 1.1f, new(0, 100f));
+            ImGuiNET.ImGui.PlotLines($"Curr. progress##{id}", ref mProgressPlot.Queue.ToArray()[0], mProgressPlot.Count, 0, "", 0, 1.1f, new(0, 100f));
             ImGuiNET.ImGui.NewLine();
 #endif
         }
