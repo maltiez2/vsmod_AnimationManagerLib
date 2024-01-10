@@ -1,4 +1,5 @@
-﻿using ProtoBuf;
+﻿using Newtonsoft.Json.Linq;
+using ProtoBuf;
 using System;
 
 namespace AnimationManagerLib.API;
@@ -59,6 +60,10 @@ internal interface IHasDebugWindow
 internal interface IWithGuiEditor
 {
     bool Editor(string id);
+}
+internal interface ISerializable
+{
+    public JToken Serialize();
 }
 
 internal interface IAnimation : IWithGuiEditor

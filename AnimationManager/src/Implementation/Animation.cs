@@ -1,14 +1,15 @@
-﻿using System;
+﻿using AnimationManagerLib.API;
+using ImGuiNET;
+using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using AnimationManagerLib.API;
-using ImGuiNET;
 using Vintagestory.API.Common;
 using Vintagestory.API.Util;
 
 namespace AnimationManagerLib;
 
-internal class Animation : IAnimation
+internal class Animation : IAnimation, ISerializable
 {
     public AnimationId Id { get; private set; }
     public float TotalFrames => mTotalFrames;
@@ -27,7 +28,7 @@ internal class Animation : IAnimation
         mCyclic = cyclic;
         mTotalFrames = totalFrames;
 
-        if (mFrames.Length > 0 &&  mFrames[0] != 0)
+        if (mFrames.Length > 0 && mFrames[0] != 0)
         {
             AnimationFrame firstFrame = new(mKeyFrames[0].DefaultBlendMode, mKeyFrames[0].DefaultElementWeight);
             mFrames = mFrames.Prepend((ushort)0).ToArray();
@@ -37,7 +38,7 @@ internal class Animation : IAnimation
         if (mFrames.Length > 0 && MathF.Abs(mFrames[^1] - mTotalFrames) > 1E-3)
         {
             AnimationFrame lastFrame = new(mKeyFrames[^1].DefaultBlendMode, mKeyFrames[^1].DefaultElementWeight);
-            mFrames = mFrames.Append((ushort)((ushort)mTotalFrames - (ushort)1));
+            mFrames = mFrames.Append((ushort)((ushort)mTotalFrames - 1));
             mKeyFrames = mKeyFrames.Append(lastFrame);
         }
 
@@ -70,9 +71,9 @@ internal class Animation : IAnimation
     private AnimationFrame CalcFrame(float progress, float startFrame, float endFrame)
     {
         (int prevKeyFrame, int nextKeyFrame, float keyFrameProgress) = ToKeyFrames(progress, startFrame, endFrame);
-        
+
         if (prevKeyFrame == nextKeyFrame) return mKeyFrames[nextKeyFrame].Clone();
-        
+
         AnimationFrame resultFrame = mKeyFrames[nextKeyFrame].Clone();
         mKeyFrames[prevKeyFrame].LerpInto(resultFrame, keyFrameProgress);
         return resultFrame;
@@ -127,12 +128,12 @@ internal class Animation : IAnimation
     }
 
     private void PreprocessKeyframes()
-    {            
+    {
         HashSet<ElementId> elements = new();
         Dictionary<ElementId, (AnimationElement element, EnumAnimationBlendMode blendMode)> singleElements = new();
         foreach (AnimationFrame keyFrame in mKeyFrames)
         {
-            foreach ((ElementId id, var entry) in keyFrame.Elements)
+            foreach ((ElementId id, (AnimationElement element, EnumAnimationBlendMode blendMode) entry) in keyFrame.Elements)
             {
                 if (!singleElements.ContainsKey(id))
                 {
@@ -145,9 +146,9 @@ internal class Animation : IAnimation
             }
         }
 
-        foreach ((ElementId element, var entry) in singleElements.Where((entry, _) => !elements.Contains(entry.Key)))
+        foreach ((ElementId element, (AnimationElement element, EnumAnimationBlendMode blendMode) entry) in singleElements.Where((entry, _) => !elements.Contains(entry.Key)))
         {
-            foreach (var frameElements in mKeyFrames.Select(frame => frame.Elements).Where(frameElements => !frameElements.ContainsKey(element)))
+            foreach (Dictionary<ElementId, (AnimationElement element, EnumAnimationBlendMode blendMode)>? frameElements in mKeyFrames.Select(frame => frame.Elements).Where(frameElements => !frameElements.ContainsKey(element)))
             {
                 frameElements.Add(element, entry);
             }
@@ -162,11 +163,11 @@ internal class Animation : IAnimation
     private void ProcessElement(ElementId id)
     {
         List<(int frame, int start, int end, float progress)> tasks = new();
-        
+
         for (int index = 0; index < mKeyFrames.Length; index++)
         {
             if (mKeyFrames[index].Elements.ContainsKey(id)) continue;
-            
+
             (int startKeyFrame, int endKeyFrame, float progress) = GetKeyFramesAndProgressToLerp(id, index);
 
             tasks.Add((index, startKeyFrame, endKeyFrame, progress));
@@ -174,7 +175,7 @@ internal class Animation : IAnimation
 
         foreach ((int frame, int start, int end, float progress) in tasks)
         {
-            var blendMode = mKeyFrames[start].Elements[id].blendMode;
+            EnumAnimationBlendMode blendMode = mKeyFrames[start].Elements[id].blendMode;
             AnimationElement startElement = mKeyFrames[start].Elements[id].element;
             AnimationElement endElement = mKeyFrames[end].Elements[id].element;
 
@@ -256,7 +257,7 @@ internal class Animation : IAnimation
 
 #if DEBUG
         ImGui.SliderInt($"Key frame##{id}", ref mCurrentFrame, 0, mKeyFrames.Length - 1);
-        
+
         int keyFrameFrame = mFrames[mCurrentFrame];
         ImGui.SliderInt($"Key frame position##{id}", ref keyFrameFrame, mCurrentFrame == 0 ? 0 : mFrames[mCurrentFrame - 1], mCurrentFrame == mKeyFrames.Length - 1 ? (int)mTotalFrames : mFrames[mCurrentFrame + 1]);
         if (mFrames[mCurrentFrame] != keyFrameFrame) modified = true;
@@ -266,5 +267,33 @@ internal class Animation : IAnimation
 #endif
 
         return modified;
+    }
+
+    public JToken Serialize()
+    {
+        JArray keyFrames = new();
+
+        foreach (JObject frame in mKeyFrames.Select((frame, index) => SerializeFrame(mFrames[index], frame.Serialize())).Where(frame => frame != null))
+        {
+            keyFrames.Add(frame);
+        }
+
+        JObject animation = new()
+        {
+            ["code"] = Id.GetName(),
+            ["keyFrames"] = keyFrames
+        };
+
+        return animation;
+    }
+
+    private JObject SerializeFrame(int index, JToken elements)
+    {
+        JObject frame = new()
+        {
+            ["frame"] = index,
+            ["elements"] = elements
+        };
+        return frame;
     }
 }

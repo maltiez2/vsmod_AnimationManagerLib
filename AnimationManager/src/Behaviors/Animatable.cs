@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Reflection;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -104,6 +103,7 @@ namespace AnimationManagerLib.CollectibleBehaviors
                 )
             )
             {
+                bool handled = false;
                 if (RenderProceduralAnimations) mModSystem?.OnBeforeRender(mShape.Animator, renderInfo.dt);
                 mShape.Animator.OnFrame(mActiveAnimationsByCode, renderInfo.dt);
             }
@@ -208,7 +208,7 @@ namespace AnimationManagerLib.CollectibleBehaviors
         protected static void SpawnParticles(Matrixf itemModelMat, ItemStack itemStack, float dt, ref float timeAccumulation, ICoreClientAPI api, Entity entity)
         {
             if (itemStack.Collectible?.ParticleProperties == null) return;
-            
+
             float windStrength = Math.Max(0f, 1f - api.World.BlockAccessor.GetDistanceToRainFall(entity.Pos.AsBlockPos) / 5f);
             AdvancedParticleProperties[] particleProperties = itemStack.Collectible.ParticleProperties;
             if (itemStack.Collectible == null || api.IsGamePaused)

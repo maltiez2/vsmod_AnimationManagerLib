@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Xml.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -133,9 +132,13 @@ public class AnimationManager : API.IAnimationManager
         AnimationFrame composition = mComposers[animationTarget].Compose(timeSpan);
         mApplier.AddAnimation(animator, composition);
     }
-    public void OnApplyAnimation(ElementPose pose)
+    public void OnApplyAnimation(ElementPose pose, ref float weight)
     {
-        mApplier.ApplyAnimation(pose);
+        mApplier.ApplyAnimation(pose, ref weight);
+    }
+    public void OnCalculateWeight(ElementPose pose, ref float weight)
+    {
+        mApplier.CalculateWeight(pose, ref weight);
     }
 
     private static AnimationRequest[] ToRequests(AnimationId animationId, params RunParameters[] parameters)
@@ -263,13 +266,24 @@ internal class AnimationApplier
 
     public AnimationApplier(ICoreAPI api) => mApi = api;
 
-    public bool ApplyAnimation(ElementPose pose)
+    public bool CalculateWeight(ElementPose pose, ref float weight)
     {
         if (pose == null || !Poses.ContainsKey(pose)) return false;
 
         (string name, AnimationFrame? composition) = Poses[pose];
 
-        composition.Apply(pose, 1, Utils.ToCrc32(name));
+        composition.Weight(ref weight, Utils.ToCrc32(name));
+
+        return true;
+    }
+
+    public bool ApplyAnimation(ElementPose pose, ref float weight)
+    {
+        if (pose == null || !Poses.ContainsKey(pose)) return false;
+
+        (string name, AnimationFrame? composition) = Poses[pose];
+
+        composition.Apply(pose, ref weight, Utils.ToCrc32(name));
 
         Poses.Remove(pose);
 
@@ -410,9 +424,11 @@ internal class AnimationProvider
     private float mCurrentFrameOverride = 0;
     private bool mOverrideFrame = false;
     private string mAnimationsFilter = "";
+    private bool mJsonOutput = false;
+    private string mJsonOutputValue = "";
     public void AnimationEditor()
     {
-        
+
         if (mConstructedAnimations.Count == 0) return;
         if (mCurrentAnimation >= mConstructedAnimations.Count) mCurrentAnimation = mConstructedAnimations.Count - 1;
 
@@ -421,7 +437,7 @@ internal class AnimationProvider
         string[] requests = mLastRequests.Queue.Select(request => request.ToString()).Reverse().ToArray();
 
         ImGui.Begin($"Animations editor", ref mAnimationEditorToggle);
-        
+
         if (requests.Length > 0)
         {
             ImGui.SeparatorText("Last requests");
@@ -432,11 +448,18 @@ internal class AnimationProvider
             if (mSotredRequest == null) ImGui.BeginDisabled();
             if (ImGui.Button($"Repeat stored request##Animations editor")) mSotredRequest?.Repeat();
             if (mSotredRequest == null) ImGui.EndDisabled();
+            ImGui.SameLine();
+            if (ImGui.Button($"Output to JSON##Animations editor"))
+            {
+                mJsonOutput = true;
+                mJsonOutputValue = (animations[mCurrentAnimation] as ISerializable)?.Serialize().ToString() ?? "";
+            }
             ImGui.ListBox($"Last requests##Animations editor", ref mCurrentRequest, requests, requests.Length);
         }
 
         ImGui.SeparatorText("Animations");
         ImGui.Checkbox($"Set current key frame", ref mSetCurrentAnimation);
+        ImGui.SameLine();
         ImGui.Checkbox($"Override frame value", ref mOverrideFrame);
         if (!mOverrideFrame) ImGui.BeginDisabled();
         float maxFrame = (animations[mCurrentAnimation] as Animation).TotalFrames - 1;
@@ -445,11 +468,10 @@ internal class AnimationProvider
         if (!mOverrideFrame) ImGui.EndDisabled();
 
         ImGui.InputTextWithHint($"Elements filter##Animations editor", "supports wildcards", ref mAnimationsFilter, 100);
-        
+
         FilterAnimations(StyleEditor.WildCardToRegular(mAnimationsFilter), animationIds, out string[] names, out int[] indexes);
         ImGui.ListBox($"Constructed animations##Animations editor", ref mCurrentAnimation, names, names.Length);
         mCurrentAnimation = indexes.Length <= mCurrentAnimation ? 0 : indexes[mCurrentAnimation];
-
 
         ImGui.SeparatorText("Frames");
         bool modified = animations[mCurrentAnimation].Editor($"Animations editor##{animationIds[mCurrentAnimation]}");
@@ -457,13 +479,23 @@ internal class AnimationProvider
         if (modified || mSetCurrentAnimation && mNewRequestAdded > 1 || frameModified) SetAnimationFrame(animations[mCurrentAnimation]);
 
         ImGui.End();
+
+        if (mJsonOutput)
+        {
+            ImGui.Begin($"JSON output##Animations editor", ref mJsonOutput, ImGuiWindowFlags.Modal);
+            System.Numerics.Vector2 size = ImGui.GetWindowSize();
+            size.X -= 8;
+            size.Y -= 34;
+            ImGui.InputTextMultiline($"##Animations editor", ref mJsonOutputValue, (uint)mJsonOutputValue.Length * 2, size, ImGuiInputTextFlags.ReadOnly);
+            ImGui.End();
+        }
     }
 
     public void SetAnimationFrame(IAnimation animation)
     {
         float frame = (animation as Animation).CurrentFrame;
-        var runParams = RunParameters.Set(mOverrideFrame ? mCurrentFrameOverride  : frame);
-        var target = AnimationTarget.Entity(mApi.World.Player.Entity.EntityId, AnimationTargetType.EntityFirstPerson);
+        RunParameters runParams = RunParameters.Set(mOverrideFrame ? mCurrentFrameOverride : frame);
+        AnimationTarget target = AnimationTarget.Entity(mApi.World.Player.Entity.EntityId, AnimationTargetType.EntityFirstPerson);
 
         mManager.Run(target, (animation as Animation).Id, runParams);
         mNewRequestAdded = 0;

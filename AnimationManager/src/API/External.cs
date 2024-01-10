@@ -13,6 +13,8 @@ public interface IAnimationManagerSystem
     bool Register(AnimationId id, AnimationData animation);
     Guid Run(AnimationTarget animationTarget, AnimationSequence sequence, bool synchronize = true);
     void Stop(Guid runId);
+    void Suppress(string code);
+    void Unsuppress(string code);
 }
 
 public interface IAnimatableBehavior
@@ -45,7 +47,7 @@ public struct AnimationSequence
     public AnimationSequence(AnimationId animationId, params RunParameters[] parameters)
     {
         if (parameters == null) throw new ArgumentNullException(nameof(parameters));
-        if (parameters.Length == 0) throw new ArgumentException("You need to pass at least one 'RunParameters'", nameof(parameters));
+        if (parameters.Length == 0) throw new ArgumentException($"You need to pass at least one 'RunParameters'. Animation id: {animationId}.", nameof(parameters));
 
         List<AnimationRequest> requests = new();
         foreach (RunParameters parametersSet in parameters)
@@ -97,13 +99,19 @@ public enum AnimationPlayerAction : byte
 public enum AnimationTargetType
 {
     /// <summary>
-    /// Some entity, specific one is specified by <see cref="Entity.EntityId"/> in <see cref="AnimationTarget.EntityId"/>
+    /// Entity, specific one is specified by <see cref="Entity.EntityId"/> in <see cref="AnimationTarget.EntityId"/>
     /// </summary>
     EntityThirdPerson,
+    /// <summary>
+    /// Player in regular first-person camera mode
+    /// </summary>
     EntityFirstPerson,
+    /// <summary>
+    /// Player in immersive first-person camera mode
+    /// </summary>
     EntityImmersiveFirstPerson,
     /// <summary>
-    /// Item currently held by player in first person view
+    /// Item currently held by player
     /// </summary>
     HeldItem
 }
@@ -134,7 +142,7 @@ public struct AnimationTarget
     {
         bool owner = (entity.Api as ICoreClientAPI)?.World.Player.Entity.EntityId == entity.EntityId;
         if (!owner) return AnimationTargetType.EntityThirdPerson;
-        
+
         bool firstPerson = (entity.Api as ICoreClientAPI)?.World.Player.CameraMode == EnumCameraMode.FirstPerson;
         if (!firstPerson) return AnimationTargetType.EntityThirdPerson;
 
@@ -150,9 +158,9 @@ public struct AnimationTarget
     {
         return TargetType switch
         {
-            AnimationTargetType.EntityThirdPerson => $"ThirdPerson: {EntityId}",
-            AnimationTargetType.EntityFirstPerson => $"FirstPerson: {EntityId}",
-            AnimationTargetType.EntityImmersiveFirstPerson => $"ImmersiveFirstPerson: {EntityId}",
+            AnimationTargetType.EntityThirdPerson => $"Entity: {EntityId}",
+            AnimationTargetType.EntityFirstPerson => $"PlayerFirstPerson: {EntityId}",
+            AnimationTargetType.EntityImmersiveFirstPerson => $"PlayerImmersiveFirstPerson: {EntityId}",
             AnimationTargetType.HeldItem => $"{TargetType}",
             _ => "<AnimationTarget>"
         };
@@ -167,7 +175,7 @@ public struct AnimationData
     public Dictionary<string, float>? ElementWeight { get; internal set; }
     public Dictionary<string, EnumAnimationBlendMode>? ElementBlendMode { get; internal set; }
 
-    static public AnimationData Player(string code, bool cyclic = false) => new (code, cyclic);
+    static public AnimationData Player(string code, bool cyclic = false) => new(code, cyclic);
     static public AnimationData Entity(string code, Entity entity, bool cyclic = false) => new(code, entity, cyclic);
     static public AnimationData HeldItem(
         string code,
@@ -177,7 +185,7 @@ public struct AnimationData
         Dictionary<string, float>? elementWeight = null
         ) => new(code, shape, cyclic, elementBlendMode, elementWeight);
 
-    
+
     private AnimationData(string code, bool cyclic = false)
     {
         Code = code ?? throw new ArgumentException("Animation code cannot be null", nameof(code));
@@ -193,7 +201,7 @@ public struct AnimationData
         Code = code ?? throw new ArgumentException("Animation code cannot be null", nameof(code));
 
         entity.Properties.Client.AnimationsByMetaCode.TryGetValue(Code, out AnimationMetaData? metaData);
-        
+
         Shape = entity.Properties.Client.LoadedShapeForEntity;
         ElementWeight = metaData?.ElementWeight;
         ElementBlendMode = metaData?.ElementBlendMode;
@@ -204,7 +212,7 @@ public struct AnimationData
         Code = code ?? throw new ArgumentException("Animation code cannot be null", nameof(code));
         Shape = shape ?? throw new ArgumentException("Shape cannot be null", nameof(code));
         Cyclic = cyclic;
-        ElementBlendMode = elementBlendMode ?? new(); 
+        ElementBlendMode = elementBlendMode ?? new();
         ElementWeight = elementWeight ?? new();
     }
 }
@@ -434,16 +442,16 @@ public struct RunParameters
     /// </summary>
     /// <returns></returns>
     public static RunParameters Clear()
+    {
+        return new()
         {
-            return new()
-            {
-                Action = AnimationPlayerAction.Clear,
-                Duration = TimeSpan.Zero,
-                TargetFrame = null,
-                Modifier = ProgressModifierType.Linear,
-                StartFrame = null
-            };
-        }
+            Action = AnimationPlayerAction.Clear,
+            Duration = TimeSpan.Zero,
+            TargetFrame = null,
+            Modifier = ProgressModifierType.Linear,
+            StartFrame = null
+        };
+    }
 
     public static implicit operator RunParameters(AnimationRequest request) => request.Parameters;
 
@@ -528,13 +536,13 @@ public struct Category
     public int Hash { get; private set; }
     public EnumAnimationBlendMode Blending { get; private set; }
     public float? Weight { get; private set; }
-    
+
     private readonly string mDebugName;
 
     public Category(string name, EnumAnimationBlendMode blending = EnumAnimationBlendMode.Add, float? weight = null)
     {
         if (name == null) throw new ArgumentNullException(nameof(name), "Category name cannot be null");
-        
+
         Blending = blending;
         Hash = (int)Utils.ToCrc32($"{name}{blending}{weight}");
         Weight = weight;

@@ -1,7 +1,7 @@
 ﻿using AnimationManagerLib.API;
-using Cairo;
 using ConfigLib;
 using ImGuiNET;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,7 +9,7 @@ using Vintagestory.API.Common;
 
 namespace AnimationManagerLib;
 
-internal class AnimationFrame : IWithGuiEditor
+internal class AnimationFrame : IWithGuiEditor, ISerializable
 {
     public Dictionary<ElementId, (AnimationElement element, EnumAnimationBlendMode blendMode)> Elements { get; set; } = new();
     public EnumAnimationBlendMode DefaultBlendMode { get; set; }
@@ -79,7 +79,7 @@ internal class AnimationFrame : IWithGuiEditor
             }
         }
     }
-    public virtual void Apply(ElementPose pose, float poseWeight, uint nameHash)
+    public virtual void Apply(ElementPose pose, ref float poseWeight, uint nameHash)
     {
         foreach ((ElementId id, (AnimationElement element, EnumAnimationBlendMode blendMode)) in Elements)
         {
@@ -97,6 +97,37 @@ internal class AnimationFrame : IWithGuiEditor
                     break;
             }
         }
+    }
+    public virtual void Weight(ref float poseWeight, uint nameHash)
+    {
+        float frameWeight = 0;
+        int count = 0;
+
+        foreach ((ElementId id, (AnimationElement element, EnumAnimationBlendMode blendMode)) in Elements)
+        {
+            if (id.ElementNameHash != nameHash) continue;
+            switch (blendMode)
+            {
+                case EnumAnimationBlendMode.Add:
+                    break;
+                case EnumAnimationBlendMode.Average:
+                    if (element.Value?.Weight != null)
+                    {
+                        frameWeight += element.Value?.Weight ?? 0;
+                        count++;
+                    }
+                    break;
+                case EnumAnimationBlendMode.AddAverage:
+                    if (element.Value?.Weight != null)
+                    {
+                        frameWeight += element.Value?.Weight ?? 0;
+                        count++;
+                    }
+                    break;
+            }
+        }
+
+        poseWeight += frameWeight / count;
     }
     static public AnimationFrame Default(Category category)
     {
@@ -220,7 +251,7 @@ internal class AnimationFrame : IWithGuiEditor
 
         ImGui.InputTextWithHint($"Elements filter##{id}", "supports wildcards", ref mElementFilter, 100);
         FilterElements(StyleEditor.WildCardToRegular(mElementFilter), out string[] elementNames, out ElementId[] ids);
-        
+
         ImGui.ListBox($"Elements##{id}", ref mCurrentElement, elementNames, elementNames.Length);
 
         mLastElement = mCurrentElement >= ids.Length ? mLastElement : ids[mCurrentElement];
@@ -248,7 +279,7 @@ internal class AnimationFrame : IWithGuiEditor
 
     private void FilterElements(string filter, out string[] names, out ElementId[] ids)
     {
-        
+
         names = Elements.Select((id, _) => $"{ModifiedPrefix(id.Key)}{id.Key}").ToArray();
         ids = Elements.Select((id, _) => id.Key).ToArray();
 #if DEBUG
@@ -280,6 +311,57 @@ internal class AnimationFrame : IWithGuiEditor
         ids = newIds.ToArray();
 #endif
     }
+
+    public JToken Serialize()
+    {
+        JObject elements = new();
+
+        foreach ((string code, JObject element) in Elements.Select(entry => (entry.Key.Name, SerializeCube(entry.Key.Name))).Where(entry => entry.Item2 != null))
+        {
+            elements.TryAdd(code, element);
+        }
+
+        return elements;
+    }
+
+    private JObject SerializeCube(string name)
+    {
+        JObject cube = new();
+        float? rotationX = GetElementValue(name, ElementType.degX);
+        float? rotationY = GetElementValue(name, ElementType.degY);
+        float? rotationZ = GetElementValue(name, ElementType.degZ);
+        float? offsetX = GetElementValue(name, ElementType.translateX);
+        float? offsetY = GetElementValue(name, ElementType.translateY);
+        float? offsetZ = GetElementValue(name, ElementType.translateZ);
+        bool hasRotation = (rotationX ?? rotationY ?? rotationZ) != null;
+        bool hasOffset = (offsetX ?? offsetY ?? offsetZ) != null;
+
+        if (hasRotation)
+        {
+            cube.Add("rotationX", new JValue(rotationX ?? 0));
+            cube.Add("rotationY", new JValue(rotationY ?? 0));
+            cube.Add("rotationZ", new JValue(rotationZ ?? 0));
+        }
+
+        if (hasOffset)
+        {
+            cube.Add("offsetX", new JValue(offsetX ?? 0));
+            cube.Add("offsetY", new JValue(offsetY ?? 0));
+            cube.Add("offsetZ", new JValue(offsetZ ?? 0));
+        }
+
+        return cube;
+    }
+
+    private float? GetElementValue(string name, ElementType elementType)
+    {
+        return Elements.Where(entry => entry.Key.Name == name && entry.Key.ElementType == elementType).Select(entry => entry.Value.element.Value?.Value).FirstOrDefault();
+    }
+}
+
+internal class Composition
+{
+    public Dictionary<EnumAnimationBlendMode, AnimationFrame> Frames { get; set; } = new();
 }
 
 #if DEBUG
