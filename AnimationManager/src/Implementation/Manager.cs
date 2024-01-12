@@ -1,4 +1,5 @@
 ﻿using AnimationManagerLib.API;
+using AnimationManagerLib.Patches;
 using ConfigLib;
 using ImGuiNET;
 using System;
@@ -238,6 +239,17 @@ public class AnimationManager : API.IAnimationManager
     {
 #if DEBUG
         ImGuiNET.ImGui.Begin("Animation manager");
+
+        float max = 3;
+        ImGui.SliderFloat($"Amplitude##Animation manager", ref EyeHightController.Amplitude, 0, max);
+        ImGui.SliderFloat($"Frequency##Animation manager", ref EyeHightController.Frequency, 0, max);
+        ImGui.SliderFloat($"SprintAmplitudeEffect##Animation manager", ref EyeHightController.SprintAmplitudeEffect, 0, max);
+        ImGui.SliderFloat($"SprintFrequencyEffect##Animation manager", ref EyeHightController.SprintFrequencyEffect, 0, max);
+        ImGui.SliderFloat($"SneakEffect##Animation manager", ref EyeHightController.SneakEffect, 0, max);
+        ImGui.SliderFloat($"LiquidEffect##Animation manager", ref EyeHightController.LiquidEffect, 0, max);
+        ImGui.SliderFloat($"Offset##Animation manager", ref EyeHightController.Offset, 0, max);
+        ImGui.NewLine();
+
         mProvider.SetUpDebugWindow();
         ImGuiNET.ImGui.Text(string.Format("Active requests: {0}", mRequests.Count));
         ImGuiNET.ImGui.Text(string.Format("Active composers: {0}", mComposers.Count));

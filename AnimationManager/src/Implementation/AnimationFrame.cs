@@ -345,9 +345,9 @@ internal class AnimationFrame : IWithGuiEditor, ISerializable
 
         if (hasOffset)
         {
-            cube.Add("offsetX", new JValue(offsetX ?? 0));
-            cube.Add("offsetY", new JValue(offsetY ?? 0));
-            cube.Add("offsetZ", new JValue(offsetZ ?? 0));
+            cube.Add("offsetX", new JValue((offsetX ?? 0) * 16));
+            cube.Add("offsetY", new JValue((offsetY ?? 0) * 16));
+            cube.Add("offsetZ", new JValue((offsetZ ?? 0) * 16));
         }
 
         return cube;

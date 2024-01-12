@@ -235,7 +235,17 @@ internal struct AnimationElement : IWithGuiEditor
             if (ImGui.Checkbox($"Shortest angular distance##{id}", ref shortestAngularDistance)) modified = true;
             ShortestAngularDistance = shortestAngularDistance;
             WeightedValue value = Value ?? mLastValue ?? new(0, 0);
-            if (value.Editor($"{id}Value")) modified = true;
+
+            if (Id.ElementType == ElementType.translateX || Id.ElementType == ElementType.translateY || Id.ElementType == ElementType.translateZ)
+            {
+                if (value.Editor($"{id}Value", 1600)) modified = true;
+            }
+            else
+            {
+                if (value.Editor($"{id}Value")) modified = true;
+            }
+
+            
             if (Value != null) Value = value;
             if (mLastValue != null) mLastValue = value;
         }
@@ -378,6 +388,7 @@ internal struct WeightedValue : IWithGuiEditor
 
     public readonly override string ToString() => string.Format("{0}, weight: {1}", Value, Weight);
 
+
     public const float Epsilon = 1e-6f;
     public bool Editor(string id)
     {
@@ -386,6 +397,20 @@ internal struct WeightedValue : IWithGuiEditor
         ImGui.DragFloat2($"Value & Weight##{id}", ref value);
         bool modified = Math.Abs(Value - value.X) > Epsilon || Math.Abs(Weight - value.Y) > Epsilon;
         Value = value.X;
+        Weight = value.Y;
+        return modified;
+#else
+        return false;
+#endif
+    }
+
+    public bool Editor(string id, float multiplier)
+    {
+#if DEBUG
+        Vector2 value = new(Value * multiplier, Weight);
+        ImGui.DragFloat2($"Value & Weight##{id}", ref value);
+        bool modified = Math.Abs(Value - value.X / multiplier) > Epsilon || Math.Abs(Weight - value.Y) > Epsilon;
+        Value = value.X / multiplier;
         Weight = value.Y;
         return modified;
 #else

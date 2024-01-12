@@ -35,7 +35,7 @@ internal class Animation : IAnimation, ISerializable
             mKeyFrames = mKeyFrames.Prepend(firstFrame).ToArray();
         }
 
-        if (mFrames.Length > 0 && MathF.Abs(mFrames[^1] - mTotalFrames) > 1E-3)
+        if (mFrames.Length > 0 && MathF.Abs(mFrames[^1] - mTotalFrames + 1) > 1E-3)
         {
             AnimationFrame lastFrame = new(mKeyFrames[^1].DefaultBlendMode, mKeyFrames[^1].DefaultElementWeight);
             mFrames = mFrames.Append((ushort)((ushort)mTotalFrames - 1));
