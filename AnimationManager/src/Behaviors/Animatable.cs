@@ -37,7 +37,7 @@ public class Animatable : CollectibleBehavior // Based on code from TeacupAngel 
     public override void Initialize(JsonObject properties)
     {
         mAnimatedShapePath = properties["animated-shape"].AsString(null);
-        mAnimatedShapePath = properties["animated-shape-fp"].AsString(null);
+        mAnimatedShapeFirstPersonPath = properties["animated-shape-fp"].AsString(null);
         mOnlyWhenAnimating = properties["only-when-animating"].AsBool(true);
 
         base.Initialize(properties);
