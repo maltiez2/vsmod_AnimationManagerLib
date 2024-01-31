@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using IAnimator = AnimationManagerLib.API.IAnimator;
 
 namespace AnimationManagerLib;
@@ -43,7 +44,19 @@ internal class Composer : IComposer
     {
         AnimationFrame composition = mDefaultFrame.Clone();
 
-        foreach ((Category category, IAnimator? animator) in mAnimators.Where((entry, _) => mCategories[entry.Key]))
+        foreach ((Category category, IAnimator? animator) in mAnimators.Where((entry, _) => entry.Key.Blending == EnumAnimationBlendMode.Average).Where((entry, _) => mCategories[entry.Key]))
+        {
+            animator.Calculate(timeElapsed, out IAnimator.Status animatorStatus).BlendInto(composition);
+            ProcessStatus(category, animatorStatus);
+        }
+
+        foreach ((Category category, IAnimator? animator) in mAnimators.Where((entry, _) => entry.Key.Blending == EnumAnimationBlendMode.AddAverage).Where((entry, _) => mCategories[entry.Key]))
+        {
+            animator.Calculate(timeElapsed, out IAnimator.Status animatorStatus).BlendInto(composition);
+            ProcessStatus(category, animatorStatus);
+        }
+
+        foreach ((Category category, IAnimator? animator) in mAnimators.Where((entry, _) => entry.Key.Blending == EnumAnimationBlendMode.Add).Where((entry, _) => mCategories[entry.Key]))
         {
             animator.Calculate(timeElapsed, out IAnimator.Status animatorStatus).BlendInto(composition);
             ProcessStatus(category, animatorStatus);

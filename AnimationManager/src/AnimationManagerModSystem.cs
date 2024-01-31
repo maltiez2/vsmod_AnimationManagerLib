@@ -12,18 +12,23 @@ public class AnimationManagerLibSystem : ModSystem, API.IAnimationManagerSystem
     public const string HarmonyID = "animationmanagerlib";
     public const string ChannelName = "animationmanagerlib";
 
-    internal delegate void OnBeforeRenderCallback(Vintagestory.API.Common.IAnimator animator, float dt);
+    internal delegate void OnBeforeRenderCallback(Vintagestory.API.Common.IAnimator animator, float dt, bool? fp);
     internal IShaderProgram? AnimatedItemShaderProgram => mShaderProgram;
+    internal IShaderProgram? AnimatedItemShaderProgramFirstPerson => mShaderProgramFirstPerson;
     internal event OnBeforeRenderCallback? OnHeldItemBeforeRender;
 
     private ICoreAPI? mApi;
     private AnimationManager? mManager;
     private ShaderProgram? mShaderProgram;
+    private ShaderProgram? mShaderProgramFirstPerson;
     private readonly Dictionary<string, int> mSuppressedAnimations = new();
+    private CameraSettingsManager? mCameraSettingsManager;
 
     public bool Register(API.AnimationId id, API.AnimationData animation) => mManager?.Register(id, animation) ?? false;
     public Guid Run(API.AnimationTarget animationTarget, API.AnimationSequence sequence, bool synchronize = true) => mManager?.Run(animationTarget, synchronize, sequence.Requests) ?? Guid.Empty;
     public void Stop(Guid runId) => mManager?.Stop(runId);
+    public void SetCameraSetting(string domain, CameraSettingsType setting, float value, float blendingSpeed) => mCameraSettingsManager?.Set(domain, setting, value, blendingSpeed);
+    public void ResetCameraSetting(string domain, CameraSettingsType setting, float blendingSpeed) => mCameraSettingsManager?.Set(domain, setting, 1, blendingSpeed);
 
     public override void Start(ICoreAPI api)
     {
@@ -34,7 +39,7 @@ public class AnimationManagerLibSystem : ModSystem, API.IAnimationManagerSystem
     }
     public override void StartClientSide(ICoreClientAPI api)
     {
-        Patches.AnimatorBasePatch.Patch(HarmonyID);
+        Patches.AnimatorPatch.Patch(HarmonyID);
 
         api.Event.ReloadShader += LoadAnimatedItemShaders;
         LoadAnimatedItemShaders();
@@ -48,6 +53,8 @@ public class AnimationManagerLibSystem : ModSystem, API.IAnimationManagerSystem
             (packet) => mManager.Stop(packet.RunId),
             ChannelName
         );
+
+        mCameraSettingsManager = new(api);
     }
     public override void StartServerSide(ICoreServerAPI api)
     {
@@ -64,18 +71,23 @@ public class AnimationManagerLibSystem : ModSystem, API.IAnimationManagerSystem
         if (mApi is not ICoreClientAPI clientApi) return false;
 
         mShaderProgram = clientApi.Shader.NewShaderProgram() as ShaderProgram;
+        mShaderProgramFirstPerson = clientApi.Shader.NewShaderProgram() as ShaderProgram;
 
-        if (mShaderProgram == null) return false;
+        if (mShaderProgram == null || mShaderProgramFirstPerson == null) return false;
 
         mShaderProgram.AssetDomain = Mod.Info.ModID;
-        clientApi.Shader.RegisterFileShaderProgram("customstandart", AnimatedItemShaderProgram);
+        clientApi.Shader.RegisterFileShaderProgram("customstandard", AnimatedItemShaderProgram);
         mShaderProgram.Compile();
+
+        mShaderProgramFirstPerson.AssetDomain = Mod.Info.ModID;
+        clientApi.Shader.RegisterFileShaderProgram("customstandardfirstperson", AnimatedItemShaderProgramFirstPerson);
+        mShaderProgramFirstPerson.Compile();
 
         return true;
     }
-    public void OnBeforeRender(Vintagestory.API.Common.IAnimator animator, float dt)
+    public void OnBeforeRender(Vintagestory.API.Common.IAnimator animator, float dt, bool? fp = null)
     {
-        OnHeldItemBeforeRender?.Invoke(animator, dt);
+        OnHeldItemBeforeRender?.Invoke(animator, dt, fp);
     }
     public void Suppress(string code)
     {
@@ -83,7 +95,7 @@ public class AnimationManagerLibSystem : ModSystem, API.IAnimationManagerSystem
 
         mSuppressedAnimations[code] += 1;
 
-        if (mSuppressedAnimations[code] > 0 && !Patches.AnimatorBasePatch.SuppressedAnimations.Contains(code)) Patches.AnimatorBasePatch.SuppressedAnimations.Add(code);
+        if (mSuppressedAnimations[code] > 0 && !Patches.AnimatorPatch.SuppressedAnimations.Contains(code)) Patches.AnimatorPatch.SuppressedAnimations.Add(code);
     }
     public void Unsuppress(string code)
     {
@@ -91,22 +103,22 @@ public class AnimationManagerLibSystem : ModSystem, API.IAnimationManagerSystem
 
         mSuppressedAnimations[code] = Math.Max(mSuppressedAnimations[code]--, 0);
 
-        if (mSuppressedAnimations[code] == 0 && Patches.AnimatorBasePatch.SuppressedAnimations.Contains(code)) Patches.AnimatorBasePatch.SuppressedAnimations.Remove(code);
+        if (mSuppressedAnimations[code] == 0 && Patches.AnimatorPatch.SuppressedAnimations.Contains(code)) Patches.AnimatorPatch.SuppressedAnimations.Remove(code);
     }
 
     private void RegisterHandlers(AnimationManager manager)
     {
-        Patches.AnimatorBasePatch.OnElementPoseUsedCallback += manager.OnApplyAnimation;
-        Patches.AnimatorBasePatch.OnCalculateWeightCallback += manager.OnCalculateWeight;
-        Patches.AnimatorBasePatch.OnFrameCallback += manager.OnFrameHandler;
+        Patches.AnimatorPatch.OnElementPoseUsedCallback += manager.OnApplyAnimation;
+        Patches.AnimatorPatch.OnCalculateWeightCallback += manager.OnCalculateWeight;
+        Patches.AnimatorPatch.OnFrameCallback += manager.OnFrameHandler;
         OnHeldItemBeforeRender += manager.OnFrameHandler;
     }
     private void UnregisterHandlers(AnimationManager? manager)
     {
         if (manager == null) return;
-        Patches.AnimatorBasePatch.OnElementPoseUsedCallback -= manager.OnApplyAnimation;
-        Patches.AnimatorBasePatch.OnCalculateWeightCallback -= manager.OnCalculateWeight;
-        Patches.AnimatorBasePatch.OnFrameCallback -= manager.OnFrameHandler;
+        Patches.AnimatorPatch.OnElementPoseUsedCallback -= manager.OnApplyAnimation;
+        Patches.AnimatorPatch.OnCalculateWeightCallback -= manager.OnCalculateWeight;
+        Patches.AnimatorPatch.OnFrameCallback -= manager.OnFrameHandler;
         OnHeldItemBeforeRender -= manager.OnFrameHandler;
     }
 
@@ -116,8 +128,8 @@ public class AnimationManagerLibSystem : ModSystem, API.IAnimationManagerSystem
         {
             clientApi.Event.ReloadShader -= LoadAnimatedItemShaders;
             UnregisterHandlers(mManager);
-            Patches.AnimatorBasePatch.Unpatch(HarmonyID);
-            Patches.AnimatorBasePatch.SuppressedAnimations.Clear();
+            Patches.AnimatorPatch.Unpatch(HarmonyID);
+            Patches.AnimatorPatch.SuppressedAnimations.Clear();
         }
         base.Dispose();
     }

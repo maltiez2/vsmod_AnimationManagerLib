@@ -3,11 +3,6 @@
 
 layout(location = 0) out vec4 outColor;
 layout(location = 1) out vec4 outGlow;
-#if SSAOLEVEL > 0
-in vec4 gnormal;
-layout(location = 2) out vec4 outGNormal;
-layout(location = 3) out vec4 outGPosition;
-#endif
 
 uniform sampler2D tex;
 uniform float extraGodray = 0;
@@ -25,9 +20,7 @@ uniform vec2 baseTextureSize;
 uniform vec2 baseUvOrigin;
 uniform int normalShaded;
 uniform float damageEffect = 0;
-#if ALLOWDEPTHOFFSET > 0
 uniform float depthOffset;
-#endif
 
 in vec2 uv;
 in vec4 color;
@@ -94,16 +87,6 @@ void main() {
 	glow = pow(max(0, dot(normal, lightPosition)), 6) / 8 * shadowIntensity * (1 - fogAmount);
 #endif
 
-#if SSAOLEVEL > 0
-	if (applySsao > 0) {
-		outGPosition = vec4(camPos.xyz, fogAmount + glowLevel);
-	} else {
-		outGPosition = vec4(camPos.xyz, 1);
-	}
-	outGNormal = vec4(gnormal.xyz, ssaoAttn);
-	
-#endif
-
 #if NORMALVIEW > 0
 	outColor = vec4((normal.x + 1) / 2, (normal.y + 1)/2, (normal.z+1)/2, 1);	
 #endif
@@ -111,8 +94,6 @@ void main() {
 	outColor.rgb *= b;
 	outGlow = vec4(glowLevel + glow, extraGodray - fogAmount, 0, outColor.a);
 
-#if ALLOWDEPTHOFFSET > 0
 	// This likely tanks performance in any other scenario so we do only only for the first person mode rendering. See also https://www.khronos.org/opengl/wiki/Early_Fragment_Test#Limitations
 	gl_FragDepth = gl_FragCoord.z + depthOffset;
-#endif
 }

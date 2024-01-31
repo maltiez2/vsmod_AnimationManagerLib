@@ -2,13 +2,15 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Reflection;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
-
+using Vintagestory.Client.NoObf;
+using VSImGui;
 
 namespace AnimationManagerLib.CollectibleBehaviors;
 
@@ -17,6 +19,8 @@ public class Animatable : CollectibleBehavior // Based on code from TeacupAngel 
     public bool RenderProceduralAnimations { get; set; }
     public Shape? CurrentShape => CurrentAnimatableShape?.Shape;
     public AnimatableShape? CurrentAnimatableShape => (mCurrentFirstPerson ? mShapeFirstPerson : mShape) ?? mShape ?? mShapeFirstPerson;
+    public Shape? FirstPersonShape => mShapeFirstPerson?.Shape;
+    public Shape? ThirdPersonShape => mShape?.Shape;
 
     protected Dictionary<string, AnimationMetaData> mActiveAnimationsByCode = new();
     protected AnimationManagerLibSystem? mModSystem;
@@ -98,15 +102,27 @@ public class Animatable : CollectibleBehavior // Based on code from TeacupAngel 
 
     public virtual void BeforeRender(ICoreClientAPI clientApi, ItemStack itemStack, EnumItemRenderTarget target, ref ItemRenderInfo renderInfo)
     {
-        CalculateAnimation(mShape?.Animator, clientApi, target, ref renderInfo);
-        CalculateAnimation(mShapeFirstPerson?.Animator, clientApi, target, ref renderInfo);
+        if (mShape != null && mShapeFirstPerson == null)
+        {
+            CalculateAnimation(mShape.Animator, clientApi, target, ref renderInfo);
+        }
+        else
+        {
+            CalculateAnimation(CurrentAnimatableShape?.Animator, clientApi, target, ref renderInfo, mCurrentFirstPerson);
+        }
     }
 
-    public void RenderHeldItem(float[] modelMat, ICoreClientAPI api, ItemSlot itemSlot, Entity entity, Vec4f lightrgbs, float dt, bool isShadowPass, bool right)
+    public void RenderHeldItem(float[] modelMat, ICoreClientAPI api, ItemSlot itemSlot, Entity entity, Vec4f lightrgbs, float dt, bool isShadowPass, bool right, ItemRenderInfo renderInfo)
     {
         mCurrentFirstPerson = IsFirstPerson(entity);
 
         if (CurrentAnimatableShape == null || itemSlot.Itemstack == null || mModSystem?.AnimatedItemShaderProgram == null) return;
+
+        if (mOnlyWhenAnimating && !RenderProceduralAnimations)
+        {
+            mClientApi?.Render.RenderMultiTextureMesh(renderInfo.ModelRef);
+            return;
+        }
 
         ItemRenderInfo? itemStackRenderInfo = PrepareShape(api, mItemModelMat, modelMat, itemSlot, entity, right, dt);
 
@@ -118,17 +134,28 @@ public class Animatable : CollectibleBehavior // Based on code from TeacupAngel 
         }
         else
         {
-            RenderShape(mModSystem.AnimatedItemShaderProgram, api.World, CurrentAnimatableShape, itemStackRenderInfo, api.Render, itemSlot.Itemstack, lightrgbs, mItemModelMat);
+            IShaderProgram? shader = mCurrentFirstPerson ? mModSystem.AnimatedItemShaderProgramFirstPerson : mModSystem.AnimatedItemShaderProgram;
+
+            if (vanillaShader) shader = mClientApi.Render.StandardShader;
+
+            if (shader == null)
+            {
+                mClientApi?.Logger.Debug("[Animation manager] Shader is null");
+                return;
+            }
+
+            RenderShape(shader, api.World, CurrentAnimatableShape, itemStackRenderInfo, api.Render, itemSlot.Itemstack, lightrgbs, mItemModelMat);
             SpawnParticles(mItemModelMat, itemSlot.Itemstack, dt, ref mTimeAccumulation, api, entity);
         }
     }
+    private bool vanillaShader = false;
 
-    protected virtual void CalculateAnimation(AnimatorBase? animator, ICoreClientAPI clientApi, EnumItemRenderTarget target, ref ItemRenderInfo renderInfo)
+    protected virtual void CalculateAnimation(AnimatorBase? animator, ICoreClientAPI clientApi, EnumItemRenderTarget target, ref ItemRenderInfo renderInfo, bool? fp = null)
     {
         if (
             animator != null &&
             !clientApi.IsGamePaused &&
-            target == EnumItemRenderTarget.HandTp &&
+            target == EnumItemRenderTarget.HandFp &&
             (
                 mActiveAnimationsByCode.Count > 0 ||
                 animator.ActiveAnimationCount > 0 ||
@@ -137,7 +164,7 @@ public class Animatable : CollectibleBehavior // Based on code from TeacupAngel 
             )
         )
         {
-            if (RenderProceduralAnimations) mModSystem?.OnBeforeRender(animator, renderInfo.dt);
+            if (RenderProceduralAnimations) mModSystem?.OnBeforeRender(animator, renderInfo.dt, fp);
             animator.OnFrame(mActiveAnimationsByCode, renderInfo.dt);
         }
     }
@@ -147,7 +174,7 @@ public class Animatable : CollectibleBehavior // Based on code from TeacupAngel 
         return AnimationTarget.GetTargetType(entity) == AnimationTargetType.EntityFirstPerson || AnimationTarget.GetTargetType(entity) == AnimationTargetType.EntityImmersiveFirstPerson;
     }
 
-    protected static ItemRenderInfo? PrepareShape(ICoreClientAPI api, Matrixf itemModelMat, float[] ModelMat, ItemSlot itemSlot, Entity entity, bool right, float dt)
+    protected static ItemRenderInfo? PrepareShape(ICoreClientAPI api, Matrixf itemModelMat, float[] modelMat, ItemSlot itemSlot, Entity entity, bool right, float dt)
     {
         ItemStack? itemStack = itemSlot?.Itemstack;
         if (itemStack == null)
@@ -168,7 +195,7 @@ public class Animatable : CollectibleBehavior // Based on code from TeacupAngel 
             return null;
         }
 
-        itemModelMat.Set(ModelMat).Mul(attachmentPointAndPose.AnimModelMatrix).Translate(itemStackRenderInfo.Transform.Origin.X, itemStackRenderInfo.Transform.Origin.Y, itemStackRenderInfo.Transform.Origin.Z)
+        itemModelMat.Set(modelMat).Mul(attachmentPointAndPose.AnimModelMatrix).Translate(itemStackRenderInfo.Transform.Origin.X, itemStackRenderInfo.Transform.Origin.Y, itemStackRenderInfo.Transform.Origin.Z)
             .Scale(itemStackRenderInfo.Transform.ScaleXYZ.X, itemStackRenderInfo.Transform.ScaleXYZ.Y, itemStackRenderInfo.Transform.ScaleXYZ.Z)
             .Translate(attachPoint.PosX / 16.0 + itemStackRenderInfo.Transform.Translation.X, attachPoint.PosY / 16.0 + itemStackRenderInfo.Transform.Translation.Y, attachPoint.PosZ / 16.0 + itemStackRenderInfo.Transform.Translation.Z)
             .RotateX((float)(attachPoint.RotationX + itemStackRenderInfo.Transform.Rotation.X) * (MathF.PI / 180f))
@@ -286,6 +313,7 @@ public class Animatable : CollectibleBehavior // Based on code from TeacupAngel 
         shaderProgram.UniformMatrix("projectionMatrix", render.CurrentProjectionMatrix);
         shaderProgram.UniformMatrix("viewMatrix", render.CameraMatrixOriginf);
         shaderProgram.UniformMatrix("modelMatrix", itemModelMatrix.Values);
+        shaderProgram.Uniform("depthOffset", -0.3f);
 
         shaderProgram.UniformMatrices4x3(
             "elementTransforms",

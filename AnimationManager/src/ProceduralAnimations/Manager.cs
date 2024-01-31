@@ -1,6 +1,6 @@
 ﻿using AnimationManagerLib.API;
 using AnimationManagerLib.Patches;
-using ConfigLib;
+using VSImGui;
 using ImGuiNET;
 using System;
 using System.Collections.Generic;
@@ -34,6 +34,7 @@ public class AnimationManager : API.IAnimationManager
         mProvider = new(api, this);
 #if DEBUG
         api.ModLoader.GetModSystem<VSImGui.VSImGuiModSystem>().SetUpImGuiWindows += SetUpDebugWindow;
+        Api = api;
 #endif
     }
 
@@ -120,9 +121,9 @@ public class AnimationManager : API.IAnimationManager
 
         mApplier.AddAnimation(entity.EntityId, composition);
     }
-    public void OnFrameHandler(Vintagestory.API.Common.IAnimator animator, float dt)
+    public void OnFrameHandler(Vintagestory.API.Common.IAnimator animator, float dt, bool? fp)
     {
-        AnimationTarget animationTarget = AnimationTarget.HeldItem();
+        AnimationTarget animationTarget = AnimationTarget.HeldItem(fp);
 
         if (!mComposers.ContainsKey(animationTarget)) return;
 
@@ -178,7 +179,9 @@ public class AnimationManager : API.IAnimationManager
         }
         if (mRequests[id].Finished())
         {
+#if DEBUG
             mProvider.Enqueue(mRequests[id]);
+#endif
             mRequests.Remove(id);
             return true;
         }
@@ -187,7 +190,9 @@ public class AnimationManager : API.IAnimationManager
 
         if (request == null)
         {
+#if DEBUG
             mProvider.Enqueue(mRequests[id]);
+#endif
             mRequests.Remove(id);
             return true;
         }
@@ -235,20 +240,14 @@ public class AnimationManager : API.IAnimationManager
         public override string ToString() => mRequests.Select(request => request.Animation.ToString()).Aggregate((first, second) => $"{first}, {second}");
     }
 
+#if DEBUG
+    public static ICoreClientAPI? Api { get; private set; }
+#endif
+
     public void SetUpDebugWindow()
     {
 #if DEBUG
         ImGuiNET.ImGui.Begin("Animation manager");
-
-        float max = 3;
-        ImGui.SliderFloat($"Amplitude##Animation manager", ref EyeHightController.Amplitude, 0, max);
-        ImGui.SliderFloat($"Frequency##Animation manager", ref EyeHightController.Frequency, 0, max);
-        ImGui.SliderFloat($"SprintAmplitudeEffect##Animation manager", ref EyeHightController.SprintAmplitudeEffect, 0, max);
-        ImGui.SliderFloat($"SprintFrequencyEffect##Animation manager", ref EyeHightController.SprintFrequencyEffect, 0, max);
-        ImGui.SliderFloat($"SneakEffect##Animation manager", ref EyeHightController.SneakEffect, 0, max);
-        ImGui.SliderFloat($"LiquidEffect##Animation manager", ref EyeHightController.LiquidEffect, 0, max);
-        ImGui.SliderFloat($"Offset##Animation manager", ref EyeHightController.Offset, 0, max);
-        ImGui.NewLine();
 
         mProvider.SetUpDebugWindow();
         ImGuiNET.ImGui.Text(string.Format("Active requests: {0}", mRequests.Count));
@@ -335,7 +334,9 @@ internal class AnimationProvider
     public AnimationProvider(ICoreClientAPI api, API.IAnimationManager manager)
     {
         mApi = api;
+#if DEBUG
         mManager = manager;
+#endif
     }
 
     public bool Register(AnimationId id, AnimationData data)
@@ -402,8 +403,8 @@ internal class AnimationProvider
             }
         }
     }
-
-    private VSImGui.FixedSizedQueue<AnimationManager.AnimationRequestWithStatus> mLastRequests = new(8);
+#if DEBUG
+    private readonly VSImGui.FixedSizedQueue<AnimationManager.AnimationRequestWithStatus> mLastRequests = new(8);
     private AnimationManager.AnimationRequestWithStatus? mSotredRequest;
     private bool mAnimationEditorToggle = false;
     private int mNewRequestAdded = 0;
@@ -416,7 +417,6 @@ internal class AnimationProvider
     }
     public void SetUpDebugWindow()
     {
-#if DEBUG
         if (mAnimationEditorToggle) AnimationEditor();
 
         ImGuiNET.ImGui.Begin("Animation manager");
@@ -427,7 +427,6 @@ internal class AnimationProvider
         ImGuiNET.ImGui.Text(string.Format("Registered constructed animations: {0}", mConstructedAnimations.Count));
         ImGuiNET.ImGui.Text(string.Format($"Constructed animations: {mConstructedAnimationsCounter}"));
         ImGuiNET.ImGui.End();
-
     }
 
     private int mCurrentAnimation = 0;
@@ -440,7 +439,6 @@ internal class AnimationProvider
     private string mJsonOutputValue = "";
     public void AnimationEditor()
     {
-
         if (mConstructedAnimations.Count == 0) return;
         if (mCurrentAnimation >= mConstructedAnimations.Count) mCurrentAnimation = mConstructedAnimations.Count - 1;
 
@@ -507,11 +505,11 @@ internal class AnimationProvider
     {
         float frame = (animation as Animation).CurrentFrame;
         RunParameters runParams = RunParameters.Set(mOverrideFrame ? mCurrentFrameOverride : frame);
-        AnimationTarget target = AnimationTarget.Entity(mApi.World.Player.Entity.EntityId, AnimationTargetType.EntityFirstPerson);
+        AnimationTarget target = new(mApi.World.Player.Entity);
 
         mManager.Run(target, (animation as Animation).Id, runParams);
         mNewRequestAdded = 0;
-#endif
+
     }
 
     private void FilterAnimations(string filter, string[] animationIds, out string[] names, out int[] indexes)
@@ -521,7 +519,6 @@ internal class AnimationProvider
         int count = 0;
         indexes = animationIds.Select(_ => count++).ToArray();
 
-#if DEBUG
         if (filter == "") return;
 
         List<string> newNames = new();
@@ -542,6 +539,7 @@ internal class AnimationProvider
 
         names = newNames.ToArray();
         indexes = newIndexes.ToArray();
-#endif
     }
+
+#endif
 }

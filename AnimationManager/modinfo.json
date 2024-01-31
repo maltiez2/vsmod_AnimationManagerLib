@@ -7,8 +7,8 @@
         "TeacupAngel"
     ],
     "description": "Animation manager library for procedual animation",
-    "version": "0.4.2",
+    "version": "0.5.1",
     "dependencies": {
-        "game": "1.19.0-rc.1"
+        "game": "1.19.0"
     }
 }

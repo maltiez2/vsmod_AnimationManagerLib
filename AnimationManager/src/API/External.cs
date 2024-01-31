@@ -113,7 +113,9 @@ public enum AnimationTargetType
     /// <summary>
     /// Item currently held by player
     /// </summary>
-    HeldItem
+    HeldItem,
+    HeldItemFp,
+    HeldItemTp
 }
 
 [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
@@ -127,7 +129,7 @@ public struct AnimationTarget
         TargetType = targetType;
         EntityId = null;
     }
-    private AnimationTarget(long entityId, AnimationTargetType target)
+    internal AnimationTarget(long entityId, AnimationTargetType target)
     {
         TargetType = target;
         EntityId = entityId;
@@ -151,7 +153,7 @@ public struct AnimationTarget
 
         return AnimationTargetType.EntityImmersiveFirstPerson;
     }
-    static public AnimationTarget HeldItem() => new(AnimationTargetType.HeldItem);
+    static public AnimationTarget HeldItem(bool? fp = null) => new(fp == null ? AnimationTargetType.HeldItem : fp.Value ? AnimationTargetType.HeldItemFp : AnimationTargetType.HeldItemTp);
     static public AnimationTarget Entity(long entityId, AnimationTargetType target) => new(entityId, target);
 
     public readonly override string ToString()
@@ -161,8 +163,7 @@ public struct AnimationTarget
             AnimationTargetType.EntityThirdPerson => $"Entity: {EntityId}",
             AnimationTargetType.EntityFirstPerson => $"PlayerFirstPerson: {EntityId}",
             AnimationTargetType.EntityImmersiveFirstPerson => $"PlayerImmersiveFirstPerson: {EntityId}",
-            AnimationTargetType.HeldItem => $"{TargetType}",
-            _ => "<AnimationTarget>"
+            _ => $"{TargetType}"
         };
     }
 }

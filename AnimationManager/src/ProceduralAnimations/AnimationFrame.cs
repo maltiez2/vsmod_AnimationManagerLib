@@ -1,5 +1,5 @@
 ﻿using AnimationManagerLib.API;
-using ConfigLib;
+using VSImGui;
 using ImGuiNET;
 using Newtonsoft.Json.Linq;
 using System;

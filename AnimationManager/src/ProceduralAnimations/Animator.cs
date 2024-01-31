@@ -39,6 +39,10 @@ namespace AnimationManagerLib
             mStopped = false;
             mCurrentTime = TimeSpan.Zero;
             mPreviousProgress = mCurrentProgress;
+
+#if DEBUG
+            mPrevTime = AnimationManager.Api?.ElapsedMilliseconds ?? mPrevTime;
+#endif
         }
 
         public AnimationFrame Calculate(TimeSpan timeElapsed, out IAnimator.Status status)
@@ -154,14 +158,20 @@ namespace AnimationManagerLib
 
 #if DEBUG
         private readonly FixedSizedQueue<float> mProgressPlot = new(120);
+        private long mPrevTime = 0;
 #endif
         public void SetUpDebugWindow(string id)
         {
 #if DEBUG
+            TimeSpan time = TimeSpan.FromMilliseconds((AnimationManager.Api?.ElapsedMilliseconds ?? mPrevTime) - mPrevTime);
+            double progress = time / (mCurrentParameters.Duration != TimeSpan.Zero ? mCurrentParameters.Duration : time);
+
             mProgressPlot.Enqueue(mCurrentProgress);
             ImGuiNET.ImGui.Text($"{mCurrentAnimation}");
             ImGuiNET.ImGui.Text($"Action: {mCurrentParameters.Action}");
             ImGuiNET.ImGui.Text($"Duration: {mCurrentParameters.Duration}");
+            ImGuiNET.ImGui.Text($"Time elapsed: {time}");
+            ImGuiNET.ImGui.Text($"Time progress: {progress}");
 
             if (!mStopped)
                 ImGuiNET.ImGui.Text($"Modifier: {mCurrentParameters.Modifier}");
@@ -177,7 +187,7 @@ namespace AnimationManagerLib
                 ImGuiNET.ImGui.EndDisabled();
             }
             
-            ImGuiNET.ImGui.PlotLines($"Curr. progress##{id}", ref mProgressPlot.Queue.ToArray()[0], mProgressPlot.Count, 0, "", 0, 1.1f, new(0, 100f));
+            ImGuiNET.ImGui.PlotLines($"Curr. progress##{id}", ref mProgressPlot.Queue.ToArray()[0], mProgressPlot.Count, 0, "120 ticks", 0, 1.1f, new(0, 100f));
             ImGuiNET.ImGui.NewLine();
 #endif
         }

@@ -75,12 +75,12 @@ namespace AnimationManagerLib
                     }
                     if (startFrame == null)
                     {
-                        errorMessage = $"No 'startFrame' specified for '{startFrame}' action";
+                        errorMessage = $"No 'startFrame' specified for '{action}' action";
                         return null;
                     }
                     if (endFrame == null)
                     {
-                        errorMessage = $"No 'endFrame' specified for '{endFrame}' action";
+                        errorMessage = $"No 'endFrame' specified for '{action}' action";
                         return null;
                     }
                     return RunParameters.Rewind(duration.Value, startFrame.Value, endFrame.Value, modifier);
