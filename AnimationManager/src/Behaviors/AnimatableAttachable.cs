@@ -1,115 +1,187 @@
-﻿using Vintagestory.API.Client;
-using Vintagestory.API.Common;
-using Vintagestory.API.MathTools;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Vintagestory.API.Client;
+using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
+using Vintagestory.API.MathTools;
 
-namespace AnimationManagerLib.CollectibleBehaviors
+namespace AnimationManagerLib.CollectibleBehaviors;
+
+public class AnimatableAttachable : Animatable // Based on code from TeacupAngel (https://github.com/TeacupAngel)
 {
-    public class AnimatableAttachable : Animatable // Based on code from TeacupAngel (https://github.com/TeacupAngel)
+    public AnimatableAttachable(CollectibleObject collObj) : base(collObj)
     {
-        public AnimatableAttachable(CollectibleObject collObj) : base(collObj)
+    }
+
+    private readonly Dictionary<long, Dictionary<string, Attachment>> mAttachments = new();
+    private readonly Dictionary<long, Dictionary<string, bool>> mActiveAttachments = new();
+
+    public bool SetAttachment(long entityId, string attachmentCode, ItemStack attachmentItem, ModelTransform transform, bool activate = true, bool newAnimatableShape = false)
+    {
+        if (mClientApi == null) return false;
+        if (!mAttachments.ContainsKey(entityId)) mAttachments.Add(entityId, new());
+        if (!mActiveAttachments.ContainsKey(entityId)) mActiveAttachments.Add(entityId, new());
+        RemoveAttachment(entityId, attachmentCode);
+        mAttachments[entityId][attachmentCode] = new(mClientApi, attachmentCode, attachmentItem, transform, newAnimatableShape);
+        mActiveAttachments[entityId][attachmentCode] = activate;
+        return true;
+    }
+
+    public bool ToggleAttachment(long entityId, string attachmentCode, bool toggle)
+    {
+        if (!mActiveAttachments.ContainsKey(entityId) || !mActiveAttachments[entityId].ContainsKey(attachmentCode)) return false;
+        mActiveAttachments[entityId][attachmentCode] = toggle;
+        return true;
+    }
+
+    public bool RemoveAttachment(long entityId, string attachmentCode)
+    {
+        if (!mActiveAttachments.ContainsKey(entityId) || !mActiveAttachments[entityId].ContainsKey(attachmentCode)) return false;
+        mAttachments[entityId][attachmentCode].Dispose();
+        mAttachments[entityId].Remove(attachmentCode);
+        mActiveAttachments[entityId].Remove(attachmentCode);
+        return true;
+    }
+
+    public bool? CheckAttachment(long entityId, string attachmentCode)
+    {
+        if (!mActiveAttachments.ContainsKey(entityId) || !mActiveAttachments[entityId].ContainsKey(attachmentCode)) return null;
+        return mActiveAttachments[entityId][attachmentCode];
+    }
+
+    public bool ClearAttachments(long entityId)
+    {
+        if (!mActiveAttachments.ContainsKey(entityId)) return false;
+        mAttachments[entityId].Clear();
+        mActiveAttachments[entityId].Clear();
+        return true;
+    }
+
+    public override void BeforeRender(ICoreClientAPI clientApi, ItemStack itemStack, EnumItemRenderTarget target, float dt)
+    {
+        base.BeforeRender(clientApi, itemStack, target, dt);
+
+        foreach (Attachment attachment in mAttachments.SelectMany(entry => entry.Value).Select(entry => entry.Value))
         {
-        }
-
-        private readonly Dictionary<string, Attachment> mAttachments = new();
-        private readonly Dictionary<string, bool> mActiveAttachments = new();
-
-        public void AddAttachment(string attachmentCode, ItemStack attachmentItem, ModelTransform transform)
-        {
-            if (mClientApi == null) return;
-            mAttachments.Add(attachmentCode, new(mClientApi, attachmentCode, attachmentItem, transform));
-            mActiveAttachments.Add(attachmentCode, true);
-        }
-
-        public void ToggleAttachment(string attachmentCode, bool toggle)
-        {
-            mActiveAttachments[attachmentCode] = toggle;
-        }
-
-        public void RemoveAttachment(string attachmentCode)
-        {
-            mAttachments.Remove(attachmentCode);
-            mActiveAttachments.Remove(attachmentCode);
-        }
-
-        public void ClearAttachments()
-        {
-            mAttachments.Clear();
-            mActiveAttachments.Clear();
-        }
-
-        public void RenderHandFp(ItemSlot inSlot, ItemRenderInfo renderInfo, Matrixf modelMat, double posX, double posY, double posZ, float size, int color, bool rotate = false, bool showStackSize = true)
-        {
-            //base.RenderHandFp(inSlot, renderInfo, modelMat, posX, posY, posZ, size, color, rotate, showStackSize);
-
-            if (mOnlyWhenAnimating && mActiveAnimationsByCode.Count == 0) return;
-            if (mShape?.Animator == null) return;
-
-            foreach ((string code, bool active) in mActiveAttachments.Where(x => x.Value))
-            {
-                mAttachments[code].Render(renderInfo, mShape?.Animator, modelMat);
-            }
+            attachment.BeforeRender(target, dt);
         }
     }
 
-    public class Attachment
+    public override void RenderShape(IShaderProgram shaderProgram, IWorldAccessor world, AnimatableShape shape, ItemRenderInfo itemStackRenderInfo, IRenderAPI render, ItemStack itemStack, Vec4f lightrgbs, Matrixf itemModelMat, ItemSlot itemSlot, Entity entity, float dt)
     {
-        private readonly ICoreClientAPI mApi;
-        private readonly ModelTransform mAttachedTransform;
-        private readonly ItemStack mItemStack;
-        private readonly string mAttachmentPointCode;
+        base.RenderShape(shaderProgram, world, shape, itemStackRenderInfo, render, itemStack, lightrgbs, mItemModelMat, itemSlot, entity, dt);
 
-        private Matrixf mAttachedMeshMatrix = new();
+        if (mOnlyWhenAnimating && mActiveAnimationsByCode.Count == 0) return;
+        if (mShape?.Animator == null) return;
+        if (!mActiveAttachments.ContainsKey(entity.EntityId) || !mAttachments.ContainsKey(entity.EntityId)) return;
+        if (CurrentAnimatableShape == null) return;
 
-        public Attachment(ICoreClientAPI api, string attachmentPointCode, ItemStack attachment, ModelTransform transform)
+        foreach ((string code, bool active) in mActiveAttachments[entity.EntityId].Where(x => x.Value))
         {
-            mApi = api;
-            mItemStack = attachment.Clone();
-            mAttachedTransform = transform;
-            mAttachmentPointCode = attachmentPointCode;
+            mAttachments[entity.EntityId][code].Render(CurrentAnimatableShape, shaderProgram, itemStackRenderInfo, render, lightrgbs, itemModelMat, entity, dt);
         }
+    }
 
-        public void Render(ItemRenderInfo renderInfo, AnimatorBase animator, Matrixf modelMat)
+    public override void OnUnloaded(ICoreAPI api)
+    {
+        base.OnUnloaded(api);
+        foreach (Attachment attachment in mAttachments.SelectMany(entry => entry.Value).Select(entry => entry.Value))
         {
-            if (mApi == null) return;
-
-            ItemRenderInfo attachedRenderInfo = GetAttachmentRenderInfo(renderInfo.dt);
-            if (attachedRenderInfo == null) return;
-
-
-            IShaderProgram prog = mApi.Render.CurrentActiveShader;
-
-            AttachmentPointAndPose attachmentPointAndPose = animator.GetAttachmentPointPose(mAttachmentPointCode);
-            AttachmentPoint attachmentPoint = attachmentPointAndPose.AttachPoint;
-            CalculateMeshMatrix(modelMat, renderInfo, attachedRenderInfo, attachmentPointAndPose, attachmentPoint);
-            prog.UniformMatrix("modelViewMatrix", mAttachedMeshMatrix.Values);
-
-            //mApi.Render.RenderMesh(attachedRenderInfo.ModelRef);
+            attachment.Dispose();
         }
+    }
+}
 
-        private void CalculateMeshMatrix(Matrixf modelMat, ItemRenderInfo renderInfo, ItemRenderInfo attachedRenderInfo, AttachmentPointAndPose apap, AttachmentPoint ap)
+public interface IAttachment : IDisposable
+{
+    void Render(AnimatableShape parentShape, IShaderProgram shaderProgram, ItemRenderInfo itemStackRenderInfo, IRenderAPI render, Vec4f lightrgbs, Matrixf itemModelMat, Entity entity, float dt);
+}
+
+public sealed class Attachment : IAttachment
+{
+    private readonly ICoreClientAPI mApi;
+    private readonly ModelTransform mAttachedTransform;
+    private readonly ItemStack mItemStack;
+    private readonly string mAttachmentPointCode;
+    private readonly AnimatableShape? mShape;
+    private readonly Animatable? mBehavior;
+    private readonly bool mDisposeShape;
+
+    private Matrixf mAttachedMeshMatrix = new();
+    private bool mDisposed = false;
+
+    public Attachment(ICoreClientAPI api, string attachmentPointCode, ItemStack attachment, ModelTransform transform, bool newAnimatableShape = false)
+    {
+        mApi = api;
+        mItemStack = attachment.Clone();
+        mAttachedTransform = transform;
+        mAttachmentPointCode = attachmentPointCode;
+
+        if (!newAnimatableShape && attachment.Item.HasBehavior(typeof(Animatable), true) && attachment.Item.GetCollectibleBehavior(typeof(Animatable), true) is Animatable behavior)
         {
-            mAttachedMeshMatrix = modelMat.Clone()
-                .Translate(-renderInfo.Transform.Origin.X, -renderInfo.Transform.Origin.Y, -renderInfo.Transform.Origin.Z)
-                .Mul(apap.AnimModelMatrix)
-                .Translate((ap.PosX + attachedRenderInfo.Transform.Translation.X) / 16f, (ap.PosY + attachedRenderInfo.Transform.Translation.Y) / 16f, (ap.PosZ + attachedRenderInfo.Transform.Translation.Z) / 16f)
-                .Translate(renderInfo.Transform.Origin.X, renderInfo.Transform.Origin.Y, renderInfo.Transform.Origin.Z)
-                .RotateX((float)(ap.RotationX) * GameMath.DEG2RAD)
-                .RotateY((float)(ap.RotationY) * GameMath.DEG2RAD)
-                .RotateZ((float)(ap.RotationZ) * GameMath.DEG2RAD)
-                .Scale(attachedRenderInfo.Transform.ScaleXYZ.X, attachedRenderInfo.Transform.ScaleXYZ.Y, attachedRenderInfo.Transform.ScaleXYZ.Z)
-                .Translate(-attachedRenderInfo.Transform.Origin.X / 16f, -attachedRenderInfo.Transform.Origin.Y / 16f, -attachedRenderInfo.Transform.Origin.Z / 16f)
-                .Translate(-renderInfo.Transform.Origin.X, -renderInfo.Transform.Origin.Y, -renderInfo.Transform.Origin.Z)
-            ;
+            mBehavior = behavior;
+            mDisposeShape = false;
         }
-
-        private ItemRenderInfo GetAttachmentRenderInfo(float dt)
+        else
         {
-            DummySlot dummySlot = new(mItemStack);
-            ItemRenderInfo renderInfo = mApi.Render.GetItemStackRenderInfo(dummySlot, EnumItemRenderTarget.Ground, dt);
-            renderInfo.Transform = mAttachedTransform;
-            return renderInfo;
+            mShape = AnimatableShape.Create(api, attachment.Item.Shape.Base.ToString());
+            mDisposeShape = true;
         }
+    }
+
+    public void Render(AnimatableShape parentShape, IShaderProgram shaderProgram, ItemRenderInfo itemStackRenderInfo, IRenderAPI render, Vec4f lightrgbs, Matrixf itemModelMat, Entity entity, float dt)
+    {
+        ItemRenderInfo attachedRenderInfo = GetAttachmentRenderInfo(itemStackRenderInfo.dt);
+        Console.WriteLine("att  render before");
+        AttachmentPointAndPose? attachmentPointAndPose = parentShape.Animator.GetAttachmentPointPose(mAttachmentPointCode);
+        if (attachmentPointAndPose == null)
+        {
+            mApi.Logger.VerboseDebug($"[Animation Manager lib] [Attachment] [Render()] Attachment point '{mAttachmentPointCode}' not found");
+            return;
+        }
+        AttachmentPoint attachmentPoint = attachmentPointAndPose.AttachPoint;
+        CalculateMeshMatrix(itemModelMat, itemStackRenderInfo, attachedRenderInfo, attachmentPointAndPose, attachmentPoint);
+
+        GetShape()?.Render(shaderProgram, attachedRenderInfo, render, mItemStack, lightrgbs, mAttachedMeshMatrix, entity, dt);
+        Console.WriteLine("att  render");
+    }
+
+    public void BeforeRender(EnumItemRenderTarget target, float dt)
+    {
+        mBehavior?.BeforeRender(mApi, mItemStack, target, dt);
+    }
+
+    private AnimatableShape? GetShape() => mShape ?? mBehavior?.CurrentAnimatableShape;
+
+    private void CalculateMeshMatrix(Matrixf modelMat, ItemRenderInfo renderInfo, ItemRenderInfo attachedRenderInfo, AttachmentPointAndPose apap, AttachmentPoint ap)
+    {
+        mAttachedMeshMatrix = modelMat.Clone()
+            .Translate(-renderInfo.Transform.Origin.X, -renderInfo.Transform.Origin.Y, -renderInfo.Transform.Origin.Z)
+            .Mul(apap.AnimModelMatrix)
+            .Translate((ap.PosX + attachedRenderInfo.Transform.Translation.X) / 16f, (ap.PosY + attachedRenderInfo.Transform.Translation.Y) / 16f, (ap.PosZ + attachedRenderInfo.Transform.Translation.Z) / 16f)
+            .Translate(renderInfo.Transform.Origin.X, renderInfo.Transform.Origin.Y, renderInfo.Transform.Origin.Z)
+            .RotateX((float)(ap.RotationX) * GameMath.DEG2RAD)
+            .RotateY((float)(ap.RotationY) * GameMath.DEG2RAD)
+            .RotateZ((float)(ap.RotationZ) * GameMath.DEG2RAD)
+            .Scale(attachedRenderInfo.Transform.ScaleXYZ.X, attachedRenderInfo.Transform.ScaleXYZ.Y, attachedRenderInfo.Transform.ScaleXYZ.Z)
+            .Translate(-attachedRenderInfo.Transform.Origin.X / 16f, -attachedRenderInfo.Transform.Origin.Y / 16f, -attachedRenderInfo.Transform.Origin.Z / 16f)
+            .Translate(-renderInfo.Transform.Origin.X, -renderInfo.Transform.Origin.Y, -renderInfo.Transform.Origin.Z);
+    }
+
+    private ItemRenderInfo GetAttachmentRenderInfo(float dt)
+    {
+        DummySlot dummySlot = new(mItemStack);
+        ItemRenderInfo renderInfo = mApi.Render.GetItemStackRenderInfo(dummySlot, EnumItemRenderTarget.Ground, dt);
+        renderInfo.Transform = mAttachedTransform;
+        return renderInfo;
+    }
+
+    public void Dispose()
+    {
+        if (mDisposed) return;
+        mDisposed = true;
+
+        if (mDisposeShape) mShape?.Dispose();
     }
 }

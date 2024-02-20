@@ -16,7 +16,6 @@ public class AnimatableProcedural : AnimatableAttachable, API.IAnimatableBehavio
     private readonly HashSet<Guid> mRunningAnimations = new();
     private readonly Dictionary<Guid, (Guid fp, Guid ifp)> mRunningAnimationsFp = new();
     protected ICoreAPI? mApi;
-    protected AnimationManagerLibSystem? mModSystem;
 
     public AnimatableProcedural(CollectibleObject collObj) : base(collObj)
     {
@@ -78,9 +77,9 @@ public class AnimatableProcedural : AnimatableAttachable, API.IAnimatableBehavio
             return Guid.Empty;
         }
 
-        Guid tp = RunAnimation(mRegisteredAnimationsTp[id], parameters);
-        Guid fp = RunAnimation(mRegisteredAnimationsFp[id], parameters);
-        Guid ifp = RunAnimation(mRegisteredAnimationsIfp[id], parameters);
+        Guid tp = RunAnimation(mRegisteredAnimationsTp[id], false, parameters);
+        Guid fp = RunAnimation(mRegisteredAnimationsFp[id], true, parameters);
+        Guid ifp = Guid.Empty;//RunAnimation(mRegisteredAnimationsIfp[id], true, parameters);
 
         if (tp != Guid.Empty)
         {
@@ -90,7 +89,7 @@ public class AnimatableProcedural : AnimatableAttachable, API.IAnimatableBehavio
         return tp;
     }
 
-    private Guid RunAnimation(AnimationId id, params RunParameters[] parameters)
+    private Guid RunAnimation(AnimationId id, bool fp, params RunParameters[] parameters)
     {
         AnimationRequest[] requests = new AnimationRequest[parameters.Length];
 
@@ -99,7 +98,7 @@ public class AnimatableProcedural : AnimatableAttachable, API.IAnimatableBehavio
             requests[index] = new AnimationRequest(id, parameters[index]);
         }
 
-        Guid? runId = mModSystem?.Run(AnimationTarget.HeldItem(), new(requests));
+        Guid? runId = mModSystem?.Run(AnimationTarget.HeldItem(fp), new(requests));
         if (runId == null) return Guid.Empty;
         mRunningAnimations.Add(runId.Value);
         return runId.Value;
@@ -124,10 +123,10 @@ public class AnimatableProcedural : AnimatableAttachable, API.IAnimatableBehavio
         }
     }
 
-    public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
+    public override void BeforeRender(ICoreClientAPI clientApi, ItemStack itemStack, EnumItemRenderTarget target, float dt)
     {
         RenderProceduralAnimations = mRunningAnimations.Count > 0 || !mOnlyWhenAnimating;
 
-        base.BeforeRender(capi, itemstack, target, ref renderinfo);
+        base.BeforeRender(clientApi, itemStack, target, dt);
     }
 }

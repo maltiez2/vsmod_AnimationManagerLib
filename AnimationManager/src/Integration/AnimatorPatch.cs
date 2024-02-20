@@ -96,7 +96,19 @@ internal static class AnimatorPatch
             __instance.StopAnimation(code);
         }
 
-        if (entity != null) OnFrameCallback?.Invoke(entity, dt);
+        if (entity != null)
+        {
+            try
+            {
+                OnFrameCallback?.Invoke(entity, dt);
+            }
+            catch (Exception exception)
+            {
+#if DEBUG
+                entity.Api.Logger.Error($"[AM lib] Exception while calling 'OnFrameCallback': {exception}");
+#endif
+            }
+        }
     }
     public static bool RenderHeldItem(EntityShapeRenderer __instance, float dt, bool isShadowPass, bool right)
     {
@@ -109,7 +121,7 @@ internal static class AnimatorPatch
 
             ItemRenderInfo renderInfo = __instance.capi.Render.GetItemStackRenderInfo(slot, EnumItemRenderTarget.HandTp, dt);
 
-            behavior.BeforeRender(__instance.capi, slot.Itemstack, EnumItemRenderTarget.HandFp, ref renderInfo);
+            behavior.BeforeRender(__instance.capi, slot.Itemstack, EnumItemRenderTarget.HandFp, dt);
 
             (string textureName, _) = slot.Itemstack.Item.Textures.First();
 
@@ -189,7 +201,16 @@ internal static class AnimatorPatch
             float weightSum = SumWeights(childPoseIndex, __instance, weightsByAnimationAndElement);
             float weightSumCopy = weightSum;
 
-            OnCalculateWeightCallback?.Invoke(outFramePose, ref weightSum);
+            try
+            {
+                OnCalculateWeightCallback?.Invoke(outFramePose, ref weightSum);
+            }
+            catch (Exception exception)
+            {
+#if DEBUG
+                Console.WriteLine($"[AM lib] Exception while calling 'OnCalculateWeightCallback': {exception}");
+#endif
+            }
 
             CalculateAnimationForElements(
                     __instance,
@@ -204,7 +225,17 @@ internal static class AnimatorPatch
                     childPoseIndex
                     );
 
-            OnElementPoseUsedCallback?.Invoke(outFramePose, ref weightSumCopy);
+            try
+            {
+                OnElementPoseUsedCallback?.Invoke(outFramePose, ref weightSumCopy);
+            }
+            catch (Exception exception)
+            {
+#if DEBUG
+                Console.WriteLine($"[AM lib] Exception while calling 'OnElementPoseUsedCallback': {exception}");
+#endif
+            }
+            
 
 
             elem.GetLocalTransformMatrix(animVersion, localTransformMatrix.Value, outFramePose);

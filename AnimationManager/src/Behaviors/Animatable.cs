@@ -2,15 +2,11 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Reflection;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
-using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
-using Vintagestory.Client.NoObf;
-using VSImGui;
 
 namespace AnimationManagerLib.CollectibleBehaviors;
 
@@ -70,13 +66,13 @@ public class Animatable : CollectibleBehavior // Based on code from TeacupAngel 
 
         if (mClientApi == null || (item?.Shape == null && mAnimatedShapePath == null && mAnimatedShapeFirstPersonPath == null)) return;
 
-        mShape = AnimatableShape.Create(mClientApi, mAnimatedShapePath ?? item.Shape.Base.ToString() ?? mAnimatedShapeFirstPersonPath ?? "");
-        mShapeFirstPerson = AnimatableShape.Create(mClientApi, mAnimatedShapeFirstPersonPath ?? item.Shape.Base.ToString() ?? mAnimatedShapePath ?? "");
+        mShape = AnimatableShape.Create(mClientApi, mAnimatedShapePath ?? mAnimatedShapeFirstPersonPath ?? item.Shape.Base.ToString() ?? "");
+        mShapeFirstPerson = AnimatableShape.Create(mClientApi, mAnimatedShapeFirstPersonPath ?? mAnimatedShapePath ?? item.Shape.Base.ToString() ?? "");
     }
 
     public void StartAnimation(AnimationMetaData metaData)
     {
-        if (mClientApi.Side != EnumAppSide.Client) throw new NotImplementedException("Server side animation system not implemented.");
+        if (mClientApi?.Side != EnumAppSide.Client) throw new NotImplementedException("Server side animation system not implemented.");
 
         if (!mActiveAnimationsByCode.ContainsKey(metaData.Code))
         {
@@ -100,16 +96,21 @@ public class Animatable : CollectibleBehavior // Based on code from TeacupAngel 
         mActiveAnimationsByCode.Remove(code);
     }
 
-    public virtual void BeforeRender(ICoreClientAPI clientApi, ItemStack itemStack, EnumItemRenderTarget target, ref ItemRenderInfo renderInfo)
+    public virtual void BeforeRender(ICoreClientAPI clientApi, ItemStack itemStack, EnumItemRenderTarget target, float dt)
     {
         if (mShape != null && mShapeFirstPerson == null)
         {
-            CalculateAnimation(mShape.Animator, clientApi, target, ref renderInfo);
+            CalculateAnimation(mShape.Animator, clientApi, target, dt);
         }
         else
         {
-            CalculateAnimation(CurrentAnimatableShape?.Animator, clientApi, target, ref renderInfo, mCurrentFirstPerson);
+            CalculateAnimation(CurrentAnimatableShape?.Animator, clientApi, target, dt, mCurrentFirstPerson);
         }
+    }
+
+    public virtual void RenderShape(IShaderProgram shaderProgram, IWorldAccessor world, AnimatableShape shape, ItemRenderInfo itemStackRenderInfo, IRenderAPI render, ItemStack itemStack, Vec4f lightrgbs, Matrixf itemModelMat, ItemSlot itemSlot, Entity entity, float dt)
+    {
+        CurrentAnimatableShape?.Render(shaderProgram, itemStackRenderInfo, render, itemStack, lightrgbs, itemModelMat, entity, dt);
     }
 
     public void RenderHeldItem(float[] modelMat, ICoreClientAPI api, ItemSlot itemSlot, Entity entity, Vec4f lightrgbs, float dt, bool isShadowPass, bool right, ItemRenderInfo renderInfo)
@@ -136,21 +137,17 @@ public class Animatable : CollectibleBehavior // Based on code from TeacupAngel 
         {
             IShaderProgram? shader = mCurrentFirstPerson ? mModSystem.AnimatedItemShaderProgramFirstPerson : mModSystem.AnimatedItemShaderProgram;
 
-            if (vanillaShader) shader = mClientApi.Render.StandardShader;
-
             if (shader == null)
             {
                 mClientApi?.Logger.Debug("[Animation manager] Shader is null");
                 return;
             }
 
-            RenderShape(shader, api.World, CurrentAnimatableShape, itemStackRenderInfo, api.Render, itemSlot.Itemstack, lightrgbs, mItemModelMat);
-            SpawnParticles(mItemModelMat, itemSlot.Itemstack, dt, ref mTimeAccumulation, api, entity);
+            RenderShape(shader, api.World, CurrentAnimatableShape, itemStackRenderInfo, api.Render, itemSlot.Itemstack, lightrgbs, mItemModelMat, itemSlot, entity, dt);
         }
     }
-    private bool vanillaShader = false;
 
-    protected virtual void CalculateAnimation(AnimatorBase? animator, ICoreClientAPI clientApi, EnumItemRenderTarget target, ref ItemRenderInfo renderInfo, bool? fp = null)
+    protected virtual void CalculateAnimation(AnimatorBase? animator, ICoreClientAPI clientApi, EnumItemRenderTarget target, float dt, bool? fp = null)
     {
         if (
             animator != null &&
@@ -164,8 +161,8 @@ public class Animatable : CollectibleBehavior // Based on code from TeacupAngel 
             )
         )
         {
-            if (RenderProceduralAnimations) mModSystem?.OnBeforeRender(animator, renderInfo.dt, fp);
-            animator.OnFrame(mActiveAnimationsByCode, renderInfo.dt);
+            if (RenderProceduralAnimations) mModSystem?.OnBeforeRender(animator, dt, fp);
+            animator.OnFrame(mActiveAnimationsByCode, dt);
         }
     }
 
@@ -227,98 +224,5 @@ public class Animatable : CollectibleBehavior // Based on code from TeacupAngel 
         {
             render.GlEnableCullFace();
         }
-    }
-
-    protected static void RenderShape(IShaderProgram shaderProgram, IWorldAccessor world, AnimatableShape shape, ItemRenderInfo itemStackRenderInfo, IRenderAPI render, ItemStack itemStack, Vec4f lightrgbs, Matrixf itemModelMat)
-    {
-        string textureSampleName = "tex";
-
-        shaderProgram.Use();
-        FillShaderValues(shaderProgram, itemStackRenderInfo, render, itemStack, lightrgbs, itemModelMat, world, shape.Animator);
-
-        if (!itemStackRenderInfo.CullFaces)
-        {
-            render.GlDisableCullFace();
-        }
-
-        render.RenderMultiTextureMesh(shape.MeshRef, textureSampleName);
-        if (!itemStackRenderInfo.CullFaces)
-        {
-            render.GlEnableCullFace();
-        }
-
-        shaderProgram.Uniform("damageEffect", 0f);
-        shaderProgram.Stop();
-    }
-
-    protected static void SpawnParticles(Matrixf itemModelMat, ItemStack itemStack, float dt, ref float timeAccumulation, ICoreClientAPI api, Entity entity)
-    {
-        if (itemStack.Collectible?.ParticleProperties == null) return;
-
-        float windStrength = Math.Max(0f, 1f - api.World.BlockAccessor.GetDistanceToRainFall(entity.Pos.AsBlockPos) / 5f);
-        AdvancedParticleProperties[] particleProperties = itemStack.Collectible.ParticleProperties;
-        if (itemStack.Collectible == null || api.IsGamePaused)
-        {
-            return;
-        }
-
-        EntityPlayer entityPlayer = api.World.Player.Entity;
-
-        Vec4f vec4f = itemModelMat.TransformVector(new Vec4f(itemStack.Collectible.TopMiddlePos.X, itemStack.Collectible.TopMiddlePos.Y, itemStack.Collectible.TopMiddlePos.Z, 1f));
-        timeAccumulation += dt;
-        if (particleProperties != null && particleProperties.Length != 0 && timeAccumulation > 0.05f)
-        {
-            timeAccumulation %= 0.025f;
-            foreach (AdvancedParticleProperties advancedParticleProperties in particleProperties)
-            {
-                advancedParticleProperties.WindAffectednesAtPos = windStrength;
-                advancedParticleProperties.WindAffectednes = windStrength;
-                advancedParticleProperties.basePos.X = vec4f.X + entity.Pos.X + (0.0 - (entity.Pos.X - entityPlayer.CameraPos.X));
-                advancedParticleProperties.basePos.Y = vec4f.Y + entity.Pos.Y + (0.0 - (entity.Pos.Y - entityPlayer.CameraPos.Y));
-                advancedParticleProperties.basePos.Z = vec4f.Z + entity.Pos.Z + (0.0 - (entity.Pos.Z - entityPlayer.CameraPos.Z));
-                entity.World.SpawnParticles(advancedParticleProperties);
-            }
-        }
-    }
-
-    protected static void FillShaderValues(IShaderProgram shaderProgram, ItemRenderInfo itemStackRenderInfo, IRenderAPI render, ItemStack itemStack, Vec4f lightrgbs, Matrixf itemModelMatrix, IWorldAccessor world, AnimatorBase animator)
-    {
-        shaderProgram.Uniform("dontWarpVertices", 0);
-        shaderProgram.Uniform("addRenderFlags", 0);
-        shaderProgram.Uniform("normalShaded", 1);
-        shaderProgram.Uniform("rgbaTint", ColorUtil.WhiteArgbVec);
-        shaderProgram.Uniform("alphaTest", itemStackRenderInfo.AlphaTest);
-        shaderProgram.Uniform("damageEffect", itemStackRenderInfo.DamageEffect);
-        shaderProgram.Uniform("overlayOpacity", itemStackRenderInfo.OverlayOpacity);
-        if (itemStackRenderInfo.OverlayTexture != null && itemStackRenderInfo.OverlayOpacity > 0f)
-        {
-            shaderProgram.Uniform("tex2dOverlay", itemStackRenderInfo.OverlayTexture.TextureId);
-            shaderProgram.Uniform("overlayTextureSize", new Vec2f(itemStackRenderInfo.OverlayTexture.Width, itemStackRenderInfo.OverlayTexture.Height));
-            shaderProgram.Uniform("baseTextureSize", new Vec2f(itemStackRenderInfo.TextureSize.Width, itemStackRenderInfo.TextureSize.Height));
-            TextureAtlasPosition textureAtlasPosition = render.GetTextureAtlasPosition(itemStack);
-            shaderProgram.Uniform("baseUvOrigin", new Vec2f(textureAtlasPosition.x1, textureAtlasPosition.y1));
-        }
-
-        int num = (int)itemStack.Collectible.GetTemperature(world, itemStack);
-        float[] incandescenceColorAsColor4f = ColorUtil.GetIncandescenceColorAsColor4f(num);
-        int num2 = GameMath.Clamp((num - 500) / 3, 0, 255);
-        shaderProgram.Uniform("extraGlow", num2);
-        shaderProgram.Uniform("rgbaAmbientIn", render.AmbientColor);
-        shaderProgram.Uniform("rgbaLightIn", lightrgbs);
-        shaderProgram.Uniform("rgbaGlowIn", new Vec4f(incandescenceColorAsColor4f[0], incandescenceColorAsColor4f[1], incandescenceColorAsColor4f[2], num2 / 255f));
-        shaderProgram.Uniform("rgbaFogIn", render.FogColor);
-        shaderProgram.Uniform("fogMinIn", render.FogMin);
-        shaderProgram.Uniform("fogDensityIn", render.FogDensity);
-        shaderProgram.Uniform("normalShaded", itemStackRenderInfo.NormalShaded ? 1 : 0);
-        shaderProgram.UniformMatrix("projectionMatrix", render.CurrentProjectionMatrix);
-        shaderProgram.UniformMatrix("viewMatrix", render.CameraMatrixOriginf);
-        shaderProgram.UniformMatrix("modelMatrix", itemModelMatrix.Values);
-        shaderProgram.Uniform("depthOffset", -0.3f);
-
-        shaderProgram.UniformMatrices4x3(
-            "elementTransforms",
-            GlobalConstants.MaxAnimatedElements,
-            animator?.TransformationMatrices4x3
-        );
     }
 }

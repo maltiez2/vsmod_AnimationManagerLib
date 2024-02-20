@@ -124,7 +124,7 @@ public class AnimationManager : API.IAnimationManager
     public void OnFrameHandler(Vintagestory.API.Common.IAnimator animator, float dt, bool? fp)
     {
         AnimationTarget animationTarget = AnimationTarget.HeldItem(fp);
-
+        
         if (!mComposers.ContainsKey(animationTarget)) return;
 
         mApplier.Clear();
