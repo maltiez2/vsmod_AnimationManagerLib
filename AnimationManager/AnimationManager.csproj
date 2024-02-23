@@ -2,14 +2,21 @@
 
   <PropertyGroup>
     <TargetFramework>net7.0</TargetFramework>
+    <ProjectDir>$(MSBuildProjectDirectory)</ProjectDir>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <OutputPath>bin\$(Configuration)\Mods\mod</OutputPath>
+    <ImGuiSubmoduleOutput>$(ProjectDir)\..\VintageStory_ImGui\VSImGui\bin\$(Configuration)\Mods\mod</ImGuiSubmoduleOutput>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
     <Reference Include="ImGui.NET">
-      <HintPath>..\..\VSImGui\VSImGui\bin\Release\Mods\mod\ImGui.NET.dll</HintPath>
+      <HintPath>$(ImGuiSubmoduleOutput)\ImGui.NET.dll</HintPath>
+      <Private>False</Private>
+      <EmbedInteropTypes>False</EmbedInteropTypes>
+    </Reference>
+    <Reference Include="VSImGui">
+      <HintPath>$(ImGuiSubmoduleOutput)\VSImGui.dll</HintPath>
       <Private>False</Private>
       <EmbedInteropTypes>False</EmbedInteropTypes>
     </Reference>
@@ -66,11 +73,6 @@
     <Reference Include="VintagestoryAPI">
       <HintPath>$(VINTAGE_STORY)/VintagestoryAPI.dll</HintPath>
       <Private>false</Private>
-    </Reference>
-    <Reference Include="VSImGui">
-      <HintPath>..\..\VSImGui\VSImGui\bin\Release\Mods\mod\VSImGui.dll</HintPath>
-      <Private>False</Private>
-      <EmbedInteropTypes>False</EmbedInteropTypes>
     </Reference>
     <Reference Include="VSSurvivalMod">
       <HintPath>$(VINTAGE_STORY)/Mods/VSSurvivalMod.dll</HintPath>
