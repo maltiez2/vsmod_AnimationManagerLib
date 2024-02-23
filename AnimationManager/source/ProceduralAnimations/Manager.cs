@@ -9,6 +9,7 @@ using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using VSImGui.src.ImGui;
 
 namespace AnimationManagerLib;
 
@@ -33,7 +34,7 @@ public class AnimationManager : API.IAnimationManager
         mApplier = new(api);
         mProvider = new(api, this);
 #if DEBUG
-        api.ModLoader.GetModSystem<VSImGui.VSImGuiModSystem>().SetUpImGuiWindows += SetUpDebugWindow;
+        api.ModLoader.GetModSystem<VSImGui.ImGuiModSystem>().Draw += SetUpDebugWindow;
         Api = api;
 #endif
     }
@@ -244,7 +245,7 @@ public class AnimationManager : API.IAnimationManager
     public static ICoreClientAPI? Api { get; private set; }
 #endif
 
-    public void SetUpDebugWindow()
+    public VSDialogStatus SetUpDebugWindow(float deltaSeconds)
     {
 #if DEBUG
         ImGuiNET.ImGui.Begin("Animation manager");
@@ -265,6 +266,8 @@ public class AnimationManager : API.IAnimationManager
 
         ImGuiNET.ImGui.End();
 #endif
+
+        return VSDialogStatus.DontGrabMouse;
     }
 }
 
