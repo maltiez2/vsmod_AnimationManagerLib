@@ -14,57 +14,57 @@
       <EmbedInteropTypes>False</EmbedInteropTypes>
     </Reference>
     <Reference Include="Open.Nat">
-      <HintPath>..\..\game_19\Lib\Open.Nat.dll</HintPath>
+      <HintPath>$(VINTAGE_STORY)\Lib\Open.Nat.dll</HintPath>
       <EmbedInteropTypes>False</EmbedInteropTypes>
       <Private>False</Private>
     </Reference>
     <Reference Include="OpenTK.Audio.OpenAL">
-      <HintPath>..\..\game_19\Lib\OpenTK.Audio.OpenAL.dll</HintPath>
+      <HintPath>$(VINTAGE_STORY)\Lib\OpenTK.Audio.OpenAL.dll</HintPath>
       <EmbedInteropTypes>False</EmbedInteropTypes>
       <Private>False</Private>
     </Reference>
     <Reference Include="OpenTK.Compute">
-      <HintPath>..\..\game_19\Lib\OpenTK.Compute.dll</HintPath>
+      <HintPath>$(VINTAGE_STORY)\Lib\OpenTK.Compute.dll</HintPath>
       <EmbedInteropTypes>False</EmbedInteropTypes>
       <Private>False</Private>
     </Reference>
     <Reference Include="OpenTK.Core">
-      <HintPath>..\..\game_19\Lib\OpenTK.Core.dll</HintPath>
+      <HintPath>$(VINTAGE_STORY)\Lib\OpenTK.Core.dll</HintPath>
       <EmbedInteropTypes>False</EmbedInteropTypes>
       <Private>False</Private>
     </Reference>
     <Reference Include="OpenTK.Graphics">
-      <HintPath>..\..\game_19\Lib\OpenTK.Graphics.dll</HintPath>
+      <HintPath>$(VINTAGE_STORY)\Lib\OpenTK.Graphics.dll</HintPath>
       <EmbedInteropTypes>False</EmbedInteropTypes>
       <Private>False</Private>
     </Reference>
     <Reference Include="OpenTK.Input">
-      <HintPath>..\..\game_19\Lib\OpenTK.Input.dll</HintPath>
+      <HintPath>$(VINTAGE_STORY)\Lib\OpenTK.Input.dll</HintPath>
       <EmbedInteropTypes>False</EmbedInteropTypes>
       <Private>False</Private>
     </Reference>
     <Reference Include="OpenTK.Mathematics">
-      <HintPath>..\..\game_19\Lib\OpenTK.Mathematics.dll</HintPath>
+      <HintPath>$(VINTAGE_STORY)\Lib\OpenTK.Mathematics.dll</HintPath>
       <EmbedInteropTypes>False</EmbedInteropTypes>
       <Private>False</Private>
     </Reference>
     <Reference Include="OpenTK.Windowing.Common">
-      <HintPath>..\..\game_19\Lib\OpenTK.Windowing.Common.dll</HintPath>
+      <HintPath>$(VINTAGE_STORY)\Lib\OpenTK.Windowing.Common.dll</HintPath>
       <EmbedInteropTypes>False</EmbedInteropTypes>
       <Private>False</Private>
     </Reference>
     <Reference Include="OpenTK.Windowing.Desktop">
-      <HintPath>..\..\game_19\Lib\OpenTK.Windowing.Desktop.dll</HintPath>
+      <HintPath>$(VINTAGE_STORY)\Lib\OpenTK.Windowing.Desktop.dll</HintPath>
       <EmbedInteropTypes>False</EmbedInteropTypes>
       <Private>False</Private>
     </Reference>
     <Reference Include="OpenTK.Windowing.GraphicsLibraryFramework">
-      <HintPath>..\..\game_19\Lib\OpenTK.Windowing.GraphicsLibraryFramework.dll</HintPath>
+      <HintPath>$(VINTAGE_STORY)\Lib\OpenTK.Windowing.GraphicsLibraryFramework.dll</HintPath>
       <EmbedInteropTypes>False</EmbedInteropTypes>
       <Private>False</Private>
     </Reference>
     <Reference Include="VintagestoryAPI">
-      <HintPath>D:\Projects\Firearms\game_19/VintagestoryAPI.dll</HintPath>
+      <HintPath>$(VINTAGE_STORY)/VintagestoryAPI.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="VSImGui">
@@ -73,39 +73,39 @@
       <EmbedInteropTypes>False</EmbedInteropTypes>
     </Reference>
     <Reference Include="VSSurvivalMod">
-      <HintPath>D:\Projects\Firearms\game_19/Mods/VSSurvivalMod.dll</HintPath>
+      <HintPath>$(VINTAGE_STORY)/Mods/VSSurvivalMod.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="VSEssentials">
-      <HintPath>D:\Projects\Firearms\game_19/Mods/VSEssentials.dll</HintPath>
+      <HintPath>$(VINTAGE_STORY)/Mods/VSEssentials.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="VSCreativeMod">
-      <HintPath>D:\Projects\Firearms\game_19/Mods/VSCreativeMod.dll</HintPath>
+      <HintPath>$(VINTAGE_STORY)/Mods/VSCreativeMod.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Newtonsoft.Json">
-      <HintPath>D:\Projects\Firearms\game_19/Lib/Newtonsoft.Json.dll</HintPath>
+      <HintPath>$(VINTAGE_STORY)/Lib/Newtonsoft.Json.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="0Harmony">
-      <HintPath>D:\Projects\Firearms\game_19/Lib/0Harmony.dll</HintPath>
+      <HintPath>$(VINTAGE_STORY)/Lib/0Harmony.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="VintagestoryLib">
-      <HintPath>D:\Projects\Firearms\game_19/VintagestoryLib.dll</HintPath>
+      <HintPath>$(VINTAGE_STORY)/VintagestoryLib.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="protobuf-net">
-      <HintPath>D:\Projects\Firearms\game_19/Lib/protobuf-net.dll</HintPath>
+      <HintPath>$(VINTAGE_STORY)/Lib/protobuf-net.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="cairo-sharp">
-      <HintPath>D:\Projects\Firearms\game_19/Lib/cairo-sharp.dll</HintPath>
+      <HintPath>$(VINTAGE_STORY)/Lib/cairo-sharp.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="System.Data.SQLite">
-      <HintPath>D:\Projects\Firearms\game_19/Lib/System.Data.SQLite.dll</HintPath>
+      <HintPath>$(VINTAGE_STORY)/Lib/System.Data.SQLite.dll</HintPath>
       <Private>False</Private>
     </Reference>
   </ItemGroup>
@@ -120,7 +120,7 @@
   </Content>
   <Content Include="modicon.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-   </Content>
+  </Content>
 </ItemGroup>
 
 </Project>

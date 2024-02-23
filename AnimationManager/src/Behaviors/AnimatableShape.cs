@@ -327,6 +327,10 @@ public class AnimatableShapeRenderer
         shaderProgram.UniformMatrix("projectionMatrix", render.CurrentProjectionMatrix);
         shaderProgram.UniformMatrix("viewMatrix", render.CameraMatrixOriginf);
         shaderProgram.UniformMatrix("modelMatrix", itemModelMatrix.Values);
-        shaderProgram.Uniform("depthOffset", -0.3f);
+        shaderProgram.Uniform("depthOffset", GetDepthOffset(world));
+    }
+    private static float GetDepthOffset(IWorldAccessor world)
+    {
+        return (world.Api as ICoreClientAPI)?.Settings.Bool["immersiveFpMode"] ?? false ? 0.0f : -0.3f;
     }
 }

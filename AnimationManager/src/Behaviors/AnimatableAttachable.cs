@@ -133,7 +133,6 @@ public sealed class Attachment : IAttachment
     public void Render(AnimatableShape parentShape, IShaderProgram shaderProgram, ItemRenderInfo itemStackRenderInfo, IRenderAPI render, Vec4f lightrgbs, Matrixf itemModelMat, Entity entity, float dt)
     {
         ItemRenderInfo attachedRenderInfo = GetAttachmentRenderInfo(itemStackRenderInfo.dt);
-        Console.WriteLine("att  render before");
         AttachmentPointAndPose? attachmentPointAndPose = parentShape.Animator.GetAttachmentPointPose(mAttachmentPointCode);
         if (attachmentPointAndPose == null)
         {
@@ -144,7 +143,6 @@ public sealed class Attachment : IAttachment
         CalculateMeshMatrix(itemModelMat, itemStackRenderInfo, attachedRenderInfo, attachmentPointAndPose, attachmentPoint);
 
         GetShape()?.Render(shaderProgram, attachedRenderInfo, render, mItemStack, lightrgbs, mAttachedMeshMatrix, entity, dt);
-        Console.WriteLine("att  render");
     }
 
     public void BeforeRender(EnumItemRenderTarget target, float dt)
