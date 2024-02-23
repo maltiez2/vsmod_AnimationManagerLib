@@ -3,7 +3,10 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Vintagestory.GameContent;
+
+#if DEBUG
 using VSImGui;
+#endif
 
 namespace AnimationManagerLib.Patches;
 internal static class PlayerModelMatrixController

@@ -1,7 +1,4 @@
 ﻿using AnimationManagerLib.API;
-using AnimationManagerLib.Patches;
-using VSImGui;
-using ImGuiNET;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -9,7 +6,12 @@ using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+
+#if DEBUG
+using ImGuiNET;
+using VSImGui;
 using VSImGui.src.ImGui;
+#endif
 
 namespace AnimationManagerLib;
 
@@ -125,7 +127,7 @@ public class AnimationManager : API.IAnimationManager
     public void OnFrameHandler(Vintagestory.API.Common.IAnimator animator, float dt, bool? fp)
     {
         AnimationTarget animationTarget = AnimationTarget.HeldItem(fp);
-        
+
         if (!mComposers.ContainsKey(animationTarget)) return;
 
         mApplier.Clear();
@@ -243,11 +245,10 @@ public class AnimationManager : API.IAnimationManager
 
 #if DEBUG
     public static ICoreClientAPI? Api { get; private set; }
-#endif
 
     public VSDialogStatus SetUpDebugWindow(float deltaSeconds)
     {
-#if DEBUG
+
         ImGuiNET.ImGui.Begin("Animation manager");
 
         mProvider.SetUpDebugWindow();
@@ -265,10 +266,11 @@ public class AnimationManager : API.IAnimationManager
         }
 
         ImGuiNET.ImGui.End();
-#endif
+
 
         return VSDialogStatus.DontGrabMouse;
     }
+#endif
 }
 
 internal class AnimationApplier

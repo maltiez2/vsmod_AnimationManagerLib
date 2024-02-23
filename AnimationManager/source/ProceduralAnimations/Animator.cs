@@ -1,8 +1,11 @@
 ﻿using System;
 using AnimationManagerLib.API;
 using Vintagestory.API.MathTools;
-using VSImGui;
 using IAnimator = AnimationManagerLib.API.IAnimator;
+
+#if DEBUG
+using VSImGui;
+#endif
 
 namespace AnimationManagerLib
 {

@@ -1,11 +1,14 @@
 ﻿using AnimationManagerLib.API;
-using ImGuiNET;
-using System;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Numerics;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using System.Numerics;
+using System;
+
+#if DEBUG
+using ImGuiNET;
+#endif
 
 namespace AnimationManagerLib;
 
@@ -395,7 +398,7 @@ internal struct WeightedValue : IWithGuiEditor
 #if DEBUG
         Vector2 value = new(Value, Weight);
         ImGui.DragFloat2($"Value & Weight##{id}", ref value);
-        bool modified = Math.Abs(Value - value.X) > Epsilon || Math.Abs(Weight - value.Y) > Epsilon;
+        bool modified = MathF.Abs(Value - value.X) > Epsilon || MathF.Abs(Weight - value.Y) > Epsilon;
         Value = value.X;
         Weight = value.Y;
         return modified;

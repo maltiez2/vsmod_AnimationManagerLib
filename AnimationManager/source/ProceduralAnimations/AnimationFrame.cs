@@ -1,11 +1,14 @@
 ﻿using AnimationManagerLib.API;
-using VSImGui;
-using ImGuiNET;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Common;
+
+#if DEBUG
+using ImGuiNET;
+using VSImGui;
+#endif
 
 namespace AnimationManagerLib;
 

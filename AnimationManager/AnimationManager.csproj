@@ -9,7 +9,7 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <ItemGroup>
+  <ItemGroup Condition="'$(Configuration)' == 'Debug'">
     <Reference Include="ImGui.NET">
       <HintPath>$(ImGuiSubmoduleOutput)\ImGui.NET.dll</HintPath>
       <Private>False</Private>
@@ -20,6 +20,9 @@
       <Private>False</Private>
       <EmbedInteropTypes>False</EmbedInteropTypes>
     </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
     <Reference Include="Open.Nat">
       <HintPath>$(VINTAGE_STORY)\Lib\Open.Nat.dll</HintPath>
       <EmbedInteropTypes>False</EmbedInteropTypes>
