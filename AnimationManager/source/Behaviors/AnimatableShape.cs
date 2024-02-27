@@ -1,4 +1,5 @@
-﻿using System;
+﻿using AnimationManagerLib.API;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -12,14 +13,15 @@ namespace AnimationManagerLib;
 
 public sealed class AnimatableShape : ITexPositionSource, IDisposable
 {
-    public AnimatorBase Animator { get; private set; }
     public Shape Shape { get; private set; }
     public MultiTextureMeshRef MeshRef { get; private set; }
     public ITextureAtlasAPI Atlas { get; private set; }
-    public string CacheKey { get; private set; }
 
     private readonly ICoreClientAPI mClientApi;
     private readonly AnimatableShapeRenderer mRenderer;
+    private readonly Dictionary<long, AnimatorBase> mAnimators = new();
+    private readonly Dictionary<long, string> mCacheKeys = new();
+    private readonly string mCachePrefix;
 
     private bool mDisposed = false;
 
@@ -31,11 +33,27 @@ public sealed class AnimatableShape : ITexPositionSource, IDisposable
 
         Shape? currentShape = Shape.TryGet(api, shapeLocation);
         currentShape?.ResolveReferences(api.Logger, cacheKey);
-        AnimatorBase? animator = GetAnimator(api, cacheKey, currentShape);
 
-        if (currentShape == null || animator == null) return null;
+        if (currentShape == null) return null;
 
-        return new AnimatableShape(api, cacheKey, currentShape, animator);
+        return new AnimatableShape(api, cacheKey, currentShape);
+    }
+
+    public AnimatorBase? GetAnimator(long entityId)
+    {
+        if (mAnimators.ContainsKey(entityId)) return mAnimators[entityId];
+
+        RemoveAnimatorsForNonValidEntities();
+
+        string cacheKey = $"{mCachePrefix}.{entityId}";
+
+        AnimatorBase? animator = GetAnimator(mClientApi, cacheKey, Shape);
+
+        if (animator == null) return null;
+
+        mAnimators.Add(entityId, animator);
+        mCacheKeys.Add(entityId, cacheKey);
+        return animator;
     }
 
     public void Render(
@@ -49,19 +67,30 @@ public sealed class AnimatableShape : ITexPositionSource, IDisposable
         float dt
         ) => mRenderer.Render(shaderProgram, itemStackRenderInfo, render, itemStack, lightrgbs, itemModelMat, entity, dt);
 
-    private AnimatableShape(ICoreClientAPI api, string cacheKey, Shape currentShape, AnimatorBase animator)
+    private AnimatableShape(ICoreClientAPI api, string cacheKey, Shape currentShape)
     {
         mClientApi = api;
-        CacheKey = cacheKey;
+        mCachePrefix = cacheKey;
         Shape = currentShape;
-        Animator = animator;
         Atlas = api.ItemTextureAtlas;
 
         MeshData meshData = InitializeMeshData(api, cacheKey, currentShape, this);
         MeshRef = InitializeMeshRef(api, meshData);
         mRenderer = new(api, this);
     }
+    private void RemoveAnimatorsForNonValidEntities()
+    {
+        foreach ((long entityId, var animator) in mAnimators)
+        {
+            Entity? entity = mClientApi.World.GetEntityById(entityId);
 
+            if (entity == null || !entity.Alive)
+            {
+                mAnimators.Remove(entityId);
+                mCacheKeys.Remove(entityId);
+            }
+        }
+    }
     private static MeshData InitializeMeshData(ICoreClientAPI clientApi, string cacheDictKey, Shape shape, ITexPositionSource texSource)
     {
         shape.ResolveReferences(clientApi.World.Logger, cacheDictKey);
@@ -210,22 +239,28 @@ public class AnimatableShapeRenderer
 
     public void Render(IShaderProgram shaderProgram, ItemRenderInfo itemStackRenderInfo, IRenderAPI render, ItemStack itemStack, Vec4f lightrgbs, Matrixf itemModelMat, Entity entity, float dt)
     {
-        RenderAnimatableShape(shaderProgram, mClientApi.World, mShape, itemStackRenderInfo, render, itemStack, lightrgbs, itemModelMat);
+        RenderAnimatableShape(shaderProgram, mClientApi.World, mShape, itemStackRenderInfo, render, itemStack, entity, lightrgbs, itemModelMat);
         SpawnParticles(itemModelMat, itemStack, dt, ref mTimeAccumulation, mClientApi, entity);
     }
 
-    private static void RenderAnimatableShape(IShaderProgram shaderProgram, IWorldAccessor world, AnimatableShape shape, ItemRenderInfo itemStackRenderInfo, IRenderAPI render, ItemStack itemStack, Vec4f lightrgbs, Matrixf itemModelMat)
+    private static void RenderAnimatableShape(IShaderProgram shaderProgram, IWorldAccessor world, AnimatableShape shape, ItemRenderInfo itemStackRenderInfo, IRenderAPI render, ItemStack itemStack, Entity entity, Vec4f lightrgbs, Matrixf itemModelMat)
     {
         string textureSampleName = "tex";
 
         shaderProgram.Use();
-        FillShaderValues(shaderProgram, itemStackRenderInfo, render, itemStack, lightrgbs, itemModelMat, world, shape.Animator);
+
+        AnimatorBase? animator = shape.GetAnimator(entity.EntityId);
+        if (animator == null)
+        {
+            shaderProgram.Stop();
+            return;
+        }
+        FillShaderValues(shaderProgram, itemStackRenderInfo, render, itemStack, lightrgbs, itemModelMat, world, animator);
 
         if (!itemStackRenderInfo.CullFaces)
         {
             render.GlDisableCullFace();
         }
-
         render.RenderMultiTextureMesh(shape.MeshRef, textureSampleName);
         if (!itemStackRenderInfo.CullFaces)
         {

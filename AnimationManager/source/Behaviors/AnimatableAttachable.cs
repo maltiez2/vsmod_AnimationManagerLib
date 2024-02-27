@@ -58,13 +58,13 @@ public class AnimatableAttachable : Animatable // Based on code from TeacupAngel
         return true;
     }
 
-    public override void BeforeRender(ICoreClientAPI clientApi, ItemStack itemStack, EnumItemRenderTarget target, float dt)
+    public override void BeforeRender(ICoreClientAPI clientApi, ItemStack itemStack, Entity player, EnumItemRenderTarget target, float dt)
     {
-        base.BeforeRender(clientApi, itemStack, target, dt);
+        base.BeforeRender(clientApi, itemStack, player, target, dt);
 
         foreach (Attachment attachment in mAttachments.SelectMany(entry => entry.Value).Select(entry => entry.Value))
         {
-            attachment.BeforeRender(target, dt);
+            attachment.BeforeRender(target, player, dt);
         }
     }
 
@@ -73,7 +73,7 @@ public class AnimatableAttachable : Animatable // Based on code from TeacupAngel
         base.RenderShape(shaderProgram, world, shape, itemStackRenderInfo, render, itemStack, lightrgbs, mItemModelMat, itemSlot, entity, dt);
 
         if (mOnlyWhenAnimating && mActiveAnimationsByCode.Count == 0) return;
-        if (mShape?.Animator == null) return;
+        if (mShape?.GetAnimator(entity.EntityId) == null) return;
         if (!mActiveAttachments.ContainsKey(entity.EntityId) || !mAttachments.ContainsKey(entity.EntityId)) return;
         if (CurrentAnimatableShape == null) return;
 
@@ -133,7 +133,7 @@ public sealed class Attachment : IAttachment
     public void Render(AnimatableShape parentShape, IShaderProgram shaderProgram, ItemRenderInfo itemStackRenderInfo, IRenderAPI render, Vec4f lightrgbs, Matrixf itemModelMat, Entity entity, float dt)
     {
         ItemRenderInfo attachedRenderInfo = GetAttachmentRenderInfo(itemStackRenderInfo.dt);
-        AttachmentPointAndPose? attachmentPointAndPose = parentShape.Animator.GetAttachmentPointPose(mAttachmentPointCode);
+        AttachmentPointAndPose? attachmentPointAndPose = parentShape.GetAnimator(entity.EntityId)?.GetAttachmentPointPose(mAttachmentPointCode);
         if (attachmentPointAndPose == null)
         {
             mApi.Logger.VerboseDebug($"[Animation Manager lib] [Attachment] [Render()] Attachment point '{mAttachmentPointCode}' not found");
@@ -145,9 +145,9 @@ public sealed class Attachment : IAttachment
         GetShape()?.Render(shaderProgram, attachedRenderInfo, render, mItemStack, lightrgbs, mAttachedMeshMatrix, entity, dt);
     }
 
-    public void BeforeRender(EnumItemRenderTarget target, float dt)
+    public void BeforeRender(EnumItemRenderTarget target, Entity entity, float dt)
     {
-        mBehavior?.BeforeRender(mApi, mItemStack, target, dt);
+        mBehavior?.BeforeRender(mApi, mItemStack, entity, target, dt);
     }
 
     private AnimatableShape? GetShape() => mShape ?? mBehavior?.CurrentAnimatableShape;

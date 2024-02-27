@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Server;
 using Vintagestory.Client.NoObf;
 
@@ -12,7 +13,7 @@ public class AnimationManagerLibSystem : ModSystem, API.IAnimationManagerSystem
     public const string HarmonyID = "animationmanagerlib";
     public const string ChannelName = "animationmanagerlib";
 
-    internal delegate void OnBeforeRenderCallback(Vintagestory.API.Common.IAnimator animator, float dt, bool? fp);
+    internal delegate void OnBeforeRenderCallback(Vintagestory.API.Common.IAnimator animator, Entity entity, float dt);
     internal IShaderProgram? AnimatedItemShaderProgram => mShaderProgram;
     internal IShaderProgram? AnimatedItemShaderProgramFirstPerson => mShaderProgramFirstPerson;
     internal event OnBeforeRenderCallback? OnHeldItemBeforeRender;
@@ -85,9 +86,9 @@ public class AnimationManagerLibSystem : ModSystem, API.IAnimationManagerSystem
 
         return true;
     }
-    public void OnBeforeRender(Vintagestory.API.Common.IAnimator animator, float dt, bool? fp = null)
+    public void OnBeforeRender(Vintagestory.API.Common.IAnimator animator, Entity entity, float dt)
     {
-        OnHeldItemBeforeRender?.Invoke(animator, dt, fp);
+        OnHeldItemBeforeRender?.Invoke(animator, entity, dt);
     }
     public void Suppress(string code)
     {
