@@ -115,13 +115,15 @@ internal static class AnimatorPatch
         if (!isShadowPass && right)
         {
             ItemSlot? slot = (__instance.entity as EntityPlayer)?.RightHandItemSlot;
-            Animatable? behavior = slot?.Itemstack?.Item?.GetBehavior<AnimatableProcedural>();
+            Animatable? behavior = slot?.Itemstack?.Item?.GetBehavior<AnimatableProcedural>()
+                ?? slot?.Itemstack?.Item?.GetBehavior<AnimatableAttachable>()
+                ?? slot?.Itemstack?.Item?.GetBehavior<Animatable>();
 
             if (slot == null || behavior == null) return true;
 
             ItemRenderInfo renderInfo = __instance.capi.Render.GetItemStackRenderInfo(slot, EnumItemRenderTarget.HandTp, dt);
 
-            behavior.BeforeRender(__instance.capi, slot.Itemstack, EnumItemRenderTarget.HandFp, dt);
+            behavior.BeforeRender(__instance.capi, slot.Itemstack, __instance.entity, EnumItemRenderTarget.HandFp, dt);
 
             (string textureName, _) = slot.Itemstack.Item.Textures.First();
 

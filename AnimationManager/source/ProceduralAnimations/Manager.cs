@@ -49,24 +49,31 @@ public class AnimationManager : API.IAnimationManager
     public Guid Run(AnimationTarget animationTarget, bool synchronize, AnimationId animationId, params RunParameters[] parameters) => Run(Guid.NewGuid(), animationTarget, synchronize, ToRequests(animationId, parameters));
     public void Stop(Guid runId)
     {
-        if (!mRequests.ContainsKey(runId)) return;
-
         if (mSynchronizedPackets.Contains(runId))
         {
             mSynchronizedPackets.Remove(runId);
             mSynchronizer.Sync(new AnimationStopPacket(runId));
         }
 
+        if (!mRequests.ContainsKey(runId))
+        {
+            mEntitiesByRuns.Remove(runId);
+            return;
+        }
+
         AnimationTarget animationTarget = mEntitiesByRuns[runId];
         IComposer composer = mComposers[animationTarget];
         AnimationRequest? request = mRequests[runId].Last();
         if (request != null) composer.Stop(request.Value);
+        mEntitiesByRuns.Remove(runId);
         mRequests.Remove(runId);
     }
 
     private Guid Run(Guid id, AnimationTarget animationTarget, bool synchronize, params AnimationRequest[] requests)
     {
         Debug.Assert(requests.Length > 0);
+
+        ValidateEntities();
 
         mRequests.Add(id, new(animationTarget, synchronize, requests, this));
         AnimationRequest? request = mRequests[id].Next();
@@ -79,13 +86,13 @@ public class AnimationManager : API.IAnimationManager
             IAnimation? animation = mProvider.Get(animationId, animationTarget);
             if (animation == null)
             {
-                mClientApi.Logger.Error("Failed to get animation '{0}' for '{1}' while trying to run request, will skip it", animationId, animationTarget);
+                mClientApi.Logger.VerboseDebug("[Animation Manager lib] Failed to get animation '{0}' for '{1}' while trying to run request, will skip it", animationId, animationTarget);
                 return Guid.Empty;
             }
             composer.Register(animationId, animation);
         }
 
-        if (synchronize && animationTarget.TargetType != AnimationTargetType.HeldItem)
+        if (synchronize && animationTarget.TargetType != AnimationTargetType.EntityFirstPerson && animationTarget.TargetType != AnimationTargetType.HeldItemFp)
         {
             AnimationRunPacket packet = new()
             {
@@ -105,15 +112,15 @@ public class AnimationManager : API.IAnimationManager
 
     public void OnFrameHandler(Entity entity, float dt)
     {
-        AnimationTarget animationTarget = new(entity);
+        if (entity == null) return;
 
-        ValidateEntities();
+        AnimationTarget animationTarget = new(entity);
 
         if (!mComposers.ContainsKey(animationTarget)) return;
 
         if (animationTarget.TargetType == AnimationTargetType.EntityFirstPerson || animationTarget.TargetType == AnimationTargetType.EntityImmersiveFirstPerson)
         {
-            dt /= 2;
+            dt /= 2; // @TODO
         }
 
         mApplier.Clear();
@@ -124,9 +131,12 @@ public class AnimationManager : API.IAnimationManager
 
         mApplier.AddAnimation(entity.EntityId, composition);
     }
-    public void OnFrameHandler(Vintagestory.API.Common.IAnimator animator, float dt, bool? fp)
+    public void OnFrameHandler(Vintagestory.API.Common.IAnimator animator, Entity entity, float dt)
     {
-        AnimationTarget animationTarget = AnimationTarget.HeldItem(fp);
+        if (entity == null) return;
+
+        AnimationTargetType targetType = AnimationTarget.GetItemTargetType(entity);
+        AnimationTarget animationTarget = new(entity.EntityId, targetType);
 
         if (!mComposers.ContainsKey(animationTarget)) return;
 
@@ -158,17 +168,26 @@ public class AnimationManager : API.IAnimationManager
 
     private void OnNullEntity(long entityId)
     {
-        foreach ((Guid runId, _) in mEntitiesByRuns.Where((key, value) => value == entityId))
+        int count = 0;
+        foreach ((Guid runId, _) in mEntitiesByRuns.Where(entry => entry.Value.EntityId == entityId))
         {
             Stop(runId);
+            count++;
         }
+        mClientApi.Logger.Debug($"[Animation Manager lib] Stopped {count} animations for entity: {entityId}");
     }
 
     private void ValidateEntities()
     {
-        foreach (long? entityId in mComposers.Keys.Where((id, _) => id.EntityId != null && mClientApi.World.GetEntityById(id.EntityId.Value) == null).Select(id => id.EntityId))
+        foreach ((AnimationTarget target, _) in mComposers)
         {
-            if (entityId != null && mClientApi.World.GetEntityById(entityId.Value) == null) OnNullEntity(entityId.Value);
+            Entity? entity = mClientApi.World.GetEntityById(target.EntityId);
+
+            if (entity == null || !entity.Alive)
+            {
+                OnNullEntity(target.EntityId);
+                mComposers.Remove(target);
+            }
         }
     }
 
@@ -177,7 +196,7 @@ public class AnimationManager : API.IAnimationManager
         if (!mRequests.ContainsKey(id)) return true;
         if (!complete)
         {
-            mRequests.Remove(id);
+            RemoveRequest(id);
             return true;
         }
         if (mRequests[id].Finished())
@@ -185,7 +204,7 @@ public class AnimationManager : API.IAnimationManager
 #if DEBUG
             mProvider.Enqueue(mRequests[id]);
 #endif
-            mRequests.Remove(id);
+            RemoveRequest(id);
             return true;
         }
 
@@ -196,13 +215,24 @@ public class AnimationManager : API.IAnimationManager
 #if DEBUG
             mProvider.Enqueue(mRequests[id]);
 #endif
-            mRequests.Remove(id);
+            RemoveRequest(id);
             return true;
         }
 
         mComposers[mEntitiesByRuns[id]].Run((AnimationRequest)request, (complete) => ComposerCallback(id, complete));
 
         return false;
+    }
+
+    private void RemoveRequest(Guid id)
+    {
+        if (mSynchronizedPackets.Contains(id))
+        {
+            mSynchronizedPackets.Remove(id);
+            mSynchronizer.Sync(new AnimationStopPacket(id));
+        }
+        mEntitiesByRuns.Remove(id);
+        mRequests.Remove(id);
     }
 
     private IComposer TryAddComposer(Guid id, AnimationTarget animationTarget)
@@ -298,7 +328,6 @@ internal class AnimationApplier
         if (pose == null || !Poses.ContainsKey(pose)) return false;
 
         (string name, AnimationFrame? composition) = Poses[pose];
-
         composition.Apply(pose, ref weight, Utils.ToCrc32(name));
 
         Poses.Remove(pose);
@@ -308,8 +337,13 @@ internal class AnimationApplier
 
     public void AddAnimation(long entityId, AnimationFrame composition)
     {
-        Vintagestory.API.Common.IAnimator animator = mApi.World.GetEntityById(entityId).AnimManager.Animator;
+        Vintagestory.API.Common.IAnimator? animator = mApi.World.GetEntityById(entityId).AnimManager.Animator;
 
+        if (animator == null)
+        {
+            return;
+        }
+        
         AddAnimation(animator, composition);
     }
 
@@ -352,7 +386,9 @@ internal class AnimationProvider
         }
         else
         {
-            return mAnimations.TryAdd(id, ConstructAnimation(mApi, id, data, data.Shape));
+            IAnimation? animation = ConstructAnimation(mApi, id, data, data.Shape);
+            if (animation == null) return false;
+            return mAnimations.TryAdd(id, animation);
         }
     }
 
@@ -362,23 +398,25 @@ internal class AnimationProvider
         if (mConstructedAnimations.ContainsKey((id, target))) return mConstructedAnimations[(id, target)];
         if (!mAnimationsToConstruct.ContainsKey(id)) return null;
 
-        if (target.EntityId == null) return null;
-        Entity entity = mApi.World.GetEntityById(target.EntityId.Value);
+        Entity entity = mApi.World.GetEntityById(target.EntityId);
         if (entity == null) return null;
         AnimationData data = AnimationData.Entity(mAnimationsToConstruct[id].Code, entity, mAnimationsToConstruct[id].Cyclic);
         if (data.Shape == null) return null;
-        mConstructedAnimations.Add((id, target), ConstructAnimation(mApi, id, data, data.Shape));
+        IAnimation? animation = ConstructAnimation(mApi, id, data, data.Shape);
+        if (animation == null) return null;
+        mConstructedAnimations.Add((id, target), animation);
         return mConstructedAnimations[(id, target)];
     }
 
     private int mConstructedAnimationsCounter = 0;
-    private IAnimation ConstructAnimation(ICoreClientAPI api, AnimationId id, AnimationData data, Shape shape)
+    private IAnimation? ConstructAnimation(ICoreClientAPI api, AnimationId id, AnimationData data, Shape shape)
     {
         Dictionary<uint, Vintagestory.API.Common.Animation> animations = shape.AnimationsByCrc32;
         uint crc32 = Utils.ToCrc32(data.Code);
         if (!animations.ContainsKey(crc32))
         {
             api.Logger.Debug($"[Animation Manager lib] Animation '{data.Code}' was not found in shape. Procedural animation: '{id}'.");
+            return null;
         }
 
         float totalFrames = animations[crc32].QuantityFrames;

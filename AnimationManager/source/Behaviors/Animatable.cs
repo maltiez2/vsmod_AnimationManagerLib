@@ -70,7 +70,8 @@ public class Animatable : CollectibleBehavior // Based on code from TeacupAngel 
         mShapeFirstPerson = AnimatableShape.Create(mClientApi, mAnimatedShapeFirstPersonPath ?? mAnimatedShapePath ?? item.Shape.Base.ToString() ?? "");
     }
 
-    public void StartAnimation(AnimationMetaData metaData)
+    [Obsolete("Not supported currently")]
+    public void StartAnimation(AnimationMetaData metaData, Entity entity)
     {
         if (mClientApi?.Side != EnumAppSide.Client) throw new NotImplementedException("Server side animation system not implemented.");
 
@@ -80,15 +81,18 @@ public class Animatable : CollectibleBehavior // Based on code from TeacupAngel 
         }
     }
 
-    public void StopAnimation(string code, bool forceImmediate = false)
+    [Obsolete("Not supported currently")]
+    public void StopAnimation(string code, Entity entity, bool forceImmediate = false)
     {
         if (mClientApi == null) return;
         if (mClientApi.Side != EnumAppSide.Client) throw new NotImplementedException("Server side animation system not implemented.");
         if (mShape == null) return;
 
-        if (mActiveAnimationsByCode.ContainsKey(code) && forceImmediate)
+        var animator = mShape.GetAnimator(entity.EntityId);
+
+        if (animator != null && mActiveAnimationsByCode.ContainsKey(code) && forceImmediate)
         {
-            RunningAnimation? animation = Array.Find(mShape.Animator.anims, (animation) => { return animation.Animation.Code == code; });
+            RunningAnimation? animation = Array.Find(animator.anims, (animation) => { return animation.Animation.Code == code; });
             Debug.Assert(animation != null);
             animation.EasingFactor = 0f;
         }
@@ -96,16 +100,11 @@ public class Animatable : CollectibleBehavior // Based on code from TeacupAngel 
         mActiveAnimationsByCode.Remove(code);
     }
 
-    public virtual void BeforeRender(ICoreClientAPI clientApi, ItemStack itemStack, EnumItemRenderTarget target, float dt)
+    public virtual void BeforeRender(ICoreClientAPI clientApi, ItemStack itemStack, Entity player, EnumItemRenderTarget target, float dt)
     {
-        if (mShape != null && mShapeFirstPerson == null)
-        {
-            CalculateAnimation(mShape.Animator, clientApi, target, dt);
-        }
-        else
-        {
-            CalculateAnimation(CurrentAnimatableShape?.Animator, clientApi, target, dt, mCurrentFirstPerson);
-        }
+        mCurrentFirstPerson = IsFirstPerson(player);
+
+        CalculateAnimation(CurrentAnimatableShape?.GetAnimator(player.EntityId), clientApi, player, target, dt);
     }
 
     public virtual void RenderShape(IShaderProgram shaderProgram, IWorldAccessor world, AnimatableShape shape, ItemRenderInfo itemStackRenderInfo, IRenderAPI render, ItemStack itemStack, Vec4f lightrgbs, Matrixf itemModelMat, ItemSlot itemSlot, Entity entity, float dt)
@@ -115,8 +114,6 @@ public class Animatable : CollectibleBehavior // Based on code from TeacupAngel 
 
     public void RenderHeldItem(float[] modelMat, ICoreClientAPI api, ItemSlot itemSlot, Entity entity, Vec4f lightrgbs, float dt, bool isShadowPass, bool right, ItemRenderInfo renderInfo)
     {
-        mCurrentFirstPerson = IsFirstPerson(entity);
-
         if (CurrentAnimatableShape == null || itemSlot.Itemstack == null || mModSystem?.AnimatedItemShaderProgram == null) return;
 
         if (mOnlyWhenAnimating && !RenderProceduralAnimations)
@@ -147,7 +144,7 @@ public class Animatable : CollectibleBehavior // Based on code from TeacupAngel 
         }
     }
 
-    protected virtual void CalculateAnimation(AnimatorBase? animator, ICoreClientAPI clientApi, EnumItemRenderTarget target, float dt, bool? fp = null)
+    protected virtual void CalculateAnimation(AnimatorBase? animator, ICoreClientAPI clientApi, Entity entity, EnumItemRenderTarget target, float dt)
     {
         if (
             animator != null &&
@@ -161,14 +158,14 @@ public class Animatable : CollectibleBehavior // Based on code from TeacupAngel 
             )
         )
         {
-            if (RenderProceduralAnimations) mModSystem?.OnBeforeRender(animator, dt, fp);
+            if (RenderProceduralAnimations) mModSystem?.OnBeforeRender(animator, entity, dt);
             animator.OnFrame(mActiveAnimationsByCode, dt);
         }
     }
 
     protected static bool IsFirstPerson(Entity entity)
     {
-        return AnimationTarget.GetTargetType(entity) == AnimationTargetType.EntityFirstPerson || AnimationTarget.GetTargetType(entity) == AnimationTargetType.EntityImmersiveFirstPerson;
+        return AnimationTarget.GetEntityTargetType(entity) == AnimationTargetType.EntityFirstPerson || AnimationTarget.GetEntityTargetType(entity) == AnimationTargetType.EntityImmersiveFirstPerson;
     }
 
     protected static ItemRenderInfo? PrepareShape(ICoreClientAPI api, Matrixf itemModelMat, float[] modelMat, ItemSlot itemSlot, Entity entity, bool right, float dt)

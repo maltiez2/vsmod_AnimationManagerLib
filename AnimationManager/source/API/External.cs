@@ -29,7 +29,7 @@ public interface IAnimatableBehavior
         Dictionary<string, float>? elementWeight = null
         );
 
-    Guid RunAnimation(int id, params RunParameters[] parameters);
+    Guid RunAnimation(int id, Entity player, params RunParameters[] parameters);
     void StopAnimation(Guid runId);
 }
 
@@ -113,7 +113,6 @@ public enum AnimationTargetType
     /// <summary>
     /// Item currently held by player
     /// </summary>
-    HeldItem,
     HeldItemFp,
     HeldItemTp
 }
@@ -122,25 +121,20 @@ public enum AnimationTargetType
 public struct AnimationTarget
 {
     public AnimationTargetType TargetType { get; set; }
-    public long? EntityId { get; set; }
+    public long EntityId { get; set; }
 
-    private AnimationTarget(AnimationTargetType targetType)
-    {
-        TargetType = targetType;
-        EntityId = null;
-    }
-    internal AnimationTarget(long entityId, AnimationTargetType target)
+    public AnimationTarget(long entityId, AnimationTargetType target)
     {
         TargetType = target;
         EntityId = entityId;
     }
     internal AnimationTarget(Entity entity)
     {
-        TargetType = GetTargetType(entity);
+        TargetType = GetEntityTargetType(entity);
         EntityId = entity.EntityId;
     }
 
-    static public AnimationTargetType GetTargetType(Entity entity)
+    static public AnimationTargetType GetEntityTargetType(Entity entity)
     {
         bool owner = (entity.Api as ICoreClientAPI)?.World.Player.Entity.EntityId == entity.EntityId;
         if (!owner) return AnimationTargetType.EntityThirdPerson;
@@ -151,20 +145,26 @@ public struct AnimationTarget
         bool immersive = (entity.Api as ICoreClientAPI)?.Settings.Bool["immersiveFpMode"] ?? false;
         if (!immersive) return AnimationTargetType.EntityFirstPerson;
 
-        return AnimationTargetType.EntityImmersiveFirstPerson;
+        return AnimationTargetType.EntityThirdPerson;
     }
-    static public AnimationTarget HeldItem(bool? fp = null) => new(fp == null ? AnimationTargetType.HeldItem : fp.Value ? AnimationTargetType.HeldItemFp : AnimationTargetType.HeldItemTp);
+    static public AnimationTargetType GetItemTargetType(Entity entity)
+    {
+        bool owner = (entity.Api as ICoreClientAPI)?.World.Player.Entity.EntityId == entity.EntityId;
+        if (!owner) return AnimationTargetType.HeldItemTp;
+
+        bool firstPerson = (entity.Api as ICoreClientAPI)?.World.Player.CameraMode == EnumCameraMode.FirstPerson;
+        if (firstPerson) return AnimationTargetType.HeldItemFp;
+
+        return AnimationTargetType.HeldItemTp;
+    }
+    [Obsolete("Use contructor instead")]
+    static public AnimationTarget HeldItem(Entity entity, bool? fp = null) => new(entity.EntityId, fp == null ? AnimationTargetType.HeldItemFp : fp.Value ? AnimationTargetType.HeldItemFp : AnimationTargetType.HeldItemTp);
+    [Obsolete("Use contructor instead")]
     static public AnimationTarget Entity(long entityId, AnimationTargetType target) => new(entityId, target);
 
     public readonly override string ToString()
     {
-        return TargetType switch
-        {
-            AnimationTargetType.EntityThirdPerson => $"Entity: {EntityId}",
-            AnimationTargetType.EntityFirstPerson => $"PlayerFirstPerson: {EntityId}",
-            AnimationTargetType.EntityImmersiveFirstPerson => $"PlayerImmersiveFirstPerson: {EntityId}",
-            _ => $"{TargetType}"
-        };
+        return $"{TargetType}: {EntityId}";
     }
 }
 

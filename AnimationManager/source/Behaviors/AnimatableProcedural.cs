@@ -5,6 +5,7 @@ using AnimationManagerLib.API;
 using Vintagestory.API.Client;
 using HarmonyLib;
 using System.Linq;
+using Vintagestory.API.Common.Entities;
 
 namespace AnimationManagerLib.CollectibleBehaviors;
 
@@ -64,7 +65,7 @@ public class AnimatableProcedural : AnimatableAttachable, API.IAnimatableBehavio
         return mRegisteredAnimationsTp.Count - 1;
     }
 
-    public Guid RunAnimation(int id, params RunParameters[] parameters)
+    public Guid RunAnimation(int id, Entity player, params RunParameters[] parameters)
     {
         if (mApi?.Side != EnumAppSide.Client)
         {
@@ -77,8 +78,8 @@ public class AnimatableProcedural : AnimatableAttachable, API.IAnimatableBehavio
             return Guid.Empty;
         }
 
-        Guid tp = RunAnimation(mRegisteredAnimationsTp[id], false, parameters);
-        Guid fp = RunAnimation(mRegisteredAnimationsFp[id], true, parameters);
+        Guid tp = RunAnimation(mRegisteredAnimationsTp[id], player, false, parameters);
+        Guid fp = RunAnimation(mRegisteredAnimationsFp[id], player, true, parameters);
         Guid ifp = Guid.Empty;//RunAnimation(mRegisteredAnimationsIfp[id], true, parameters);
 
         if (tp != Guid.Empty)
@@ -89,7 +90,7 @@ public class AnimatableProcedural : AnimatableAttachable, API.IAnimatableBehavio
         return tp;
     }
 
-    private Guid RunAnimation(AnimationId id, bool fp, params RunParameters[] parameters)
+    private Guid RunAnimation(AnimationId id, Entity player, bool fp, params RunParameters[] parameters)
     {
         AnimationRequest[] requests = new AnimationRequest[parameters.Length];
 
@@ -98,7 +99,7 @@ public class AnimatableProcedural : AnimatableAttachable, API.IAnimatableBehavio
             requests[index] = new AnimationRequest(id, parameters[index]);
         }
 
-        Guid? runId = mModSystem?.Run(AnimationTarget.HeldItem(fp), new(requests));
+        Guid? runId = mModSystem?.Run(AnimationTarget.HeldItem(player, fp), new(requests), !fp);
         if (runId == null) return Guid.Empty;
         mRunningAnimations.Add(runId.Value);
         return runId.Value;
@@ -123,10 +124,10 @@ public class AnimatableProcedural : AnimatableAttachable, API.IAnimatableBehavio
         }
     }
 
-    public override void BeforeRender(ICoreClientAPI clientApi, ItemStack itemStack, EnumItemRenderTarget target, float dt)
+    public override void BeforeRender(ICoreClientAPI clientApi, ItemStack itemStack, Entity player, EnumItemRenderTarget target, float dt)
     {
         RenderProceduralAnimations = mRunningAnimations.Count > 0 || !mOnlyWhenAnimating;
 
-        base.BeforeRender(clientApi, itemStack, target, dt);
+        base.BeforeRender(clientApi, itemStack, player, target, dt);
     }
 }
