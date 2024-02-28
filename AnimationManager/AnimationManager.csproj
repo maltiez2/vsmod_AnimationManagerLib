@@ -141,26 +141,26 @@
   </ItemGroup>
 
   <!-- Creates/updates modinfo.json file in build directory -->
-  <Target Name="ModInfo" AfterTargets="CleanReferenceCopyLocalPaths">
+  <Target Name="ModInfo" AfterTargets="Build">
     <PropertyGroup>
       <ModInfo>
-        {
-        "type": "code",
-        "name": "$(ModName)",
-        "modid": "$(ModId)",
-        "version": "$(Version)",
+{
+    "type": "code",
+    "name": "$(ModName)",
+    "modid": "$(ModId)",
+    "version": "$(Version)",
 
-        "description": "$(Description)",
-        "authors": [ @(ModInfoAuthors->'"%(Identity)"', ', ') ],
+    "description": "$(Description)",
+    "authors": [ @(ModInfoAuthors->'"%(Identity)"', ', ') ],
 
-        "dependencies": {
+    "dependencies": {
         @(Dependencies->'"%(Identity)": "%(Version)"', ', ')
-        },
+    },
 
-        "side" : "$(Side)",
-        "requiredOnClient": $(RequiredOnClient),
-        "requiredOnServer": $(RequiredOnServer)
-        }
+    "side" : "$(Side)",
+    "requiredOnClient": $(RequiredOnClient),
+    "requiredOnServer": $(RequiredOnServer)
+}
       </ModInfo>
     </PropertyGroup>
     <Message Text="Generating modinfo.json" Importance="high" />
@@ -168,7 +168,7 @@
   </Target>
 
   <!-- Copies modicon, assets folder and native libraries if they exist into output directory -->
-  <Target Name="CopyFilesToOutput" AfterTargets="Build">
+  <Target Name="CopyFilesToOutput" AfterTargets="ModInfo">
     <ItemGroup>
       <AssetsFolder Include="$(AssetsDir)\**\*.*" />
       <ModIcon Include="$(ModIconFile)" />
