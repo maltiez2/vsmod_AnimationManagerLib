@@ -125,7 +125,7 @@ public sealed class Attachment : IAttachment
         }
         else
         {
-            mShape = AnimatableShape.Create(api, attachment.Item.Shape.Base.ToString());
+            mShape = AnimatableShape.Create(api, attachment.Item.Shape.Base.ToString(), attachment.Item);
             mDisposeShape = true;
         }
     }

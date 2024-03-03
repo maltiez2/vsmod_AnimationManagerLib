@@ -21,11 +21,12 @@ public sealed class AnimatableShape : ITexPositionSource, IDisposable
     private readonly AnimatableShapeRenderer mRenderer;
     private readonly Dictionary<long, AnimatorBase> mAnimators = new();
     private readonly Dictionary<long, string> mCacheKeys = new();
+    private readonly Item mItem;
     private readonly string mCachePrefix;
 
     private bool mDisposed = false;
 
-    public static AnimatableShape? Create(ICoreClientAPI api, string shapePath)
+    public static AnimatableShape? Create(ICoreClientAPI api, string shapePath, Item item)
     {
         string cacheKey = $"shapeEditorCollectibleMeshes-{shapePath.GetHashCode()}";
         AssetLocation shapeLocation = new(shapePath);
@@ -36,7 +37,7 @@ public sealed class AnimatableShape : ITexPositionSource, IDisposable
 
         if (currentShape == null) return null;
 
-        return new AnimatableShape(api, cacheKey, currentShape);
+        return new AnimatableShape(api, cacheKey, currentShape, item);
     }
 
     public AnimatorBase? GetAnimator(long entityId)
@@ -67,12 +68,13 @@ public sealed class AnimatableShape : ITexPositionSource, IDisposable
         float dt
         ) => mRenderer.Render(shaderProgram, itemStackRenderInfo, render, itemStack, lightrgbs, itemModelMat, entity, dt);
 
-    private AnimatableShape(ICoreClientAPI api, string cacheKey, Shape currentShape)
+    private AnimatableShape(ICoreClientAPI api, string cacheKey, Shape currentShape, Item item)
     {
         mClientApi = api;
         mCachePrefix = cacheKey;
         Shape = currentShape;
         Atlas = api.ItemTextureAtlas;
+        mItem = item;
 
         MeshData meshData = InitializeMeshData(api, cacheKey, currentShape, this);
         MeshRef = InitializeMeshRef(api, meshData);
@@ -184,7 +186,14 @@ public sealed class AnimatableShape : ITexPositionSource, IDisposable
         get
         {
             AssetLocation? texturePath = null;
-            Shape?.Textures.TryGetValue(textureCode, out texturePath);
+            if (mItem.Textures.ContainsKey(textureCode))
+            {
+                texturePath = mItem.Textures[textureCode].Base;
+            }
+            else
+            {
+                Shape?.Textures.TryGetValue(textureCode, out texturePath);
+            }
 
             if (texturePath == null)
             {
@@ -209,7 +218,7 @@ public sealed class AnimatableShape : ITexPositionSource, IDisposable
             }
             else
             {
-                mClientApi.World.Logger.Warning($"Bullseye.CollectibleBehaviorAnimatable: texture {texturePath}, not no such texture found.");
+                mClientApi.World.Logger.Warning($"[Animation Manager] texture {texturePath}, not no such texture found.");
             }
         }
 
