@@ -64,10 +64,10 @@ public class Animatable : CollectibleBehavior // Based on code from TeacupAngel 
     {
         Item? item = (collObj as Item);
 
-        if (mClientApi == null || (item?.Shape == null && mAnimatedShapePath == null && mAnimatedShapeFirstPersonPath == null)) return;
+        if (item == null || mClientApi == null || (item.Shape == null && mAnimatedShapePath == null && mAnimatedShapeFirstPersonPath == null)) return;
 
-        mShape = AnimatableShape.Create(mClientApi, mAnimatedShapePath ?? mAnimatedShapeFirstPersonPath ?? item.Shape.Base.ToString() ?? "");
-        mShapeFirstPerson = AnimatableShape.Create(mClientApi, mAnimatedShapeFirstPersonPath ?? mAnimatedShapePath ?? item.Shape.Base.ToString() ?? "");
+        mShape = AnimatableShape.Create(mClientApi, mAnimatedShapePath ?? mAnimatedShapeFirstPersonPath ?? item.Shape.Base.ToString() ?? "", item);
+        mShapeFirstPerson = AnimatableShape.Create(mClientApi, mAnimatedShapeFirstPersonPath ?? mAnimatedShapePath ?? item.Shape.Base.ToString() ?? "", item);
     }
 
     [Obsolete("Not supported currently")]

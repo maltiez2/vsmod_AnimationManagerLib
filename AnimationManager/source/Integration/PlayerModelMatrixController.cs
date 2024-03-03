@@ -1,4 +1,5 @@
-﻿using Vintagestory.API.Client;
+﻿using System;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
@@ -12,11 +13,19 @@ namespace AnimationManagerLib.Patches;
 internal static class PlayerModelMatrixController
 {
     public static float PitchModifierFp { get; set; } = 1.0f;
+    [Obsolete("Will be removed")]
     public static float YawSpeedMultiplier { get; set; } = 1.0f;
+    [Obsolete("Will be removed")]
     public static float IntoxicationEffectIntensity { get; set; } = 1.0f;
+    [Obsolete("Will be removed")]
     public static float WalkPitchMultiplier { get; set; } = 1.0f;
 
-    public static bool LoadModelMatrixForPlayer(EntityPlayerShapeRenderer __instance, Entity entity, bool isSelf, float dt, bool isShadowPass)
+    public static void LoadModelMatrixForPlayer(EntityPlayerShapeRenderer __instance, Entity entity, bool isSelf, float dt, bool isShadowPass)
+    {
+        if (MathF.Abs(PitchModifierFp - 1.0f) > 0.01f) __instance.HeldItemPitchFollowOverride = 0.8f * PitchModifierFp;
+    }
+
+    public static bool LoadModelMatrixForPlayer_old(EntityPlayerShapeRenderer __instance, Entity entity, bool isSelf, float dt, bool isShadowPass)
     {
         Field<float, EntityShapeRenderer> bodyYawLerped = new(typeof(EntityShapeRenderer), "bodyYawLerped", __instance);
         Field<EntityAgent, EntityShapeRenderer> eagent = new(typeof(EntityShapeRenderer), "eagent", __instance);
