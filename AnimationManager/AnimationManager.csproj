@@ -3,7 +3,7 @@
   <PropertyGroup>
     <ModName>Animation Manager</ModName>
     <GameVersion>1.19.3</GameVersion>
-    <Version>1.0.0</Version>
+    <ModVersion>0.7.2</ModVersion>
     <ModId>animationmanagerlib</ModId>
     <Description>Animation manager library for procedual animation</Description>
     <Side>Universal</Side>
@@ -44,7 +44,7 @@
     <AssetsDir>$(ProjectDir)\resources\assets</AssetsDir>
     <ModIconFile>$(ProjectDir)\resources\modicon.png</ModIconFile>
     <ReleasesDir>$(ProjectDir)\Releases</ReleasesDir>
-    <ReleaseFile>$(ModId)_$(Version)</ReleaseFile>
+    <ReleaseFile>$(ModId)_$(ModVersion)</ReleaseFile>
     <ReleasePath>$(ReleasesDir)\$(ReleaseFile).zip</ReleasePath>
     <ReleasePathDev>$(ReleasesDir)\$(ReleaseFile)_dev.zip</ReleasePathDev>
 </PropertyGroup>
@@ -58,20 +58,12 @@
     <WorldName>test_$(ModId)</WorldName>
     <ModDir>$(ProjectDir)\$(OutputDir)</ModDir>
   </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="VSImGui" Version="0.0.6" />
+  </ItemGroup>
 
   <!-- References to libraries that are being used in project -->
   <ItemGroup>
-    <!-- ImGUI for in-game GUI for editing configs -->
-    <Reference Include="ImGui.NET">
-      <HintPath>$(ImGuiSubmoduleOutput)\ImGui.NET.dll</HintPath>
-      <Private>False</Private>
-      <EmbedInteropTypes>False</EmbedInteropTypes>
-    </Reference>
-    <Reference Include="VSImGui">
-      <HintPath>$(ImGuiSubmoduleOutput)\VSImGui.dll</HintPath>
-      <Private>False</Private>
-      <EmbedInteropTypes>False</EmbedInteropTypes>
-    </Reference>
     <!-- Vintage Story dependencies: wont be copied into output directory -->
     <Reference Include="OpenTK.Compute">
       <HintPath>$(GameDirectory)\Lib\OpenTK.Compute.dll</HintPath>
@@ -148,7 +140,7 @@
     "type": "code",
     "name": "$(ModName)",
     "modid": "$(ModId)",
-    "version": "$(Version)",
+    "version": "$(ModVersion)",
 
     "description": "$(Description)",
     "authors": [ @(ModInfoAuthors->'"%(Identity)"', ', ') ],
@@ -173,8 +165,8 @@
       <AssetsFolder Include="$(AssetsDir)\**\*.*" />
       <ModIcon Include="$(ModIconFile)" />
     </ItemGroup>
-    <Copy SourceFiles="@(AssetsFolder)" DestinationFiles="@(AssetsFolder->'$(OutputPath)assets\%(RecursiveDir)%(Filename)%(Extension)')" Condition="Exists('$(AssetsDir)')"/>
-    <Copy SourceFiles="@(ModIcon)" DestinationFolder="$(OutputPath)" Condition="Exists('$(ModIconFile)')"/>
+    <Copy SourceFiles="@(AssetsFolder)" DestinationFiles="@(AssetsFolder->'$(OutputPath)assets\%(RecursiveDir)%(Filename)%(Extension)')" Condition="Exists('$(AssetsDir)')" />
+    <Copy SourceFiles="@(ModIcon)" DestinationFolder="$(OutputPath)" Condition="Exists('$(ModIconFile)')" />
   </Target>
 
   <!-- Archives output directory into zip and puts it into Releases folder -->
