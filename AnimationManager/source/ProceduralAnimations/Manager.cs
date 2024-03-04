@@ -6,11 +6,11 @@ using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using VSImGui.API;
 
 #if DEBUG
 using ImGuiNET;
 using VSImGui;
-using VSImGui.src.ImGui;
 #endif
 
 namespace AnimationManagerLib;
@@ -276,7 +276,7 @@ public class AnimationManager : API.IAnimationManager
 #if DEBUG
     public static ICoreClientAPI? Api { get; private set; }
 
-    public VSDialogStatus SetUpDebugWindow(float deltaSeconds)
+    public CallbackGUIStatus SetUpDebugWindow(float deltaSeconds)
     {
 
         ImGuiNET.ImGui.Begin("Animation manager");
@@ -298,7 +298,7 @@ public class AnimationManager : API.IAnimationManager
         ImGuiNET.ImGui.End();
 
 
-        return VSDialogStatus.DontGrabMouse;
+        return CallbackGUIStatus.DontGrabMouse;
     }
 #endif
 }
@@ -415,7 +415,9 @@ internal class AnimationProvider
         uint crc32 = Utils.ToCrc32(data.Code);
         if (!animations.ContainsKey(crc32))
         {
+#if DEBUG
             api.Logger.Debug($"[Animation Manager lib] Animation '{data.Code}' was not found in shape. Procedural animation: '{id}'.");
+#endif
             return null;
         }
 

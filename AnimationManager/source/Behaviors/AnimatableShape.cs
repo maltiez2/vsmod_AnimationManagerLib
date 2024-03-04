@@ -1,5 +1,4 @@
-﻿using AnimationManagerLib.API;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -8,6 +7,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
+using Vintagestory.GameContent;
 
 namespace AnimationManagerLib;
 
@@ -82,7 +82,7 @@ public sealed class AnimatableShape : ITexPositionSource, IDisposable
     }
     private void RemoveAnimatorsForNonValidEntities()
     {
-        foreach ((long entityId, var animator) in mAnimators)
+        foreach ((long entityId, AnimatorBase? animator) in mAnimators)
         {
             Entity? entity = mClientApi.World.GetEntityById(entityId);
 
@@ -101,7 +101,7 @@ public sealed class AnimatableShape : ITexPositionSource, IDisposable
 
         clientApi.Tesselator.TesselateShapeWithJointIds("collectible", shape, out MeshData meshData, texSource, null);
 
-        return meshData;
+        return meshData.Clone();
     }
     private static MultiTextureMeshRef InitializeMeshRef(ICoreClientAPI clientApi, MeshData meshData)
     {
