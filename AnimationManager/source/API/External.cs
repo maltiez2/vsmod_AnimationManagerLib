@@ -106,9 +106,7 @@ public enum AnimationTargetType
     /// Player in regular first-person camera mode
     /// </summary>
     EntityFirstPerson,
-    /// <summary>
-    /// Player in immersive first-person camera mode
-    /// </summary>
+    [Obsolete("No longer supported, use 'EntityThirdPerson' instead")]
     EntityImmersiveFirstPerson,
     /// <summary>
     /// Item currently held by player
