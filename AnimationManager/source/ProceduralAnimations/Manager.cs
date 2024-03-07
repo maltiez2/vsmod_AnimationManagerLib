@@ -7,6 +7,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using VSImGui.API;
+using ProtoBuf;
 
 #if DEBUG
 using ImGuiNET;
@@ -538,12 +539,22 @@ internal class AnimationProvider
         if (mJsonOutput)
         {
             ImGui.Begin($"JSON output##Animations editor", ref mJsonOutput, ImGuiWindowFlags.Modal);
+            if (ImGui.Button("Copy##json") || CopyCombination())
+            {
+                ImGui.SetClipboardText(mJsonOutputValue);
+            }
             System.Numerics.Vector2 size = ImGui.GetWindowSize();
             size.X -= 8;
             size.Y -= 34;
             ImGui.InputTextMultiline($"##Animations editor", ref mJsonOutputValue, (uint)mJsonOutputValue.Length * 2, size, ImGuiInputTextFlags.ReadOnly);
             ImGui.End();
         }
+    }
+
+    private bool CopyCombination()
+    {
+        ImGuiIOPtr io = ImGui.GetIO();
+        return io.KeyCtrl && io.KeysDown[(int)ImGuiKey.C];
     }
 
     public void SetAnimationFrame(IAnimation animation)
