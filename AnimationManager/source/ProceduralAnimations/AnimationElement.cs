@@ -196,13 +196,13 @@ internal struct AnimationElement : IWithGuiEditor
         };
     }
 
-    static public AnimationElement CircularLerp(AnimationElement from, AnimationElement to, float progress, bool weighted = true)
+    static public AnimationElement CircularLerp(AnimationElement from, AnimationElement to, float progress, float max = 360, bool weighted = true)
     {
         Debug.Assert(from.Id.ElementNameHash == to.Id.ElementNameHash && from.Id.ElementType == to.Id.ElementType);
 
         return new()
         {
-            Value = WeightedValue.CircularLerp(from.Value, to.Value, progress, 360, weighted),
+            Value = WeightedValue.CircularLerp(from.Value, to.Value, progress, max, weighted),
             Id = from.Id,
             ShortestAngularDistance = from.ShortestAngularDistance || to.ShortestAngularDistance
         };

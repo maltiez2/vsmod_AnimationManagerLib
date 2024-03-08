@@ -182,7 +182,8 @@ internal class Animation : IAnimation, ISerializable
             AnimationElement startElement = mKeyFrames[start].Elements[id].element;
             AnimationElement endElement = mKeyFrames[end].Elements[id].element;
 
-            AnimationElement element = AnimationElement.CircularLerp(startElement, endElement, progress, false);
+            AnimationElement element = AnimationElement.Lerp(startElement, endElement, progress, false);
+            //AnimationElement element = AnimationElement.CircularLerp(startElement, endElement, progress, 360, false); // @TODO Breaks animations
             mKeyFrames[frame].Elements.Add(id, (element, blendMode));
         }
     }
