@@ -8,6 +8,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using VSImGui.API;
 using ProtoBuf;
+using System.Reflection;
 
 #if DEBUG
 using ImGuiNET;
@@ -111,18 +112,44 @@ public class AnimationManager : API.IAnimationManager
         return id;
     }
 
-    public void OnFrameHandler(Entity entity, float dt)
+    public void OnFrameHandler(Vintagestory.API.Common.AnimationManager manager, Entity entity, float dt)
     {
         if (entity == null) return;
 
-        AnimationTarget animationTarget = new(entity);
+        AnimationTarget animationTarget;
+
+        if (entity is EntityPlayer player)
+        {
+            /*Vintagestory.API.Common.AnimationManager? tpManager = (Vintagestory.API.Common.AnimationManager?)typeof(Vintagestory.API.Common.EntityPlayer)
+                                          .GetField("animManager", BindingFlags.NonPublic | BindingFlags.Instance)
+                                          ?.GetValue(player);*/
+
+            Vintagestory.API.Common.AnimationManager? fpManager = (Vintagestory.API.Common.AnimationManager?)typeof(Vintagestory.API.Common.EntityPlayer)
+                                          .GetField("selfFpAnimManager", BindingFlags.NonPublic | BindingFlags.Instance)
+                                          ?.GetValue(player);
+
+            if (manager == fpManager)
+            {
+                animationTarget = new(entity.EntityId, AnimationTargetType.EntityFirstPerson);
+            }
+            else
+            {
+                animationTarget = new(entity.EntityId, AnimationTargetType.EntityThirdPerson);
+            }
+        }
+        else
+        {
+            animationTarget = new(entity.EntityId, AnimationTargetType.EntityThirdPerson);
+        }
+
+        
 
         if (!mComposers.ContainsKey(animationTarget)) return;
 
-        if (animationTarget.TargetType == AnimationTargetType.EntityFirstPerson || animationTarget.TargetType == AnimationTargetType.EntityImmersiveFirstPerson)
+        /*if (animationTarget.TargetType == AnimationTargetType.EntityFirstPerson || animationTarget.TargetType == AnimationTargetType.EntityImmersiveFirstPerson)
         {
             dt /= 2; // @TODO
-        }
+        }*/
 
         mApplier.Clear();
 

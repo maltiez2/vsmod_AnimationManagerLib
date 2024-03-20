@@ -15,7 +15,7 @@ namespace AnimationManagerLib.Patches;
 
 internal static class AnimatorPatch
 {
-    public delegate void OnFrameHandler(Entity entity, float dt);
+    public delegate void OnFrameHandler(Vintagestory.API.Common.AnimationManager manager, Entity entity, float dt);
     public static event OnFrameHandler? OnFrameCallback;
 
     public delegate void OnElementPoseUsedHandler(ElementPose pose, ref float weight);
@@ -85,11 +85,9 @@ internal static class AnimatorPatch
 
     public static void OnFrame(Vintagestory.API.Common.AnimationManager __instance, float dt)
     {
-#pragma warning disable S3011 // Reflection should not be used to increase accessibility of classes, methods, or fields
         Entity? entity = (Entity?)typeof(Vintagestory.API.Common.AnimationManager)
                                           .GetField("entity", BindingFlags.NonPublic | BindingFlags.Instance)
                                           ?.GetValue(__instance);
-#pragma warning restore S3011 // Reflection should not be used to increase accessibility of classes, methods, or fields 
 
         foreach (string code in __instance.ActiveAnimationsByAnimCode.Select(entry => entry.Key).Where(SuppressedAnimations.Contains))
         {
@@ -100,7 +98,7 @@ internal static class AnimatorPatch
         {
             try
             {
-                OnFrameCallback?.Invoke(entity, dt);
+                OnFrameCallback?.Invoke(__instance, entity, dt);
             }
             catch (Exception exception)
             {

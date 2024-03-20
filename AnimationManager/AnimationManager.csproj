@@ -3,7 +3,7 @@
   <PropertyGroup>
     <ModName>Animation Manager</ModName>
     <GameVersion>1.19.3</GameVersion>
-    <ModVersion>0.7.3</ModVersion>
+    <ModVersion>0.7.4</ModVersion>
     <ModId>animationmanagerlib</ModId>
     <Description>Animation manager library for procedual animation</Description>
     <Side>Universal</Side>
